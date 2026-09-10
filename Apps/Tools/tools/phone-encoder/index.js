@@ -1,98 +1,227 @@
 import { UI } from '../../js/ui.js';
 
+// =============================================================================
+// 0. DYNAMIC THEME ACCENT CONTROLLER
+// =============================================================================
+const DEFAULT_EMERALD = '#10b981';
+
+export const ThemeKit = {
+    getAccentColor: () => {
+        return localStorage.getItem('hunqos_accent_color') || 
+               localStorage.getItem('hunqos_icon_custom_bg') || 
+               DEFAULT_EMERALD;
+    },
+    applyAccent: (container) => {
+        if (!container) return;
+        const accent = ThemeKit.getAccentColor();
+        container.style.setProperty('--kit-accent', accent);
+    }
+};
+
+// =============================================================================
+// 1. ADAPTIVE ISLAND & TOAST FALLBACK CONTROLLER
+// =============================================================================
+export const IslandKit = {
+    isIslandActive: () => {
+        const isEnabled = localStorage.getItem('hunqos_dynamic_island') !== 'false';
+        const wrapper = document.getElementById('dynamic-island-wrapper');
+        const isDOMVisible = wrapper && !wrapper.classList.contains('hidden') && window.getComputedStyle(wrapper).display !== 'none';
+        return Boolean(isEnabled && isDOMVisible && typeof window.triggerIslandNotification === 'function');
+    },
+
+    notify: (title, desc, type = 'info', duration = 2800) => {
+        if (IslandKit.isIslandActive()) {
+            window.triggerIslandNotification(title, desc, type, duration);
+        } else {
+            UI.showAlert(title, desc, type, duration);
+        }
+    }
+};
+
+// =============================================================================
+// 2. TEMPLATE RENDERER (HUNQOS MINIMAL FLAT - TOUCH & BASE64 TOOL STANDARD)
+// =============================================================================
 export function template() {
     return `
+    <div id="pe-root-container" class="w-full h-full bg-[#f4f4f6] dark:bg-[#000000] text-[#18181b] dark:text-[#f4f4f6] select-none overflow-hidden font-sans transition-colors duration-200">
+        
         <style>
-            .custom-scrollbar::-webkit-scrollbar { width: 3px; }
+            #pe-root-container {
+                --kit-accent: #10b981;
+            }
+            .bg-accent-theme {
+                background-color: var(--kit-accent) !important;
+            }
+            .text-accent-theme {
+                color: var(--kit-accent) !important;
+            }
+            .border-accent-theme {
+                border-color: var(--kit-accent) !important;
+            }
+            .accent-theme-tint {
+                accent-color: var(--kit-accent) !important;
+            }
+            .bg-accent-theme-alpha {
+                background-color: color-mix(in srgb, var(--kit-accent) 14%, transparent) !important;
+            }
+            .hover-bg-accent-theme-alpha:hover {
+                background-color: color-mix(in srgb, var(--kit-accent) 20%, transparent) !important;
+            }
+
+            .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
             .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 10px; }
-            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.12); border-radius: 9999px; }
+            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
 
-            .hide-scrollbar::-webkit-scrollbar { display: none; }
-            .hide-scrollbar { scrollbar-width: none; }
+            .no-scrollbar::-webkit-scrollbar { display: none; }
+            .no-scrollbar { scrollbar-width: none; }
 
-            .btn-premium { transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.1s; user-select: none; cursor: pointer; }
-            .btn-premium:active { transform: scale(0.96); opacity: 0.8; }
-            
-            /* Result Card */
-            .res-card { position: relative; transition: all 0.2s; }
-            .btn-copy-mini { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); opacity: 0; transition: opacity 0.2s; }
-            .res-card:hover .btn-copy-mini { opacity: 1; }
-            
-            @media (max-width: 768px) {
-                .btn-copy-mini { opacity: 1; }
+            .pe-input-zen {
+                font-variant-numeric: tabular-nums;
+                -webkit-user-select: text !important;
+                user-select: text !important;
             }
         </style>
 
-        <div class="relative flex flex-col w-full max-w-[900px] mx-auto min-h-[500px]">
+        <!-- MAIN SCROLLER -->
+        <main class="w-full h-full overflow-y-auto no-scrollbar px-3.5 sm:px-6 pt-6 pb-24 max-w-4xl mx-auto space-y-5">
             
-            <div class="mb-6 px-2 flex justify-between items-center">
-                <div>
-                    <h2 class="text-[22px] font-bold text-zinc-900 dark:text-white tracking-tight leading-none mb-1">Mã Hóa SĐT</h2>
-                    <p class="text-[13px] text-zinc-500 font-medium">15 Thuật toán Bypass Bot TMĐT. Tích hợp Smart Decoder.</p>
+            <!-- SEAMLESS HERO TITLE -->
+            <div class="px-1 flex items-start justify-between">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-accent-theme shadow-sm transition-colors"></span>
+                        <span class="text-[11px] font-mono tracking-wider font-semibold uppercase text-accent-theme">HunqOS Security</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">Mã Hóa SĐT</h1>
+                    <p class="text-[12px] text-zinc-500 dark:text-zinc-400 font-normal">15 Thuật toán Bypass Bot TMĐT. Tích hợp giải mã thông minh đa ngôn ngữ.</p>
                 </div>
             </div>
 
-            <div class="flex overflow-x-auto hide-scrollbar gap-2 mb-6 px-2 pb-2" id="pe-tabs">
-                <button class="pe-tab active btn-premium px-5 py-2.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[11px] font-bold whitespace-nowrap shrink-0" data-target="pane-encode"><i class="fas fa-lock mr-1.5"></i>Tạo 15 Mã Lách Luật</button>
-                <button class="pe-tab btn-premium px-5 py-2.5 rounded-full bg-transparent text-zinc-500 text-[11px] font-bold whitespace-nowrap shrink-0 hover:text-zinc-900 dark:hover:text-white border border-zinc-200 dark:border-zinc-800" data-target="pane-decode"><i class="fas fa-unlock mr-1.5"></i>Giải Mã Ngược</button>
+            <!-- CONTROLS & OPTIONS CARD -->
+            <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-3.5 sm:p-4 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    
+                    <!-- SEGMENTED TABS -->
+                    <div class="grid grid-cols-2 gap-1 p-1 rounded-[14px] bg-black/[0.05] dark:bg-black/50 border border-black/[0.04] dark:border-white/[0.08] w-full sm:w-80" id="pe-tabs">
+                        <button id="tab-encode" class="tab-btn active py-2 rounded-[10px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all flex items-center justify-center gap-1.5" data-target="pane-encode">
+                            <i class="fas fa-lock text-[11px]"></i> Tạo 15 mã lách luật
+                        </button>
+                        <button id="tab-decode" class="tab-btn py-2 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all flex items-center justify-center gap-1.5" data-target="pane-decode">
+                            <i class="fas fa-unlock text-[11px]"></i> Giải mã ngược
+                        </button>
+                    </div>
+
+                    <!-- SHORT INFO BADGE -->
+                    <div class="flex items-center justify-between sm:justify-end gap-2 text-zinc-400 text-[11px]">
+                        <span class="flex items-center gap-1.5 font-medium">
+                            <i class="fas fa-shield-halved text-accent-theme text-xs"></i> Lọc Bot An Toàn
+                        </span>
+                    </div>
+                </div>
             </div>
 
-            <div class="bg-white dark:bg-[#0c0c0e] rounded-[32px] ring-1 ring-inset ring-zinc-200 dark:ring-zinc-800/80 p-5 min-h-[400px]">
+            <!-- WORKSPACE PANES -->
+            <div id="pane-encode" class="pe-pane block space-y-4">
                 
-                <div id="pane-encode" class="pe-pane block animate-in fade-in">
-                    
-                    <div class="bg-zinc-50 dark:bg-zinc-800/30 rounded-[24px] p-5 mb-5 focus-within:ring-2 ring-zinc-900 dark:ring-white transition-all">
-                        <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-3">Nhập Số Điện Thoại</label>
-                        <input type="tel" id="pe-input-phone" class="w-full bg-transparent border-none outline-none text-[2rem] font-black font-mono text-zinc-900 dark:text-white p-0 tracking-[0.2em] placeholder-zinc-300 dark:placeholder-zinc-700" placeholder="0987654321" autocomplete="off" maxlength="15">
+                <!-- INPUT CARD -->
+                <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-5 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Đầu vào số điện thoại</h3>
+                        <span class="text-[10px] text-zinc-400 font-mono">8 - 15 chữ số</span>
                     </div>
 
-                    <button id="btn-encode" class="btn-premium w-full py-4 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-sm tracking-widest uppercase flex items-center justify-center gap-2">
-                        <i class="fas fa-magic"></i> TẠO 15 PHIÊN BẢN MÃ HÓA
-                    </button>
-
-                    <div id="pe-results-wrap" class="hidden mt-6 flex-col gap-3">
-                        <div class="flex justify-between items-center px-2 mb-1">
-                            <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Ma trận lách lọc (Click để Copy)</span>
-                        </div>
-                        
-                        <div id="pe-results-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
+                    <div class="bg-[#f2f2f7] dark:bg-black/40 rounded-[18px] p-3.5 border border-black/[0.04] dark:border-white/[0.06] focus-within:border-accent-theme transition-all">
+                        <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-[14px] bg-white dark:bg-[#27272a] flex items-center justify-center text-accent-theme shadow-sm shrink-0 border border-black/[0.04] dark:border-white/[0.06]">
+                                <i class="fas fa-phone text-sm"></i>
                             </div>
-                        
-                        <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
-                            <p class="text-[11px] text-blue-600 dark:text-blue-400 font-medium leading-relaxed italic">
-                                <i class="fas fa-shield-alt mr-1"></i> <strong>Bí kíp:</strong> Để an toàn tuyệt đối 100% không bị quét khóa Shop, hãy sử dụng các dạng mã hóa không chứa số như <strong>12 Con Giáp, Thiên Can, Nhạc Phổ</strong> hoặc <strong>Kanji Nhật Bản</strong>.
-                            </p>
+                            <input type="tel" id="pe-input-phone" 
+                                class="pe-input-zen w-full bg-transparent border-none outline-none text-2xl sm:text-3xl font-black font-mono text-zinc-900 dark:text-white tracking-[0.15em] placeholder-zinc-300 dark:placeholder-zinc-700" 
+                                placeholder="0987654321" autocomplete="off" maxlength="15">
+                            <button id="btn-clear-phone" class="w-9 h-9 rounded-[12px] text-zinc-400 hover:text-zinc-900 dark:hover:text-white flex items-center justify-center opacity-0 transition-opacity active:scale-90 shrink-0">
+                                <i class="fas fa-times-circle text-base"></i>
+                            </button>
                         </div>
                     </div>
+
+                    <button id="btn-encode" class="w-full h-11 rounded-[14px] bg-accent-theme text-white font-bold text-xs tracking-wide flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm">
+                        <i class="fas fa-wand-magic-sparkles text-xs"></i> <span>Tạo 15 phiên bản mã hóa</span>
+                    </button>
                 </div>
 
-                <div id="pane-decode" class="pe-pane hidden animate-in fade-in">
-                    
-                    <div class="bg-zinc-50 dark:bg-zinc-800/30 rounded-[24px] p-5 mb-5 focus-within:ring-2 ring-zinc-900 dark:ring-white transition-all">
-                        <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-3">Dán chuỗi đã mã hóa vào đây</label>
-                        <textarea id="pe-input-decode" class="w-full bg-transparent border-none outline-none text-base font-bold text-zinc-900 dark:text-white resize-y min-h-[120px] p-0 custom-scrollbar leading-relaxed placeholder-zinc-300 dark:placeholder-zinc-700" placeholder="VD: Nulla IX Nulla I II III I II III"></textarea>
+                <!-- RESULTS SECTION -->
+                <div id="pe-results-wrap" class="hidden flex-col space-y-4">
+                    <div class="flex justify-between items-center px-1">
+                        <span class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Ma trận biến thể (Chạm để chép)</span>
+                        <span class="text-[10px] text-zinc-400 font-mono">15 Thuật toán</span>
                     </div>
 
-                    <button id="btn-decode" class="btn-premium w-full py-4 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-sm tracking-widest uppercase flex items-center justify-center gap-2">
-                        <i class="fas fa-fingerprint"></i> BỘ GIẢI MÃ (SMART DECODER)
-                    </button>
+                    <div id="pe-results-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[520px] overflow-y-auto custom-scrollbar pr-1"></div>
 
-                    <div id="pe-decode-res-wrap" class="hidden mt-6 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-[24px] p-6 text-center">
-                        <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block mb-2">Số điện thoại trích xuất được</span>
-                        <div class="text-[2.5rem] font-black font-mono text-emerald-600 dark:text-emerald-400 tracking-[0.2em]" id="pe-decode-val">--</div>
-                        <button class="btn-premium mt-4 px-6 py-2 rounded-full bg-emerald-600 text-white text-[11px] font-bold uppercase tracking-wider" id="btn-copy-decode">Sao chép SĐT</button>
+                    <div class="rounded-[18px] bg-accent-theme-alpha border border-accent-theme/20 p-4">
+                        <p class="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed font-normal">
+                            <i class="fas fa-shield-halved text-accent-theme mr-1"></i>
+                            <strong>Mẹo an toàn:</strong> Sử dụng các định dạng không chứa ký tự chữ số như <strong>12 Con Giáp, Thiên Can, Nhạc Phổ</strong> hoặc <strong>Kanji</strong> để ngăn ngừa triệt để các bộ lọc biểu thức chính quy (Regex) của nền tảng TMĐT.
+                        </p>
                     </div>
-                    
                 </div>
 
             </div>
-        </div>
+
+            <!-- DECODE PANE -->
+            <div id="pane-decode" class="pe-pane hidden space-y-4">
+                
+                <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-5 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Chuỗi ký tự cần trích xuất</h3>
+                        <span class="text-[10px] text-zinc-400 font-mono">Smart Decoder</span>
+                    </div>
+
+                    <div class="bg-[#f2f2f7] dark:bg-black/40 rounded-[18px] p-3.5 border border-black/[0.04] dark:border-white/[0.06] focus-within:border-accent-theme transition-all">
+                        <textarea id="pe-input-decode" 
+                            class="pe-input-zen w-full bg-transparent border-none outline-none text-xs sm:text-sm font-semibold text-zinc-900 dark:text-white resize-y min-h-[120px] p-0 custom-scrollbar leading-relaxed placeholder-zinc-400" 
+                            placeholder="Dán văn bản bất kỳ chứa mã ngụy trang SĐT... Ví dụ: Nulla IX Nulla I II III I II III"></textarea>
+                    </div>
+
+                    <button id="btn-decode" class="w-full h-11 rounded-[14px] bg-accent-theme text-white font-bold text-xs tracking-wide flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm">
+                        <i class="fas fa-fingerprint text-xs"></i> <span>Giải mã số điện thoại</span>
+                    </button>
+                </div>
+
+                <!-- DECODE RESULT CARD -->
+                <div id="pe-decode-res-wrap" class="hidden rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-6 shadow-sm flex-col items-center text-center space-y-3">
+                    <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Số điện thoại trích xuất thành công</span>
+                    <div class="text-3xl sm:text-4xl font-black font-mono tracking-[0.15em] sm:tracking-[0.2em] text-accent-theme" id="pe-decode-val">--</div>
+                    <button class="h-10 px-6 rounded-[12px] bg-accent-theme text-white text-xs font-bold active:scale-95 transition-all shadow-sm flex items-center gap-2" id="btn-copy-decode">
+                        <i class="far fa-copy text-xs"></i> Sao chép SĐT
+                    </button>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
     `;
 }
 
-export function init() {
-    // --- TỪ ĐIỂN SIÊU MÃ HÓA (15 THUẬT TOÁN ĐA NGÔN NGỮ) ---
+// =============================================================================
+// 3. LOGIC HOOKS & EVENT DISPATCHING
+// =============================================================================
+export function init(hostElement) {
+    const rootContainer = hostElement.querySelector('#pe-root-container') || hostElement;
+
+    // Theme integration
+    const updateAccent = () => ThemeKit.applyAccent(rootContainer);
+    updateAccent();
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'hunqos_accent_color' || e.key === 'hunqos_icon_custom_bg') {
+            updateAccent();
+        }
+    });
+
+    // Từ điển mã hóa (15 định dạng)
     const dict = {
         '0': { 
             text: ['không'], slang: ['khum', 'khôm', 'zéro'], en: ['zero'], 
@@ -166,7 +295,7 @@ export function init() {
         }
     };
 
-    // --- XÂY DỰNG TỪ ĐIỂN GIẢI MÃ THÔNG MINH (LONGEST MATCH FIRST) ---
+    // Chuẩn bị danh sách giải mã ưu tiên độ dài (Longest Match First)
     const decodeMapping = {
         '0': ['không', 'khong', 'khum', 'khôm', 'khôg', 'zero', 'zêrô', 'zéro', 'maru', 'vô', 'nulla', 'giáp', 'giap', 'đồ', 'do', '零', '〇', 'ゼロ', '0️⃣', '🥚', '🍩', '⚽', '🎱', '🌚', '⓪', '⓿', '０', '🄀', '🐀', '🐁', 'O', 'o', 'Q', '()'],
         '1': ['một', 'mot', 'mọt', 'mộc', 'mụt', '1st', 'nhất', 'nhat', 'one', 'ichi', 'ất', 'at', 'rê', 're', '一', '壹', 'いち', '1️⃣', '🦯', '🥇', '☝️', '🌭', '🕯️', '①', '❶', '１', '🄁', '🐂', '🐄', 'I', 'l', '|', 'L'],
@@ -180,55 +309,74 @@ export function init() {
         '9': ['chín', 'chin', 'chínn', 'chím', 'cửu', 'cuu', 'nine', 'kyuu', 'ku', 'quý', 'quy', 'mí', 'mi2', '九', '玖', 'きゅう', 'く', '9️⃣', '🎈', '☁️', '💯', '⑨', '❾', '９', '🄉', '🐓', '🐔', 'IX', 'q', 'P']
     };
 
-    // Chuyển Object thành Array phẳng và sắp xếp GIẢM DẦN THEO ĐỘ DÀI
-    // Bí quyết để "VIII" được dịch trước "VII", "III" trước "II"
     const decodeList = [];
     for (let digit in decodeMapping) {
         decodeMapping[digit].forEach(word => {
-            decodeList.push({ word: word, digit: digit });
+            decodeList.push({ word, digit });
         });
     }
     decodeList.sort((a, b) => b.word.length - a.word.length);
 
-    // Từ điển riêng cho mã Morse
     const morseDict = {
         '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-',
         '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.'
     };
 
-    // --- DOM Elements ---
-    const tabs = document.querySelectorAll('.pe-tab');
-    const panes = document.querySelectorAll('.pe-pane');
+    // Query DOM Elements
+    const tabBtns = hostElement.querySelectorAll('#pe-tabs .tab-btn');
+    const panes = hostElement.querySelectorAll('.pe-pane');
     
-    const inPhone = document.getElementById('pe-input-phone');
-    const btnEncode = document.getElementById('btn-encode');
-    const resWrap = document.getElementById('pe-results-wrap');
-    const resList = document.getElementById('pe-results-list');
+    const inPhone = hostElement.querySelector('#pe-input-phone');
+    const btnClearPhone = hostElement.querySelector('#btn-clear-phone');
+    const btnEncode = hostElement.querySelector('#btn-encode');
+    const resWrap = hostElement.querySelector('#pe-results-wrap');
+    const resList = hostElement.querySelector('#pe-results-list');
 
-    const inDecode = document.getElementById('pe-input-decode');
-    const btnDecode = document.getElementById('btn-decode');
-    const decodeResWrap = document.getElementById('pe-decode-res-wrap');
-    const decodeVal = document.getElementById('pe-decode-val');
-    const btnCopyDecode = document.getElementById('btn-copy-decode');
+    const inDecode = hostElement.querySelector('#pe-input-decode');
+    const btnDecode = hostElement.querySelector('#btn-decode');
+    const decodeResWrap = hostElement.querySelector('#pe-decode-res-wrap');
+    const decodeVal = hostElement.querySelector('#pe-decode-val');
+    const btnCopyDecode = hostElement.querySelector('#btn-copy-decode');
 
-    // --- TAB LOGIC ---
-    tabs.forEach(tab => {
-        tab.onclick = () => {
-            tabs.forEach(t => { t.classList.remove('active', 'bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900'); t.classList.add('bg-transparent', 'text-zinc-500', 'border', 'border-zinc-200', 'dark:border-zinc-800'); });
-            tab.classList.add('active', 'bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900'); tab.classList.remove('bg-transparent', 'text-zinc-500', 'border', 'border-zinc-200', 'dark:border-zinc-800');
-            panes.forEach(p => { p.classList.remove('block'); p.classList.add('hidden'); });
-            document.getElementById(tab.dataset.target).classList.remove('hidden'); document.getElementById(tab.dataset.target).classList.add('block');
-        };
+    // Segmented Tabs
+    const activeClass = 'tab-btn active py-2 rounded-[10px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all flex items-center justify-center gap-1.5';
+    const inactiveClass = 'tab-btn py-2 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all flex items-center justify-center gap-1.5';
+
+    tabBtns.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabBtns.forEach(t => { t.className = inactiveClass; });
+            tab.className = activeClass;
+
+            panes.forEach(p => { 
+                p.classList.remove('block'); 
+                p.classList.add('hidden'); 
+            });
+
+            const target = hostElement.querySelector(`#${tab.getAttribute('data-target')}`);
+            if (target) {
+                target.classList.remove('hidden');
+                target.classList.add('block');
+            }
+        });
     });
 
-    // --- HELPER FUNCTIONS ---
+    // Input Sanitizer
     const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
     const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
-    const noise = () => pick(['', ' ', ' . ', ' - ', ' ~ ', ' _ ']); 
+    const noise = () => pick(['', ' ', ' . ', ' - ', ' ~ ', ' _ ']);
 
-    inPhone.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, ''); });
+    inPhone?.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/\D/g, '');
+        btnClearPhone.style.opacity = e.target.value ? '1' : '0';
+    });
 
-    // --- GENERATE 15 TIER ALGORITHMS ---
+    btnClearPhone?.addEventListener('click', () => {
+        inPhone.value = '';
+        btnClearPhone.style.opacity = '0';
+        inPhone.focus();
+    });
+
+    // Thuật toán 15 dạng ngụy trang
     const generateEncodings = (phone) => {
         const results = [];
         const chars = phone.split('');
@@ -236,110 +384,121 @@ export function init() {
         results.push({ name: '1. Trộn Hỗn Loạn Đa Ngôn Ngữ', val: chars.map(c => pick([...dict[c].text, ...dict[c].slang, ...dict[c].jp, ...dict[c].en])).join(noise()) });
         results.push({ name: '2. Trộn Ký Tự Đồ Vật & Biểu Tượng', val: chars.map(c => pick([...dict[c].emoji, ...dict[c].special, ...dict[c].zodiac])).join(' ') });
         results.push({ name: '3. Tiếng Lóng (Teencode GenZ)', val: chars.map(c => capitalize(pick(dict[c].slang))).join(' ') });
-        results.push({ name: '4. Tiếng Nhật Bản (Kanji/Romaji)', val: chars.map(c => pick(dict[c].jp)).join(' ') });
+        results.push({ name: '4. Tiếng Nhật Bản (Kanji / Romaji)', val: chars.map(c => pick(dict[c].jp)).join(' ') });
         results.push({ name: '5. Tiếng Anh (English)', val: chars.map(c => capitalize(pick(dict[c].en))).join(' ') });
-        results.push({ name: '6. Phong thủy (Chữ Hán & Hán Việt)', val: chars.map(c => Math.random()>0.5 ? pick(dict[c].han) : capitalize(pick(dict[c].hv))).join(' ') });
-        results.push({ name: '7. Hình tượng Đồ vật (Emoji Object)', val: chars.map(c => pick(dict[c].emoji)).join(' ') });
-        results.push({ name: '8. Mật mã Động vật (12 Con Giáp)', val: chars.map(c => pick(dict[c].zodiac)).join(' ') });
-        results.push({ name: '9. Chữ số La Mã (Roman Numerals)', val: chars.map(c => pick(dict[c].roman)).join(' ') });
-        results.push({ name: '10. Font Ký tự Đặc Biệt / Khoanh tròn', val: chars.map(c => pick(dict[c].special)).join('') });
-        results.push({ name: '11. Chữ cái ngụy trang (Leetspeak)', val: chars.map(c => pick(dict[c].leet)).join('') });
+        results.push({ name: '6. Phong Thủy (Chữ Hán & Hán Việt)', val: chars.map(c => Math.random() > 0.5 ? pick(dict[c].han) : capitalize(pick(dict[c].hv))).join(' ') });
+        results.push({ name: '7. Hình Tượng Đồ Vật (Emoji Object)', val: chars.map(c => pick(dict[c].emoji)).join(' ') });
+        results.push({ name: '8. Mật Mã Động Vật (12 Con Giáp)', val: chars.map(c => pick(dict[c].zodiac)).join(' ') });
+        results.push({ name: '9. Chữ Số La Mã (Roman Numerals)', val: chars.map(c => pick(dict[c].roman)).join(' ') });
+        results.push({ name: '10. Ký Tự Đặc Biệt / Số Khoanh Tròn', val: chars.map(c => pick(dict[c].special)).join('') });
+        results.push({ name: '11. Ký Tự Ngụy Trang (Leetspeak)', val: chars.map(c => pick(dict[c].leet)).join('') });
         
         let invisible = '';
         for (let i = 0; i < phone.length; i++) {
             invisible += phone[i];
             if (i < phone.length - 1) invisible += pick(['\u200B', '\u200C', '\u200B\u200C']);
         }
-        invisible = invisible.substring(0, 4) + ' ' + invisible.substring(4, 7) + ' ' + invisible.substring(7); // Format đẹp
-        results.push({ name: '12. Ký tự Tàng Hình vô hình (Zero-width)', val: invisible });
+        if (invisible.length >= 7) {
+            invisible = invisible.substring(0, 4) + ' ' + invisible.substring(4, 7) + ' ' + invisible.substring(7);
+        }
+        results.push({ name: '12. Ký Tự Tàng Hình (Zero-width Space)', val: invisible });
 
-        results.push({ name: '13. Mã Morse Máy Tín (Dấu chấm & gạch)', val: chars.map(c => dict[c].morse).join(' ') });
-        results.push({ name: '14. Thiên Can Hệ (Giáp Ất Bính Đinh)', val: chars.map(c => capitalize(pick(dict[c].can))).join(' ') });
-        results.push({ name: '15. Âm luật Nhạc phổ (Đồ Rê Mi Fa)', val: chars.map(c => capitalize(pick(dict[c].note))).join(' ') });
+        results.push({ name: '13. Mã Morse Máy Tín', val: chars.map(c => dict[c].morse).join(' ') });
+        results.push({ name: '14. Thiên Can Ngũ Hành (Giáp Ất Bính Đinh)', val: chars.map(c => capitalize(pick(dict[c].can))).join(' ') });
+        results.push({ name: '15. Âm Luật Nhạc Phổ (Đồ Rê Mi Fa)', val: chars.map(c => capitalize(pick(dict[c].note))).join(' ') });
 
         return results;
     };
 
-    // --- ENCODE ACTION ---
-    btnEncode.onclick = () => {
+    // Encode Action
+    btnEncode?.addEventListener('click', () => {
         const phone = inPhone.value.trim();
-        if (phone.length < 8) return UI.showAlert('Lỗi', 'Vui lòng nhập SĐT hợp lệ (từ 8-15 số).', 'warning');
+        if (phone.length < 8) {
+            return IslandKit.notify('Cảnh báo', 'Vui lòng nhập SĐT hợp lệ (từ 8 - 15 chữ số).', 'warning');
+        }
 
         const variations = generateEncodings(phone);
         resList.innerHTML = '';
 
         variations.forEach(item => {
             const card = document.createElement('div');
-            card.className = 'res-card bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors group flex flex-col justify-center';
-            
+            card.className = 'res-card p-3.5 rounded-[16px] bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] cursor-pointer hover:border-black/[0.12] dark:hover:border-white/[0.15] transition-all flex items-center justify-between gap-3 active:scale-[0.99] group';
             card.innerHTML = `
-                <div class="text-[9px] font-bold text-blue-500 uppercase mb-1.5 tracking-widest">${item.name}</div>
-                <div class="text-[13px] font-bold text-zinc-900 dark:text-white pr-8 break-words leading-relaxed">${item.val}</div>
-                <button class="btn-copy-mini btn-premium w-8 h-8 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 flex items-center justify-center">
-                    <i class="far fa-copy text-sm"></i>
+                <div class="flex-1 min-w-0">
+                    <span class="text-[9px] font-bold text-accent-theme uppercase tracking-wider block mb-1">${item.name}</span>
+                    <div class="text-xs sm:text-[13px] font-mono font-bold text-zinc-900 dark:text-white break-words leading-relaxed">${item.val}</div>
+                </div>
+                <button class="h-8 w-8 rounded-[10px] bg-white dark:bg-[#27272a] border border-black/[0.04] dark:border-white/[0.06] text-zinc-500 group-hover:text-accent-theme flex items-center justify-center shrink-0 transition-colors shadow-sm" title="Sao chép">
+                    <i class="far fa-copy text-xs"></i>
                 </button>
             `;
 
-            card.onclick = async () => {
+            card.addEventListener('click', async () => {
                 try {
                     await navigator.clipboard.writeText(item.val);
-                    UI.showAlert('Đã chép', `Đã sao chép: ${item.name}`, 'success', 1000);
+                    IslandKit.notify('Đã sao chép', `Đã lưu biến thể: ${item.name}`, 'success', 1200);
                 } catch (err) {
-                    UI.showAlert('Lỗi', 'Trình duyệt chặn quyền sao chép.', 'error');
+                    IslandKit.notify('Lỗi', 'Không thể truy cập bộ nhớ tạm.', 'error');
                 }
-            };
+            });
+
             resList.appendChild(card);
         });
 
-        resWrap.classList.remove('hidden'); resWrap.classList.add('flex');
-    };
+        resWrap.classList.remove('hidden');
+        resWrap.classList.add('flex');
+        IslandKit.notify('Thành công', 'Đã tạo xong 15 biến thể mã hóa.', 'success');
+    });
 
-    // --- DECODE ACTION (SMART DECODER 100% ACCURACY) ---
-    btnDecode.onclick = () => {
+    // Decode Action (Smart Decoder)
+    btnDecode?.addEventListener('click', () => {
         let text = inDecode.value;
-        if (!text.trim()) return UI.showAlert('Lỗi', 'Vui lòng dán chuỗi cần giải mã.', 'warning');
+        if (!text.trim()) {
+            return IslandKit.notify('Thiếu dữ liệu', 'Vui lòng dán chuỗi ký tự cần giải mã.', 'warning');
+        }
 
-        // B1: Xóa toàn bộ ký tự tàng hình (Zero-width chars)
+        // B1: Lọc bỏ toàn bộ Zero-width characters
         text = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
 
-        // B2: Giải mã Mã Morse trước tiên (Vì nó có thể chứa dấu chấm/dấu gạch)
+        // B2: Giải mã Morse trước để tránh nuốt dấu
         for (let d in morseDict) {
             const escapedMorse = morseDict[d].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             text = text.replace(new RegExp(escapedMorse, 'g'), d);
         }
 
-        // B3: Dùng cỗ máy quét Từ Điển (Longest Match First)
-        // LƯU Ý QUAN TRỌNG: KHÔNG ĐƯỢC XÓA KHOẢNG TRẮNG Ở ĐÂY.
-        // Cần bảo toàn khoảng trắng để bóc tách chính xác các cụm "I II III" độc lập.
+        // B3: Longest Match First Dictionary Scan
         decodeList.forEach(item => {
             const escapedWord = item.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(escapedWord, 'gi'); // Không phân biệt hoa thường
+            const regex = new RegExp(escapedWord, 'gi');
             text = text.replace(regex, item.digit);
         });
 
-        // B4: Ở bước cuối cùng này, tất cả những gì là từ khóa đã được chuyển thành số.
-        // Ta chỉ việc xóa sạch khoảng trắng và các ký tự thừa thãi, chỉ giữ lại số (0-9)
+        // B4: Lọc chỉ giữ lại số
         const extractedNumbers = text.replace(/\D/g, '');
 
         if (extractedNumbers.length === 0) {
             decodeResWrap.classList.remove('hidden');
-            decodeVal.textContent = "THẤT BẠI";
-            decodeVal.className = "text-xl font-bold text-red-500 mt-2 mb-4";
-            btnCopyDecode.style.display = 'none';
+            decodeResWrap.classList.add('flex');
+            decodeVal.textContent = "KHÔNG TÌM THẤY";
+            decodeVal.className = "text-base font-bold text-rose-500 py-2";
+            btnCopyDecode.classList.add('hidden');
+            IslandKit.notify('Thất bại', 'Không thể nhận diện số điện thoại trong chuỗi.', 'error');
         } else {
             decodeResWrap.classList.remove('hidden');
+            decodeResWrap.classList.add('flex');
             decodeVal.textContent = extractedNumbers;
-            decodeVal.className = "text-[2rem] sm:text-[2.5rem] font-black font-mono text-emerald-600 dark:text-emerald-400 tracking-[0.1em] sm:tracking-[0.2em]";
-            btnCopyDecode.style.display = 'inline-block';
-            
+            decodeVal.className = "text-3xl sm:text-4xl font-black font-mono tracking-[0.15em] sm:tracking-[0.2em] text-accent-theme";
+            btnCopyDecode.classList.remove('hidden');
+            IslandKit.notify('Thành công', `Đã trích xuất: ${extractedNumbers}`, 'success');
+
             btnCopyDecode.onclick = async () => {
                 try {
                     await navigator.clipboard.writeText(extractedNumbers);
-                    UI.showAlert('Đã chép', 'Sao chép SĐT giải mã thành công.', 'success');
+                    IslandKit.notify('Đã sao chép', 'Số điện thoại đã được lưu vào clipboard.', 'success');
                 } catch (e) {
-                    UI.showAlert('Lỗi', 'Không thể sao chép.', 'error');
+                    IslandKit.notify('Lỗi', 'Không thể truy cập clipboard.', 'error');
                 }
             };
         }
-    };
+    });
 }

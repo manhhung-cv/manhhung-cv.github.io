@@ -1,6 +1,6 @@
 :root {
     --ios-ease: cubic-bezier(0.32, 0.72, 0, 1);
-    --hunq-accent: #6366f1;
+    --hunq-accent: #10b981;
     --hunq-glass: rgba(255, 255, 255, 0.16);
     --hunq-glass-border: rgba(255, 255, 255, 0.2);
 }
@@ -20,6 +20,9 @@ body {
     background: #000;
 }
 
+/* ========================================================
+   HÌNH NỀN HỆ THỐNG (KHÔNG DÙNG !important ĐỂ TRÁNH GHI ĐÈ ẢNH TÙY CHỌN)
+   ======================================================== */
 #wallpaper-layer {
     position: fixed;
     inset: 0;
@@ -27,14 +30,13 @@ body {
     background-position: center;
     background-repeat: no-repeat;
     z-index: 0;
-    transition: background 0.4s ease-in-out;
-    /* Mặc định: Gradient Xanh lá Light Mode */
-    background-image: radial-gradient(circle at 15% 15%, #d1fae5 0%, #a7f3d0 45%, #6ee7b7 100%);
+    transition: filter 0.3s ease;
+    will-change: transform, filter;
+    transform: translateZ(0);
 }
 
-/* Khi kích hoạt Dark Mode: Chuyển sang Gradient Xanh ngọc lục bảo OLED */
 html.dark #wallpaper-layer {
-    background-image: radial-gradient(circle at 15% 15%, #064e3b 0%, #06241b 45%, #020f0b 100%) !important;
+    filter: brightness(0.72) contrast(1.05);
 }
 
 .liquid-glass {
@@ -44,8 +46,13 @@ html.dark #wallpaper-layer {
     border: 1px solid var(--hunq-glass-border);
 }
 
+/* Biến màu chủ đạo dùng chung */
+.bg-accent-theme { background-color: var(--hunq-accent) !important; }
+.text-accent-theme { color: var(--hunq-accent) !important; }
+.border-accent-theme { border-color: var(--hunq-accent) !important; }
+
 /* ========================================================
-   1. STATUS BAR: TRONG SUỐT TRÊN HOME, ĐỔ MÀU KHI VÀO APP
+   1. STATUS BAR
    ======================================================== */
 #top-system-bar {
     position: relative;
@@ -53,17 +60,15 @@ html.dark #wallpaper-layer {
     padding-top: env(safe-area-inset-top);
     padding-left: max(18px, env(safe-area-inset-left));
     padding-right: max(18px, env(safe-area-inset-right));
-    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+    transition: all 0.35s var(--ios-ease);
 }
 
-/* Khi ở Home: Nền trong suốt */
 #top-system-bar.statusbar-home {
     background-color: transparent !important;
     border-bottom: 1px solid transparent !important;
     color: #ffffff !important;
 }
 
-/* Khi vào App: Màu theo Dark / Light */
 #top-system-bar.statusbar-app-dark {
     background-color: #0d1117 !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
@@ -80,14 +85,71 @@ html.dark #wallpaper-layer {
     color: #18181b !important;
 }
 
+body.hide-statusbar #top-system-bar {
+    display: none !important;
+}
+
 #main-content-wrapper {
     position: relative;
     width: 100%;
+    flex: 1;
     height: calc(100vh - 44px - env(safe-area-inset-top));
+    transition: height 0.3s ease;
+    overflow: hidden;
+}
+
+body.hide-statusbar #main-content-wrapper {
+    height: 100vh !important;
+}
+
+body.nav-mode-android #main-content-wrapper {
+    height: calc(100vh - 44px - env(safe-area-inset-top) - 44px) !important;
+}
+body.hide-statusbar.nav-mode-android #main-content-wrapper {
+    height: calc(100vh - 44px) !important;
 }
 
 /* ========================================================
-   2. APP CONTAINER & FULL MÀN HÌNH
+   2. NÚT XONG RIÊNG BIỆT
+   ======================================================== */
+#floating-edit-done {
+    position: fixed;
+    top: max(14px, env(safe-area-inset-top));
+    right: max(16px, env(safe-area-inset-right));
+    z-index: 120;
+    transition: all 0.3s var(--ios-ease);
+}
+
+#floating-edit-done button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 9999px;
+    background: var(--hunq-accent, #10b981);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#floating-edit-done button:hover {
+    filter: brightness(1.1);
+    transform: scale(1.05);
+}
+
+#floating-edit-done button:active {
+    transform: scale(0.95);
+}
+
+/* ========================================================
+   3. CONTAINER ỨNG DỤNG FULLFRAME
    ======================================================== */
 #tab-contents-container {
     position: absolute;
@@ -121,47 +183,91 @@ html.dark #wallpaper-layer {
     flex-direction: column;
 }
 
-.view-pane-body {
-    flex: 1;
-    width: 100%;
-    height: 100%;
-    overflow-y: auto;
+/* ========================================================
+   4. CÀI ĐẶT TOÀN MÀN HÌNH
+   ======================================================== */
+#settings-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 250;
+    display: flex;
+    flex-direction: column;
+    background: rgba(10, 10, 15, 0.88);
+    backdrop-filter: blur(50px) saturate(190%);
+    -webkit-backdrop-filter: blur(50px) saturate(190%);
+    transform: translateY(100%);
+    transition: transform 0.4s var(--ios-ease), opacity 0.4s var(--ios-ease);
+    opacity: 0;
+    pointer-events: none;
+    overflow: hidden;
 }
 
-.app-window-header {
-    height: 44px;
-    background: rgba(18, 18, 24, 0.98);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 0 14px;
+#settings-modal.active {
+    transform: translateY(0%);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.settings-group {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.settings-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    user-select: none;
-    flex-shrink: 0;
-    z-index: 10;
+    padding: 13px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.window-tool-btn {
-    padding: 5px 10px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 11px;
-    font-weight: 500;
-    display: inline-flex;
+.settings-row:last-child {
+    border-bottom: none;
+}
+
+.settings-icon-badge {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
     align-items: center;
-    gap: 5px;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    flex-shrink: 0;
 }
 
-.window-tool-btn:hover {
-    background: rgba(255, 255, 255, 0.18);
+.switch-pill {
+    width: 48px;
+    height: 28px;
+    border-radius: 9999px;
+    position: relative;
+    transition: background-color 0.25s ease;
+    cursor: pointer;
+    background-color: rgba(255, 255, 255, 0.2);
+}
+.switch-pill.active {
+    background-color: var(--hunq-accent, #10b981);
+}
+.switch-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 24px;
+    height: 24px;
+    border-radius: 9999px;
+    background: #ffffff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+    transition: transform 0.25s var(--ios-ease);
+}
+.switch-pill.active .switch-thumb {
+    transform: translateX(20px);
 }
 
 /* ========================================================
-   3. CHIA ĐÔI MÀN HÌNH VÀ THANH RESIZER
+   5. CHIA ĐÔI MÀN HÌNH VÀ RESIZER
    ======================================================== */
 #split-app-host {
     position: absolute;
@@ -205,7 +311,7 @@ html.dark #wallpaper-layer {
 }
 
 /* ========================================================
-   4. KÉO THẢ TỰ DO VÀ HIỆU ỨNG RUNG CHỈNH SỬA
+   6. HIỆU ỨNG RUNG VÀ KÉO THẢ TÁCH BIỆT
    ======================================================== */
 @keyframes ios-jiggle {
     0% { transform: rotate(-1.2deg) scale(1.01); }
@@ -217,9 +323,21 @@ html.dark #wallpaper-layer {
 .jiggling:nth-child(2n) { animation-duration: 0.28s; animation-delay: 0.05s; }
 .jiggling:nth-child(3n) { animation-duration: 0.22s; animation-delay: 0.09s; }
 
-.dragging-item {
-    opacity: 0.3 !important;
-    transform: scale(0.9) !important;
+.item-being-dragged {
+    opacity: 0.2 !important;
+    transform: scale(0.85) !important;
+}
+
+#touch-drag-ghost {
+    position: fixed;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%) scale(1.15);
+    filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.6));
+    will-change: transform, left, top;
+    transition: opacity 0.15s ease;
 }
 
 .grid-cell {
@@ -231,12 +349,12 @@ html.dark #wallpaper-layer {
 }
 
 .cell-hover-target {
-    background: rgba(99, 102, 241, 0.25) !important;
-    border: 2px dashed rgba(255, 255, 255, 0.8) !important;
+    background: color-mix(in srgb, var(--hunq-accent) 30%, transparent) !important;
+    border: 2px dashed rgba(255, 255, 255, 0.85) !important;
 }
 
 .dock-hover-target {
-    background: rgba(99, 102, 241, 0.35) !important;
+    background: color-mix(in srgb, var(--hunq-accent) 40%, transparent) !important;
     border: 2px dashed rgba(255, 255, 255, 0.9) !important;
 }
 
@@ -244,16 +362,56 @@ html.dark #wallpaper-layer {
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 40px;
-    z-index: 45;
+    width: 60px;
+    z-index: 95;
     pointer-events: none;
+    transition: background-color 0.25s ease;
 }
 .edge-zone.active-dnd { pointer-events: auto; }
+.edge-zone.edge-hovering {
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.15) 0%, transparent 80%);
+}
 #edge-left { left: 0; }
 #edge-right { right: 0; }
 
 /* ========================================================
-   5. MOBIUI: ICON & DOCK
+   7. ICON VÀ TEXT SHADOW
+   ======================================================== */
+.app-icon-box {
+    box-shadow: 
+        0 8px 24px -4px rgba(0, 0, 0, 0.35),
+        0 4px 10px -2px rgba(0, 0, 0, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.18) inset !important;
+    transition: all 0.25s var(--ios-ease), filter 0.3s ease;
+}
+
+.app-icon-box:hover {
+    box-shadow: 
+        0 14px 30px -4px rgba(0, 0, 0, 0.45),
+        0 6px 14px -2px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.35) inset !important;
+}
+
+html.dark .app-icon-box { filter: brightness(0.88); }
+html.dark #hunqos-dock .dock-item { filter: brightness(0.9); }
+
+.app-icon-label {
+    color: #ffffff !important;
+    font-weight: 500;
+    text-shadow: 
+        0 1px 2px rgba(0, 0, 0, 0.9),
+        0 2px 6px rgba(0, 0, 0, 0.7),
+        0 0 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dock-item {
+    box-shadow: 
+        0 6px 16px -2px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.2) inset !important;
+}
+
+/* ========================================================
+   8. MOBIUI: DYNAMIC ISLAND & LAUNCHER (TỐI ƯU 120HZ / 144HZ)
    ======================================================== */
 #dynamic-island-wrapper {
     position: fixed;
@@ -265,41 +423,55 @@ html.dark #wallpaper-layer {
 }
 
 #dynamic-island {
-    transition: all 0.35s var(--ios-ease);
+    transition: width 0.35s var(--ios-ease), 
+                height 0.35s var(--ios-ease), 
+                border-radius 0.35s var(--ios-ease), 
+                background-color 0.25s ease,
+                transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     transform-origin: top center;
+    will-change: width, height, transform;
+}
+
+#dynamic-island:active {
+    transform: scale(0.97);
 }
 
 #dynamic-island.island-compact {
-    width: 110px;
-    height: 28px;
+    width: 120px;
+    height: 30px;
     border-radius: 20px;
 }
 
 #dynamic-island.island-alert {
-    width: min(92vw, 360px);
-    height: 60px;
-    border-radius: 30px;
-    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.15);
+    width: min(92vw, 364px);
+    height: 64px;
+    border-radius: 32px;
+    box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
 #app-viewport {
     position: relative;
     width: 100%;
     height: 100%;
-    padding-bottom: calc(28px + env(safe-area-inset-bottom));
     display: flex;
     flex-direction: column;
 }
 
 #homescreen-launcher {
     padding: 4px 10px;
+    width: 100%;
+    height: 100%;
+    position: relative;
 }
 
 #launcher-viewport {
     width: 100%;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
     position: relative;
+    touch-action: pan-y pinch-zoom;
+    -webkit-overflow-scrolling: touch;
 }
 
 #launcher-pages-slider {
@@ -307,7 +479,9 @@ html.dark #wallpaper-layer {
     height: 100%;
     width: 100%;
     will-change: transform;
-    transition: transform 0.35s var(--ios-ease);
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    perspective: 1000px;
 }
 
 .launcher-page {
@@ -347,9 +521,9 @@ html.dark #wallpaper-layer {
     align-items: center;
     justify-content: center;
     position: relative;
+    touch-action: none;
 }
 
-/* Icon to hơn trên MobiUI */
 [data-device-mode="phone"] .app-icon-box {
     width: 62px !important;
     height: 62px !important;
@@ -362,7 +536,6 @@ html.dark #wallpaper-layer {
     max-width: 72px !important;
 }
 
-/* Page Dots mặc định */
 .page-dot-btn {
     height: 10px;
     border-radius: 9999px;
@@ -382,21 +555,19 @@ html.dark #wallpaper-layer {
     background-color: rgba(255, 255, 255, 0.8);
 }
 
-/* ========================================================
-   THU NHỎ CỤM PAGE DOTS TRÊN MOBIUI (PHONE)
-   ======================================================== */
+#page-dots-wrapper {
+    position: relative;
+    z-index: 30;
+}
+
 [data-device-mode="phone"] #page-dots-wrapper {
     padding-top: 4px !important;
     padding-bottom: 4px !important;
 }
-
-/* Khung pill bọc ngoài dots + kính lúp + nút thêm trang */
 [data-device-mode="phone"] #page-dots-wrapper > div {
     padding: 3px 8px !important;
     gap: 6px !important;
 }
-
-/* Thu nhỏ nút tìm kiếm và nút (+) trong thanh dots */
 [data-device-mode="phone"] #page-dots-wrapper button[title="Tìm kiếm"],
 [data-device-mode="phone"] #page-dots-wrapper button[title="Thêm trang mới"] {
     width: 24px !important;
@@ -406,13 +577,9 @@ html.dark #wallpaper-layer {
 [data-device-mode="phone"] #page-dots-wrapper button[title="Thêm trang mới"] i {
     font-size: 10px !important;
 }
-
-/* Đường vạch kẻ chia nhỏ lại */
 [data-device-mode="phone"] #page-dots-wrapper .w-px {
     height: 10px !important;
 }
-
-/* Viên chấm dots nhỏ gọn */
 [data-device-mode="phone"] .page-dot-btn {
     height: 6px !important;
 }
@@ -424,7 +591,12 @@ html.dark #wallpaper-layer {
     width: 6px !important;
 }
 
-/* DOCK TỰ ĐỘNG CO GIÃN THEO SỐ LƯỢNG ICON */
+#hunqos-dock-wrapper {
+    position: relative;
+    z-index: 35;
+    padding-bottom: 4px;
+}
+
 #hunqos-dock {
     width: auto !important;
     min-width: 240px;
@@ -443,16 +615,15 @@ html.dark #wallpaper-layer {
 }
 
 /* ========================================================
-   6. GIAO DIỆN DEXUI
+   9. GIAO DIỆN DEXUI (DESKTOP)
    ======================================================== */
-[data-device-mode="desktop"] #home-bar-touch-area { display: none !important; }
+[data-device-mode="desktop"] #bottom-nav-container { display: none !important; }
 [data-device-mode="desktop"] #dynamic-island-wrapper { display: none !important; }
 
 [data-device-mode="desktop"] #top-system-bar {
     height: 36px !important;
     padding: 0 16px !important;
 }
-
 [data-device-mode="desktop"] #desktop-apple-menu { display: flex !important; }
 [data-device-mode="desktop"] #desktop-menubar-tabs { display: flex !important; }
 [data-device-mode="desktop"] #os-clock { font-size: 12px !important; }
@@ -461,15 +632,23 @@ html.dark #wallpaper-layer {
     height: calc(100vh - 36px) !important;
 }
 
-[data-device-mode="desktop"] #app-viewport {
-    padding-bottom: 84px !important;
-}
-
 [data-device-mode="desktop"] .grid-layer-container {
     aspect-ratio: unset !important;
     max-width: 96vw !important;
     width: 95vw !important;
-    height: calc(100vh - 140px) !important;
+    height: calc(100vh - 190px) !important;
+}
+
+[data-device-mode="desktop"] #page-dots-wrapper {
+    position: fixed !important;
+    bottom: 84px !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 38 !important;
+    pointer-events: none;
+}
+[data-device-mode="desktop"] #page-dots-wrapper > div {
+    pointer-events: auto;
 }
 
 [data-device-mode="desktop"] #hunqos-dock-wrapper {
@@ -479,6 +658,7 @@ html.dark #wallpaper-layer {
     right: 0;
     z-index: 40;
     pointer-events: none;
+    padding-bottom: 0 !important;
 }
 
 [data-device-mode="desktop"] #hunqos-dock {
@@ -499,7 +679,7 @@ html.dark #wallpaper-layer {
 }
 
 /* ========================================================
-   7. GIAO DIỆN TABUI
+   10. GIAO DIỆN TABUI (TABLET)
    ======================================================== */
 [data-device-mode="tablet"] #top-system-bar {
     height: calc(40px + env(safe-area-inset-top)) !important;
@@ -510,15 +690,21 @@ html.dark #wallpaper-layer {
     height: calc(100vh - 40px - env(safe-area-inset-top)) !important;
 }
 
-[data-device-mode="tablet"] #app-viewport {
-    padding-bottom: calc(30px + env(safe-area-inset-bottom)) !important;
-}
-
 [data-device-mode="tablet"] .grid-layer-container {
     aspect-ratio: unset !important;
     max-width: 90vw !important;
     width: 90vw !important;
-    height: calc(100vh - 160px) !important;
+    height: calc(100vh - 200px) !important;
+}
+
+[data-device-mode="tablet"] #page-dots-wrapper {
+    padding-bottom: 8px !important;
+    z-index: 32 !important;
+}
+
+[data-device-mode="tablet"] #hunqos-dock-wrapper {
+    padding-bottom: 8px !important;
+    z-index: 35 !important;
 }
 
 [data-device-mode="tablet"] #hunqos-dock {
@@ -527,7 +713,7 @@ html.dark #wallpaper-layer {
 }
 
 /* ========================================================
-   8. MOBIUI KHI XOAY NGANG
+   11. MOBIUI KHI XOAY NGANG
    ======================================================== */
 @media (orientation: landscape) {
     [data-device-mode="phone"] .grid-layer-container {
@@ -567,32 +753,111 @@ html.dark #wallpaper-layer {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* ========================================================
-   THEME ICON: HÌNH DẠNG & MÀU SẮC
-   ======================================================== */
-
-/* 1. Hình dạng: Bo nhẹ (Mặc định) */
+/* THEME ICON: HÌNH DẠNG & MÀU SẮC */
 .shape-rounded .app-icon-box,
-.shape-rounded .dock-item {
-    border-radius: 20px !important;
-}
-
-/* 2. Hình dạng: Tròn */
+.shape-rounded .dock-item { border-radius: 20px !important; }
 .shape-circle .app-icon-box,
-.shape-circle .dock-item {
-    border-radius: 9999px !important;
-}
-
-/* 3. Hình dạng: Vuông góc */
+.shape-circle .dock-item { border-radius: 9999px !important; }
 .shape-square .app-icon-box,
-.shape-square .dock-item {
-    border-radius: 6px !important;
-}
+.shape-square .dock-item { border-radius: 6px !important; }
 
-/* Hỗ trợ biểu tượng FontAwesome hiển thị màu Gradient */
 .icon-gradient-text {
     -webkit-background-clip: text !important;
     background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
     display: inline-block;
+}
+
+/* ========================================================
+   12. THANH ĐIỀU HƯỚNG ĐÁY MÀN HÌNH (ĐỒNG BỘ MÀU THEO APP)
+   ======================================================== */
+#bottom-nav-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 60;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s var(--ios-ease), border-color 0.3s var(--ios-ease);
+}
+
+#home-bar-touch-area { 
+    height: 24px; 
+    width: 100%; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+}
+#android-nav-bar { 
+    height: 44px; 
+    width: 100%; 
+}
+
+/* Trạng thái màu liền mạch */
+#bottom-nav-container.nav-home {
+    background-color: transparent !important;
+    border-top: 1px solid transparent !important;
+}
+#bottom-nav-container.nav-app-dark {
+    background-color: #0d1117 !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+#bottom-nav-container.nav-app-light {
+    background-color: #ffffff !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+#bottom-nav-container.nav-app-light #home-bar-touch-area div {
+    background-color: rgba(0, 0, 0, 0.6) !important;
+    box-shadow: none !important;
+}
+#bottom-nav-container.nav-app-light #android-nav-bar button {
+    color: #18181b !important;
+}
+
+/* ========================================================
+   SPOTLIGHT SEARCH
+   ======================================================== */
+#cmd-palette {
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(35px) saturate(190%);
+    -webkit-backdrop-filter: blur(35px) saturate(190%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s var(--ios-ease);
+}
+
+#cmd-palette.spotlight-active {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+#spotlight-card {
+    width: 100%;
+    max-width: 580px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    transform: scale(0.92) translateY(12px);
+    transition: transform 0.35s var(--ios-ease);
+    will-change: transform;
+}
+
+#cmd-palette.spotlight-active #spotlight-card {
+    transform: scale(1) translateY(0) !important;
+}
+input, textarea, [contenteditable="true"] {
+    -webkit-user-select: text !important;
+    user-select: text !important;
 }

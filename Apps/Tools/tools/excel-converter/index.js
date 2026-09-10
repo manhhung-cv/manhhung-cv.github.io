@@ -1,165 +1,218 @@
 import { UI } from '../../js/ui.js';
 
+// =============================================================================
+// 0. DYNAMIC THEME ACCENT CONTROLLER
+// =============================================================================
+const DEFAULT_EMERALD = '#10b981';
+
+export const ThemeKit = {
+    getAccentColor: () => {
+        return localStorage.getItem('hunqos_accent_color') || 
+               localStorage.getItem('hunqos_icon_custom_bg') || 
+               DEFAULT_EMERALD;
+    },
+    applyAccent: (container) => {
+        if (!container) return;
+        const accent = ThemeKit.getAccentColor();
+        container.style.setProperty('--kit-accent', accent);
+    }
+};
+
+// =============================================================================
+// 1. ADAPTIVE ISLAND & TOAST FALLBACK CONTROLLER
+// =============================================================================
+export const IslandKit = {
+    isIslandActive: () => {
+        const isEnabled = localStorage.getItem('hunqos_dynamic_island') !== 'false';
+        const wrapper = document.getElementById('dynamic-island-wrapper');
+        const isDOMVisible = wrapper && !wrapper.classList.contains('hidden') && window.getComputedStyle(wrapper).display !== 'none';
+        return Boolean(isEnabled && isDOMVisible && typeof window.triggerIslandNotification === 'function');
+    },
+
+    notify: (title, desc, type = 'info', duration = 2800) => {
+        if (IslandKit.isIslandActive()) {
+            window.triggerIslandNotification(title, desc, type, duration);
+        } else {
+            UI.showAlert(title, desc, type, duration);
+        }
+    }
+};
+
+// =============================================================================
+// 2. TEMPLATE RENDERER (SEAMLESS EMERALD FLAT)
+// =============================================================================
 export function template() {
     return `
+    <div id="table-converter-root" class="w-full h-full bg-[#f4f4f6] dark:bg-[#000000] text-[#18181b] dark:text-[#f4f4f6] select-none overflow-hidden font-sans transition-colors duration-200">
+        
         <style>
-            /* Scrollbar */
-            .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
-            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
-            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; }
+            #table-converter-root {
+                --kit-accent: #10b981;
+            }
+            .bg-accent-theme {
+                background-color: var(--kit-accent) !important;
+            }
+            .text-accent-theme {
+                color: var(--kit-accent) !important;
+            }
+            .border-accent-theme {
+                border-color: var(--kit-accent) !important;
+            }
+            .bg-accent-theme-alpha {
+                background-color: color-mix(in srgb, var(--kit-accent) 14%, transparent) !important;
+            }
+            .hover-bg-accent-theme-alpha:hover {
+                background-color: color-mix(in srgb, var(--kit-accent) 20%, transparent) !important;
+            }
 
-            .hide-scrollbar::-webkit-scrollbar { display: none; }
-            .hide-scrollbar { scrollbar-width: none; }
-
-            /* Nút bấm Premium */
-            .btn-premium { transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s; user-select: none; cursor: pointer; }
-            .btn-premium:active { transform: scale(0.96); opacity: 0.8; }
-            .btn-premium:disabled { opacity: 0.4; pointer-events: none; transform: scale(1); }
-
-            /* Animation */
-            .ui-fade-in { animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-            @keyframes fadeIn { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
-
-            /* Table Editor Styling */
-            .editor-cell:focus { outline: none; background-color: rgba(24, 24, 27, 0.05); }
-            .dark .editor-cell:focus { background-color: rgba(255, 255, 255, 0.08); }
+            .editor-cell:focus {
+                outline: none;
+                background-color: color-mix(in srgb, var(--kit-accent) 10%, transparent);
+            }
         </style>
 
-        <div class="relative flex flex-col w-full max-w-[1280px] mx-auto min-h-[600px] pb-12 px-2 md:px-4">
+        <!-- MAIN SCROLLER -->
+        <main class="w-full h-full overflow-y-auto no-scrollbar px-3.5 sm:px-6 pt-6 pb-24 max-w-6xl mx-auto space-y-5">
             
-            <!-- Header -->
-            <div class="mb-6 ui-fade-in flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h2 class="text-[26px] font-black text-zinc-900 dark:text-white tracking-tight leading-none mb-2">
-                        Excel to File & Table Editor
-                    </h2>
-                    <p class="text-[13px] text-zinc-500 font-medium">
-                        Dán dữ liệu từ Excel/CSV/TSV, chỉnh sửa trực tiếp trên bảng và chuyển đổi sang JSON, Markdown, HTML, XML, SQL, YAML.
-                    </p>
+            <!-- SEAMLESS HERO TITLE & TOP CONTROLS -->
+            <div class="px-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-accent-theme shadow-sm transition-colors"></span>
+                        <span class="text-[11px] font-mono tracking-wider font-semibold uppercase text-accent-theme">HunqOS Data Suite</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">Excel to File & Table Editor</h1>
+                    <p class="text-[12px] text-zinc-500 dark:text-zinc-400 font-normal">Chỉnh sửa bảng tính trực tiếp hoặc dán thô, xuất sang JSON, Markdown, HTML, CSV, XML, SQL, YAML.</p>
                 </div>
-                <!-- Action Controls -->
-                <div class="flex items-center gap-2">
-                    <button id="btn-load-sample" class="btn-premium px-4 py-2.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white text-xs font-bold flex items-center gap-2">
-                        <i class="fas fa-magic"></i> Dữ liệu mẫu
+
+                <div class="flex items-center gap-2 shrink-0">
+                    <button id="btn-load-sample" class="h-10 px-3.5 rounded-[14px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300 hover:text-accent-theme text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm">
+                        <i class="fas fa-wand-magic-sparkles text-[11px]"></i> Mẫu
                     </button>
-                    <button id="btn-clear-all" class="btn-premium px-4 py-2.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-red-500 text-xs font-bold flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-500/10">
-                        <i class="fas fa-trash-alt"></i> Xóa hết
+                    <button id="btn-clear-all" class="h-10 px-3.5 rounded-[14px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] text-rose-500 hover:bg-rose-500/10 text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm">
+                        <i class="far fa-trash-can text-[11px]"></i> Xóa
                     </button>
                 </div>
             </div>
 
-            <!-- Main Layout Grid -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <!-- MAIN WORKSPACE GRID -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                 
-                <!-- Cột trái: Input & Online Table Editor (7 Cols) -->
-                <div class="lg:col-span-7 space-y-6 ui-fade-in" style="animation-delay: 50ms;">
-                    <div class="bg-white dark:bg-[#0c0c0e] rounded-[28px] ring-1 ring-inset ring-zinc-200 dark:ring-zinc-800/80 p-5 md:p-6 shadow-sm">
-                        
-                        <!-- Input Mode Tabs & Toolbar -->
-                        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                            <div class="flex bg-zinc-100 dark:bg-zinc-800/60 p-1 rounded-2xl gap-1" id="input-mode-tabs">
-                                <button class="mode-tab-btn active btn-premium px-4 py-2 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-bold" data-target="editor-mode-table">
-                                    <i class="fas fa-table mr-1.5"></i> Table Editor
-                                </button>
-                                <button class="mode-tab-btn btn-premium px-4 py-2 rounded-xl text-zinc-500 text-xs font-bold" data-target="editor-mode-raw">
-                                    <i class="fas fa-paste mr-1.5"></i> Paste Raw Excel/TSV
-                                </button>
-                            </div>
-
-                            <!-- Table Controls (Ẩn khi ở chế độ Raw text) -->
-                            <div id="table-action-bar" class="flex items-center gap-1.5 flex-wrap">
-                                <button id="btn-add-row" class="btn-premium px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-[11px] font-bold" title="Thêm hàng">
-                                    <i class="fas fa-plus mr-1"></i> Hàng
-                                </button>
-                                <button id="btn-add-col" class="btn-premium px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-[11px] font-bold" title="Thêm cột">
-                                    <i class="fas fa-plus mr-1"></i> Cột
-                                </button>
-                            </div>
+                <!-- CỘT TRÁI: BẢNG CHỈNH SỬA / VÙNG DÁN (7 COLS) -->
+                <div class="lg:col-span-7 rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-4 sm:p-5 shadow-sm space-y-4">
+                    
+                    <!-- INPUT TABS & ROW/COL ACTIONS -->
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="grid grid-cols-2 gap-1 p-1 rounded-[14px] bg-black/[0.05] dark:bg-black/50 border border-black/[0.04] dark:border-white/[0.08] w-full sm:w-72" id="input-mode-tabs">
+                            <button class="mode-tab-btn active py-1.5 rounded-[10px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all flex items-center justify-center gap-1.5" data-target="editor-mode-table">
+                                <i class="fas fa-table-cells text-[11px]"></i> Bảng tính
+                            </button>
+                            <button class="mode-tab-btn py-1.5 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all flex items-center justify-center gap-1.5" data-target="editor-mode-raw">
+                                <i class="fas fa-paste text-[11px]"></i> Dán thô Excel
+                            </button>
                         </div>
 
-                        <!-- Pane 1: Online Table Editor -->
-                        <div class="input-pane block" id="editor-mode-table">
-                            <div class="w-full overflow-x-auto max-h-[460px] custom-scrollbar border border-zinc-200 dark:border-zinc-800 rounded-2xl">
-                                <table id="main-interactive-table" class="w-full text-left border-collapse min-w-[500px]">
-                                    <thead id="table-head">
-                                        <!-- Header sinh động bởi JS -->
-                                    </thead>
-                                    <tbody id="table-body" class="text-xs font-medium text-zinc-700 dark:text-zinc-300 divide-y divide-zinc-200 dark:divide-zinc-800">
-                                        <!-- Rows sinh động bởi JS -->
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="flex items-center justify-between mt-3 text-[11px] text-zinc-400 font-medium px-1">
-                                <span><i class="fas fa-info-circle mr-1"></i> Nhấp trực tiếp vào ô để sửa nội dung.</span>
-                                <span id="table-matrix-info">0 hàng x 0 cột</span>
-                            </div>
+                        <div id="table-action-bar" class="flex items-center gap-1.5">
+                            <button id="btn-add-row" class="px-2.5 py-1.5 rounded-[10px] bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-700 dark:text-zinc-300 text-[11px] font-semibold active:scale-95 transition-all">
+                                <i class="fas fa-plus text-[9px] mr-1 text-accent-theme"></i> Hàng
+                            </button>
+                            <button id="btn-add-col" class="px-2.5 py-1.5 rounded-[10px] bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-700 dark:text-zinc-300 text-[11px] font-semibold active:scale-95 transition-all">
+                                <i class="fas fa-plus text-[9px] mr-1 text-accent-theme"></i> Cột
+                            </button>
                         </div>
-
-                        <!-- Pane 2: Raw Excel / TSV / CSV Paste Area -->
-                        <div class="input-pane hidden" id="editor-mode-raw">
-                            <textarea id="raw-input-textarea" class="w-full bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 outline-none text-xs font-mono text-zinc-900 dark:text-white resize-y min-h-[320px] custom-scrollbar placeholder-zinc-400 focus:ring-2 ring-zinc-900 dark:ring-white transition-all" placeholder="Dán nội dung từ Excel, Google Sheets, CSV hoặc TSV vào đây (Tab/Comma separated)..."></textarea>
-                            <div class="flex items-center justify-between mt-3">
-                                <span class="text-[11px] text-zinc-400">Tự động nhận diện dấu Tab, phẩy (,) hoặc chấm phẩy (;)</span>
-                                <button id="btn-parse-raw" class="btn-premium px-5 py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-bold">
-                                    Nạp vào Bảng <i class="fas fa-arrow-right ml-1"></i>
-                                </button>
-                            </div>
-                        </div>
-
                     </div>
+
+                    <!-- PANE 1: ONLINE TABLE EDITOR -->
+                    <div class="input-pane block space-y-2" id="editor-mode-table">
+                        <div class="w-full overflow-x-auto max-h-[440px] no-scrollbar border border-black/[0.06] dark:border-white/[0.08] rounded-[18px]">
+                            <table id="main-interactive-table" class="w-full text-left border-collapse min-w-[480px]">
+                                <thead id="table-head"></thead>
+                                <tbody id="table-body" class="text-xs font-medium text-zinc-800 dark:text-zinc-200 divide-y divide-black/[0.04] dark:divide-white/[0.06]"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="flex items-center justify-between text-[11px] text-zinc-400 px-1 pt-1">
+                            <span><i class="fas fa-pen text-[9px] mr-1"></i> Nhấp trực tiếp vào ô để sửa nội dung.</span>
+                            <span id="table-matrix-info" class="font-mono font-medium">0 hàng x 0 cột</span>
+                        </div>
+                    </div>
+
+                    <!-- PANE 2: RAW EXCEL / TSV / CSV TEXTAREA -->
+                    <div class="input-pane hidden space-y-3" id="editor-mode-raw">
+                        <textarea id="raw-input-textarea" class="w-full bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[18px] p-3.5 outline-none text-xs font-mono text-zinc-900 dark:text-white resize-y min-h-[300px] placeholder-zinc-400 focus:border-accent-theme transition-all" placeholder="Dán dữ liệu từ Excel, Google Sheets, CSV hoặc TSV vào đây..."></textarea>
+                        
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+                            <span class="text-[11px] text-zinc-400">Tự nhận diện dấu Tab (\t), phẩy (,) hoặc chấm phẩy (;).</span>
+                            <button id="btn-parse-raw" class="h-10 px-4 rounded-[14px] bg-accent-theme text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm">
+                                Nạp vào bảng <i class="fas fa-arrow-right text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
 
-                <!-- Cột phải: Convert Output Generator (5 Cols) -->
-                <div class="lg:col-span-5 space-y-6 ui-fade-in" style="animation-delay: 100ms;">
-                    <div class="bg-white dark:bg-[#0c0c0e] rounded-[28px] ring-1 ring-inset ring-zinc-200 dark:ring-zinc-800/80 p-5 md:p-6 shadow-sm flex flex-col min-h-[550px]">
-                        
-                        <!-- Format Tabs -->
-                        <div class="flex items-center justify-between gap-2 mb-3">
-                            <span class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Định dạng đích</span>
-                            <div class="flex items-center gap-2">
-                                <button id="btn-copy-output" class="btn-premium px-3.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white text-xs font-bold flex items-center gap-1.5" title="Copy Output">
-                                    <i class="far fa-copy"></i> Sao chép
-                                </button>
-                                <button id="btn-download-file" class="btn-premium px-3.5 py-1.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-bold flex items-center gap-1.5" title="Download File">
-                                    <i class="fas fa-download"></i> Tải về
-                                </button>
-                            </div>
+                <!-- CỘT PHẢI: KẾT QUẢ CHUYỂN ĐỔI (5 COLS) -->
+                <div class="lg:col-span-5 rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-4 sm:p-5 shadow-sm space-y-4 flex flex-col min-h-[500px]">
+                    
+                    <!-- TARGET ACTIONS & LABEL -->
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Định dạng đích</span>
+                        <div class="flex items-center gap-1.5">
+                            <button id="btn-copy-output" class="px-2.5 py-1.5 rounded-[10px] bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-700 dark:text-zinc-300 text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all" title="Sao chép">
+                                <i class="far fa-copy text-[11px]"></i> Chép
+                            </button>
+                            <button id="btn-download-file" class="px-2.5 py-1.5 rounded-[10px] bg-accent-theme text-white text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm" title="Tải file">
+                                <i class="fas fa-download text-[11px]"></i> Tải
+                            </button>
                         </div>
+                    </div>
 
-                        <!-- Target Tabs Selection -->
-                        <div class="flex overflow-x-auto custom-scrollbar gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-800/40 rounded-2xl mb-4" id="target-format-tabs">
-                            <button class="target-btn active btn-premium px-3 py-1.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[11px] font-bold whitespace-nowrap" data-format="json">JSON</button>
-                            <button class="target-btn btn-premium px-3 py-1.5 rounded-xl text-zinc-500 text-[11px] font-bold whitespace-nowrap" data-format="markdown">Markdown</button>
-                            <button class="target-btn btn-premium px-3 py-1.5 rounded-xl text-zinc-500 text-[11px] font-bold whitespace-nowrap" data-format="html">HTML</button>
-                            <button class="target-btn btn-premium px-3 py-1.5 rounded-xl text-zinc-500 text-[11px] font-bold whitespace-nowrap" data-format="csv">CSV</button>
-                            <button class="target-btn btn-premium px-3 py-1.5 rounded-xl text-zinc-500 text-[11px] font-bold whitespace-nowrap" data-format="xml">XML</button>
-                            <button class="target-btn btn-premium px-3 py-1.5 rounded-xl text-zinc-500 text-[11px] font-bold whitespace-nowrap" data-format="sql">SQL</button>
-                            <button class="target-btn btn-premium px-3 py-1.5 rounded-xl text-zinc-500 text-[11px] font-bold whitespace-nowrap" data-format="yaml">YAML</button>
-                        </div>
+                    <!-- SCROLLABLE FORMAT PILLS -->
+                    <div class="flex overflow-x-auto no-scrollbar gap-1 p-1 rounded-[14px] bg-black/[0.05] dark:bg-black/50 border border-black/[0.04] dark:border-white/[0.08]" id="target-format-tabs">
+                        <button class="target-btn active py-1 px-3 rounded-[10px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all whitespace-nowrap" data-format="json">JSON</button>
+                        <button class="target-btn py-1 px-3 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all whitespace-nowrap" data-format="markdown">Markdown</button>
+                        <button class="target-btn py-1 px-3 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all whitespace-nowrap" data-format="html">HTML</button>
+                        <button class="target-btn py-1 px-3 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all whitespace-nowrap" data-format="csv">CSV</button>
+                        <button class="target-btn py-1 px-3 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all whitespace-nowrap" data-format="xml">XML</button>
+                        <button class="target-btn py-1 px-3 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all whitespace-nowrap" data-format="sql">SQL</button>
+                        <button class="target-btn py-1 px-3 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all whitespace-nowrap" data-format="yaml">YAML</button>
+                    </div>
 
-                        <!-- Output Content Pre -->
-                        <div class="relative flex-1 flex flex-col">
-                            <textarea id="output-result-box" readonly class="w-full flex-1 bg-zinc-50 dark:bg-[#121214]/70 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 outline-none font-mono text-xs text-zinc-900 dark:text-white resize-none custom-scrollbar min-h-[360px]" placeholder="Kết quả chuyển đổi sẽ hiển thị ở đây..."></textarea>
-                        </div>
+                    <!-- OUTPUT BOX -->
+                    <div class="relative flex-1 flex flex-col min-h-[300px]">
+                        <textarea id="output-result-box" readonly class="w-full flex-1 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[18px] p-3.5 outline-none font-mono text-xs text-zinc-800 dark:text-zinc-200 resize-none select-all" placeholder="Kết quả sau khi chuyển đổi sẽ hiển thị tại đây..."></textarea>
+                    </div>
 
-                        <!-- Format Options Bar -->
-                        <div class="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-xs text-zinc-500">
-                            <span id="output-stats-counter">0 ký tự | 0 KB</span>
-                            <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest" id="active-format-label">ĐỊNH DẠNG: JSON</span>
-                        </div>
+                    <!-- STATS FOOTER -->
+                    <div class="pt-2 border-t border-black/[0.05] dark:border-white/[0.08] flex items-center justify-between text-[11px] text-zinc-400">
+                        <span id="output-stats-counter">0 ký tự | 0 KB</span>
+                        <span class="font-mono text-[10px] font-bold text-accent-theme" id="active-format-label">ĐỊNH DẠNG: JSON</span>
                     </div>
                 </div>
 
             </div>
-        </div>
+
+        </main>
+    </div>
     `;
 }
 
-export function init() {
-    // ----------------------------------------------------
-    // STATE QUẢN LÝ DỮ LIỆU
-    // ----------------------------------------------------
+// =============================================================================
+// 3. LOGIC HOOKS & EVENT DISPATCHING
+// =============================================================================
+export function init(hostElement) {
+    const rootContainer = hostElement.querySelector('#table-converter-root') || hostElement;
+
+    // Khởi tạo ThemeKit
+    const updateAccent = () => ThemeKit.applyAccent(rootContainer);
+    updateAccent();
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'hunqos_accent_color' || e.key === 'hunqos_icon_custom_bg') {
+            updateAccent();
+        }
+    });
+
     let headers = ['ID', 'Tên sản phẩm', 'Danh mục', 'Giá bán (VNĐ)', 'Số lượng'];
     let rows = [
         ['SP001', 'MacBook Pro M3 Max', 'Laptop', '79990000', '15'],
@@ -170,21 +223,19 @@ export function init() {
     ];
     let currentFormat = 'json';
 
-    // ----------------------------------------------------
-    // ELEMENT SELECTORS
-    // ----------------------------------------------------
-    const tableHead = document.getElementById('table-head');
-    const tableBody = document.getElementById('table-body');
-    const tableMatrixInfo = document.getElementById('table-matrix-info');
-    const rawInputTextarea = document.getElementById('raw-input-textarea');
-    const outputResultBox = document.getElementById('output-result-box');
-    const outputStatsCounter = document.getElementById('output-stats-counter');
-    const activeFormatLabel = document.getElementById('active-format-label');
-    const tableActionBar = document.getElementById('table-action-bar');
+    const _ = sel => hostElement.querySelector(sel);
+    const $$ = sel => hostElement.querySelectorAll(sel);
 
-    // ----------------------------------------------------
-    // CONVERTERS ENGINE (Hỗ trợ 7 định dạng phổ biến)
-    // ----------------------------------------------------
+    const tableHead = _('#table-head');
+    const tableBody = _('#table-body');
+    const tableMatrixInfo = _('#table-matrix-info');
+    const rawInputTextarea = _('#raw-input-textarea');
+    const outputResultBox = _('#output-result-box');
+    const outputStatsCounter = _('#output-stats-counter');
+    const activeFormatLabel = _('#active-format-label');
+    const tableActionBar = _('#table-action-bar');
+
+    // Engine chuyển đổi dữ liệu
     function convertTableData(format) {
         if (!headers.length && !rows.length) {
             outputResultBox.value = '';
@@ -307,19 +358,16 @@ export function init() {
         activeFormatLabel.textContent = `ĐỊNH DẠNG: ${currentFormat.toUpperCase()}`;
     }
 
-    // ----------------------------------------------------
-    // RENDER INTERACTIVE TABLE
-    // ----------------------------------------------------
+    // Render bảng tương tác
     function renderTable() {
-        // Render Header
-        let thHtml = `<tr class="bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800">`;
-        thHtml += `<th class="p-2.5 text-center text-zinc-400 text-[10px] uppercase font-bold w-12">#</th>`;
+        let thHtml = `<tr class="bg-[#f2f2f7] dark:bg-black/40 border-b border-black/[0.06] dark:border-white/[0.08]">`;
+        thHtml += `<th class="p-2 text-center text-zinc-400 text-[10px] uppercase font-mono font-bold w-10">#</th>`;
         headers.forEach((h, colIndex) => {
             thHtml += `
-                <th class="p-2 border-r border-zinc-200 dark:border-zinc-800 relative group">
+                <th class="p-1.5 border-r border-black/[0.04] dark:border-white/[0.06] relative group">
                     <div class="flex items-center justify-between gap-1">
-                        <input type="text" data-col="${colIndex}" class="header-cell w-full bg-transparent outline-none text-[11px] font-bold text-zinc-900 dark:text-white uppercase tracking-wider p-1 rounded hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50" value="${escapeHtml(h)}">
-                        <button data-del-col="${colIndex}" class="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-500 p-1 text-[10px] transition-opacity" title="Xóa cột"><i class="fas fa-times"></i></button>
+                        <input type="text" data-col="${colIndex}" class="header-cell w-full bg-transparent outline-none text-[11px] font-bold text-zinc-900 dark:text-white uppercase tracking-wider px-1.5 py-1 rounded-[6px] hover:bg-black/5 dark:hover:bg-white/5" value="${escapeHtml(h)}">
+                        <button data-del-col="${colIndex}" class="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-rose-500 p-1 text-[10px] transition-opacity" title="Xóa cột"><i class="fas fa-times"></i></button>
                     </div>
                 </th>
             `;
@@ -327,21 +375,20 @@ export function init() {
         thHtml += `</tr>`;
         tableHead.innerHTML = thHtml;
 
-        // Render Body Rows
         let trHtml = '';
         rows.forEach((row, rowIndex) => {
-            trHtml += `<tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">`;
+            trHtml += `<tr class="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors group">`;
             trHtml += `
-                <td class="p-2 text-center text-[10px] font-bold text-zinc-400 w-12 select-none relative">
+                <td class="p-2 text-center text-[10px] font-mono font-bold text-zinc-400 w-10 select-none relative">
                     <span class="group-hover:hidden">${rowIndex + 1}</span>
-                    <button data-del-row="${rowIndex}" class="hidden group-hover:inline-block text-red-500 hover:scale-110" title="Xóa hàng"><i class="fas fa-trash-alt text-[10px]"></i></button>
+                    <button data-del-row="${rowIndex}" class="hidden group-hover:inline-block text-rose-500 hover:scale-110 transition-transform" title="Xóa hàng"><i class="far fa-trash-can text-[10px]"></i></button>
                 </td>
             `;
             headers.forEach((_, colIndex) => {
                 const cellValue = row[colIndex] !== undefined ? row[colIndex] : '';
                 trHtml += `
-                    <td class="p-1 border-r border-zinc-200/50 dark:border-zinc-800/50">
-                        <input type="text" data-row="${rowIndex}" data-col="${colIndex}" class="editor-cell w-full bg-transparent px-2 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 rounded outline-none" value="${escapeHtml(cellValue)}">
+                    <td class="p-1 border-r border-black/[0.04] dark:border-white/[0.06]">
+                        <input type="text" data-row="${rowIndex}" data-col="${colIndex}" class="editor-cell w-full bg-transparent px-2 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 rounded-[8px] outline-none" value="${escapeHtml(cellValue)}">
                     </td>
                 `;
             });
@@ -355,8 +402,7 @@ export function init() {
     }
 
     function bindCellEvents() {
-        // Sửa Header
-        document.querySelectorAll('.header-cell').forEach(inp => {
+        $$('.header-cell').forEach(inp => {
             inp.addEventListener('input', (e) => {
                 const colIdx = parseInt(e.target.dataset.col);
                 headers[colIdx] = e.target.value;
@@ -364,8 +410,7 @@ export function init() {
             });
         });
 
-        // Sửa nội dung ô
-        document.querySelectorAll('.editor-cell').forEach(inp => {
+        $$('.editor-cell').forEach(inp => {
             inp.addEventListener('input', (e) => {
                 const r = parseInt(e.target.dataset.row);
                 const c = parseInt(e.target.dataset.col);
@@ -374,12 +419,11 @@ export function init() {
             });
         });
 
-        // Xóa cột
-        document.querySelectorAll('[data-del-col]').forEach(btn => {
+        $$('[data-del-col]').forEach(btn => {
             btn.onclick = () => {
                 const colIdx = parseInt(btn.dataset.delCol);
                 if (headers.length <= 1) {
-                    UI.showAlert('Lỗi', 'Bảng phải có ít nhất 1 cột.', 'error');
+                    IslandKit.notify('Cảnh báo', 'Bảng cần duy trì tối thiểu 1 cột.', 'warning');
                     return;
                 }
                 headers.splice(colIdx, 1);
@@ -388,8 +432,7 @@ export function init() {
             };
         });
 
-        // Xóa hàng
-        document.querySelectorAll('[data-del-row]').forEach(btn => {
+        $$('[data-del-row]').forEach(btn => {
             btn.onclick = () => {
                 const rowIdx = parseInt(btn.dataset.delRow);
                 rows.splice(rowIdx, 1);
@@ -398,13 +441,10 @@ export function init() {
         });
     }
 
-    // ----------------------------------------------------
-    // PARSER CHO RAW EXCEL / TSV / CSV
-    // ----------------------------------------------------
+    // Parser dữ liệu Raw
     function parseRawText(rawText) {
         if (!rawText.trim()) return;
 
-        // Nhận diện delimiter: tab (\t), comma (,), semicolon (;)
         const firstLine = rawText.trim().split('\n')[0];
         let delimiter = '\t';
         if (!firstLine.includes('\t')) {
@@ -419,7 +459,6 @@ export function init() {
             if (delimiter === '\t' || delimiter === ';') {
                 return line.split(delimiter).map(c => c.trim().replace(/^["']|["']$/g, ''));
             }
-            // Simple CSV Regex parser
             const row = [];
             let inQuotes = false;
             let currentStr = '';
@@ -442,36 +481,29 @@ export function init() {
             rows = parsedRows.slice(1);
             if (rows.length === 0) rows = [new Array(headers.length).fill('')];
             renderTable();
-            UI.showAlert('Thành công', `Đã nạp ${rows.length} hàng và ${headers.length} cột từ dữ liệu dán.`, 'success');
+            IslandKit.notify('Đã nạp bảng', `Đã phân tích ${rows.length} hàng và ${headers.length} cột.`, 'success');
         }
     }
 
-    // ----------------------------------------------------
-    // EVENT LISTENERS
-    // ----------------------------------------------------
+    // Segmented Tabs: Chế độ nhập (Table Editor vs Paste Raw)
+    const modeTabs = $$('#input-mode-tabs .mode-tab-btn');
+    const inputPanes = $$('.input-pane');
 
-    // Chuyển đổi Input Mode Tabs (Table Editor vs Paste Raw)
-    const modeTabs = document.querySelectorAll('#input-mode-tabs .mode-tab-btn');
-    const inputPanes = document.querySelectorAll('.input-pane');
+    const activeTabClass = 'mode-tab-btn active py-1.5 rounded-[10px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all flex items-center justify-center gap-1.5';
+    const inactiveTabClass = 'mode-tab-btn py-1.5 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all flex items-center justify-center gap-1.5';
 
     modeTabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            modeTabs.forEach(t => {
-                t.classList.remove('active', 'bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900');
-                t.classList.add('text-zinc-500');
-            });
+            modeTabs.forEach(t => t.className = inactiveTabClass);
             inputPanes.forEach(p => { p.classList.remove('block'); p.classList.add('hidden'); });
 
-            tab.classList.add('active', 'bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900');
-            tab.classList.remove('text-zinc-500');
-
-            const targetPane = document.getElementById(tab.getAttribute('data-target'));
+            tab.className = activeTabClass;
+            const targetPane = _(`#${tab.getAttribute('data-target')}`);
             if (targetPane) {
                 targetPane.classList.remove('hidden');
                 targetPane.classList.add('block');
             }
 
-            // Ẩn/Hiện action bar tương ứng
             if (tab.getAttribute('data-target') === 'editor-mode-table') {
                 tableActionBar.classList.remove('hidden');
                 renderTable();
@@ -482,71 +514,58 @@ export function init() {
     });
 
     // Nút Nạp Raw vào bảng
-    const btnParseRaw = document.getElementById('btn-parse-raw');
-    if (btnParseRaw) {
-        btnParseRaw.addEventListener('click', () => {
-            const rawContent = rawInputTextarea.value;
-            if (!rawContent.trim()) {
-                UI.showAlert('Cảnh báo', 'Vui lòng dán dữ liệu vào trước khi nạp.', 'info');
-                return;
-            }
-            parseRawText(rawContent);
-            // Tự động nhảy lại tab Table
-            modeTabs[0].click();
-        });
-    }
+    _('#btn-parse-raw')?.addEventListener('click', () => {
+        const rawContent = rawInputTextarea.value;
+        if (!rawContent.trim()) {
+            IslandKit.notify('Trống', 'Vui lòng dán dữ liệu trước khi nạp.', 'info');
+            return;
+        }
+        parseRawText(rawContent);
+        modeTabs[0].click();
+    });
 
-    // Thêm Hàng
-    document.getElementById('btn-add-row').addEventListener('click', () => {
+    // Thêm Hàng & Cột
+    _('#btn-add-row')?.addEventListener('click', () => {
         rows.push(new Array(headers.length).fill(''));
         renderTable();
     });
 
-    // Thêm Cột
-    document.getElementById('btn-add-col').addEventListener('click', () => {
+    _('#btn-add-col')?.addEventListener('click', () => {
         headers.push(`Col_${headers.length + 1}`);
         rows.forEach(r => r.push(''));
         renderTable();
     });
 
-    // Chuyển đổi Output Format Tabs
-    const formatTabs = document.querySelectorAll('#target-format-tabs .target-btn');
+    // Segmented Tabs: Chọn định dạng xuất
+    const formatTabs = $$('#target-format-tabs .target-btn');
+    const activeFormatClass = 'target-btn active py-1 px-3 rounded-[10px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all whitespace-nowrap';
+    const inactiveFormatClass = 'target-btn py-1 px-3 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all whitespace-nowrap';
+
     formatTabs.forEach(btn => {
         btn.addEventListener('click', () => {
-            formatTabs.forEach(b => {
-                b.classList.remove('active', 'bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900');
-                b.classList.add('text-zinc-500');
-            });
-            btn.classList.add('active', 'bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900');
-            btn.classList.remove('text-zinc-500');
-
+            formatTabs.forEach(b => b.className = inactiveFormatClass);
+            btn.className = activeFormatClass;
             currentFormat = btn.dataset.format;
             convertTableData(currentFormat);
         });
     });
 
     // Copy Output
-    document.getElementById('btn-copy-output').addEventListener('click', async () => {
+    _('#btn-copy-output')?.addEventListener('click', async () => {
         const text = outputResultBox.value;
-        if (!text) {
-            UI.showAlert('Thông báo', 'Không có nội dung để sao chép.', 'info');
-            return;
-        }
+        if (!text) return;
         try {
             await navigator.clipboard.writeText(text);
-            UI.showAlert('Đã sao chép', `Nội dung định dạng ${currentFormat.toUpperCase()} đã lưu vào Clipboard.`, 'success');
+            IslandKit.notify('Đã sao chép', `Dữ liệu [${currentFormat.toUpperCase()}] đã lưu vào clipboard.`, 'success');
         } catch (e) {
-            UI.showAlert('Lỗi', 'Không thể sao chép dữ liệu.', 'error');
+            IslandKit.notify('Lỗi sao chép', 'Không thể truy cập bộ nhớ tạm.', 'error');
         }
     });
 
     // Tải File về máy
-    document.getElementById('btn-download-file').addEventListener('click', () => {
+    _('#btn-download-file')?.addEventListener('click', () => {
         const text = outputResultBox.value;
-        if (!text) {
-            UI.showAlert('Thông báo', 'Dữ liệu trống, không thể tải về.', 'info');
-            return;
-        }
+        if (!text) return;
 
         const mimeTypes = {
             json: 'application/json',
@@ -577,12 +596,10 @@ export function init() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-
-        UI.showAlert('Tải thành công', `Đã tải xuống file .${extensions[currentFormat]}`, 'success');
     });
 
     // Nạp dữ liệu mẫu
-    document.getElementById('btn-load-sample').addEventListener('click', () => {
+    _('#btn-load-sample')?.addEventListener('click', () => {
         headers = ['ID', 'Tên sản phẩm', 'Danh mục', 'Giá bán (VNĐ)', 'Số lượng'];
         rows = [
             ['SP001', 'MacBook Pro M3 Max', 'Laptop', '79990000', '15'],
@@ -592,27 +609,23 @@ export function init() {
             ['SP005', 'Apple Watch Ultra 2', 'Smartwatch', '20990000', '18']
         ];
         renderTable();
-        UI.showAlert('Đã nạp mẫu', 'Dữ liệu bảng mẫu đã được khôi phục.', 'info');
+        IslandKit.notify('Đã khôi phục', 'Bảng dữ liệu mẫu đã được nạp.', 'info');
     });
 
     // Xóa toàn bộ dữ liệu
-    document.getElementById('btn-clear-all').addEventListener('click', () => {
+    _('#btn-clear-all')?.addEventListener('click', () => {
         UI.showConfirm(
             'Xóa bảng dữ liệu?',
-            'Toàn bộ các hàng và cột hiện tại sẽ bị xóa sạch. Bạn có chắc chắn muốn tiếp tục không?',
+            'Toàn bộ các hàng và cột hiện tại sẽ bị xóa sạch. Bạn có muốn tiếp tục?',
             () => {
                 headers = ['Cột 1', 'Cột 2'];
                 rows = [['', '']];
                 rawInputTextarea.value = '';
                 renderTable();
-                UI.showAlert('Đã xóa', 'Bảng đã được làm mới hoàn toàn.', 'success');
+                IslandKit.notify('Đã xóa', 'Bảng đã được làm mới hoàn toàn.', 'info');
             }
         );
     });
 
-    // ----------------------------------------------------
-    // KHỞI CHẠY LẦN ĐẦU
-    // ----------------------------------------------------
     renderTable();
-    console.log("Excel to File & Table Editor Loaded Successfully!");
 }

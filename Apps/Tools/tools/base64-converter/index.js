@@ -1,270 +1,446 @@
 import { UI } from '../../js/ui.js';
 
-export const template = () => {
-    return `
-        <div class="space-y-6">
-            <div class="mb-2">
-                <h2 class="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">Base64 Converter</h2>
-                <p class="text-sm text-zinc-500 mt-1">Mã hóa văn bản, tập tin thành Base64 hoặc ngược lại.</p>
-            </div>
+// =============================================================================
+// 0. DYNAMIC THEME ACCENT CONTROLLER
+// =============================================================================
+const DEFAULT_EMERALD = '#10b981';
 
-            <div class="flex items-center p-1 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl w-fit">
-                <button id="tab-text" class="px-4 py-2 text-sm font-semibold rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm transition-all">Văn bản</button>
-                <button id="tab-file" class="px-4 py-2 text-sm font-medium rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all">Tập tin</button>
-            </div>
-
-            <div class="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/30 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800/50">
-                <label class="flex items-center gap-3 cursor-pointer group">
-                    <div class="relative flex items-center">
-                        <input type="checkbox" id="url-safe-toggle" class="sr-only peer">
-                        <div class="w-9 h-5 bg-zinc-200 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-white transition-colors"></div>
-                    </div>
-                    <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">URL Safe Mode</span>
-                </label>
-                <div class="text-[11px] text-zinc-400 hidden sm:block">Chuyển '+' thành '-', '/' thành '_'</div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-                
-                <div class="space-y-3 flex flex-col">
-                    <label class="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Đầu vào (Input)</label>
-                    
-                    <textarea id="b64-text-input" 
-                        class="flex-1 min-h-[250px] w-full p-4 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all resize-y text-sm leading-relaxed"
-                        placeholder="Nhập văn bản hoặc dán mã Base64 vào đây..."></textarea>
-
-                    <div id="b64-file-input" class="hidden flex-1 min-h-[250px] w-full flex flex-col items-center justify-center p-6 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl bg-zinc-50 dark:bg-zinc-900/30 hover:bg-zinc-100 dark:hover:bg-zinc-900/50 transition-colors cursor-pointer relative group">
-                        <input type="file" id="file-upload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-                        <div class="w-12 h-12 bg-zinc-200 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-500 mb-3 group-hover:scale-110 transition-transform">
-                            <i class="fas fa-cloud-upload-alt text-xl"></i>
-                        </div>
-                        <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300 text-center">Kéo thả hoặc Click để chọn file</p>
-                        <p class="text-xs text-zinc-400 text-center mt-1" id="file-name-display">Max 5MB (Khuyến nghị)</p>
-                    </div>
-
-                    <div class="flex gap-2 mt-auto pt-2">
-                        <button id="btn-encode" class="flex-1 py-3 px-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-semibold text-sm hover:opacity-90 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2">
-                            <i class="fas fa-lock"></i> Mã hóa
-                        </button>
-                        <button id="btn-decode" class="flex-1 py-3 px-4 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 rounded-xl font-semibold text-sm hover:bg-zinc-50 dark:hover:bg-zinc-700 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2">
-                            <i class="fas fa-unlock"></i> Giải mã
-                        </button>
-                    </div>
-                </div>
-
-                <div class="space-y-3 flex flex-col">
-                    <div class="flex justify-between items-center px-1">
-                        <label class="text-xs font-bold uppercase tracking-wider text-zinc-400">Kết quả (Output)</label>
-                        <div class="flex gap-3">
-                            <button id="btn-download" class="text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors hidden">
-                                <i class="fas fa-download mr-1"></i>Tải File
-                            </button>
-                            <button id="btn-copy" class="text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors">
-                                <i class="far fa-copy mr-1"></i>Sao chép
-                            </button>
-                            <button id="btn-clear" class="text-xs font-medium text-red-500 hover:text-red-600 transition-colors">
-                                <i class="far fa-trash-alt mr-1"></i>Xóa
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="relative flex-1 flex flex-col min-h-[250px]">
-                        <textarea id="b64-output" readonly
-                            class="flex-1 w-full p-4 bg-zinc-100/50 dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl outline-none text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 resize-y"
-                            placeholder="Kết quả hiển thị tại đây..."></textarea>
-                        
-                        <div id="image-preview-container" class="absolute inset-0 bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-sm border border-zinc-200 dark:border-zinc-800 rounded-2xl hidden flex-col items-center justify-center p-4">
-                            <img id="image-preview" class="max-w-full max-h-[200px] object-contain rounded-lg shadow-sm mb-3">
-                            <p class="text-xs text-zinc-500">Xem trước hình ảnh từ Base64</p>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    `;
+export const ThemeKit = {
+    getAccentColor: () => {
+        return localStorage.getItem('hunqos_accent_color') || 
+               localStorage.getItem('hunqos_icon_custom_bg') || 
+               DEFAULT_EMERALD;
+    },
+    applyAccent: (container) => {
+        if (!container) return;
+        const accent = ThemeKit.getAccentColor();
+        container.style.setProperty('--kit-accent', accent);
+    }
 };
 
-export const init = () => {
-    // UI Elements
-    const tabText = document.getElementById('tab-text');
-    const tabFile = document.getElementById('tab-file');
-    const txtInput = document.getElementById('b64-text-input');
-    const fileInputArea = document.getElementById('b64-file-input');
-    const fileUpload = document.getElementById('file-upload');
-    const fileNameDisplay = document.getElementById('file-name-display');
-    const output = document.getElementById('b64-output');
-    
-    const btnEncode = document.getElementById('btn-encode');
-    const btnDecode = document.getElementById('btn-decode');
-    const btnCopy = document.getElementById('btn-copy');
-    const btnClear = document.getElementById('btn-clear');
-    const btnDownload = document.getElementById('btn-download');
-    
-    const urlSafeToggle = document.getElementById('url-safe-toggle');
-    const imgPreviewContainer = document.getElementById('image-preview-container');
-    const imgPreview = document.getElementById('image-preview');
+// =============================================================================
+// 1. ADAPTIVE ISLAND & TOAST FALLBACK CONTROLLER
+// =============================================================================
+export const IslandKit = {
+    isIslandActive: () => {
+        const isEnabled = localStorage.getItem('hunqos_dynamic_island') !== 'false';
+        const wrapper = document.getElementById('dynamic-island-wrapper');
+        const isDOMVisible = wrapper && !wrapper.classList.contains('hidden') && window.getComputedStyle(wrapper).display !== 'none';
+        return Boolean(isEnabled && isDOMVisible && typeof window.triggerIslandNotification === 'function');
+    },
 
-    let currentMode = 'text'; // 'text' or 'file'
+    notify: (title, desc, type = 'info', duration = 2800) => {
+        if (IslandKit.isIslandActive()) {
+            window.triggerIslandNotification(title, desc, type, duration);
+        } else {
+            UI.showAlert(title, desc, type, duration);
+        }
+    }
+};
+
+// =============================================================================
+// 2. TEMPLATE RENDERER
+// =============================================================================
+export function template() {
+    return `
+    <div id="b64-root-container" class="w-full h-full bg-[#f4f4f6] dark:bg-[#000000] text-[#18181b] dark:text-[#f4f4f6] select-none overflow-hidden font-sans transition-colors duration-200">
+        
+        <style>
+            #b64-root-container {
+                --kit-accent: #10b981;
+            }
+            .bg-accent-theme {
+                background-color: var(--kit-accent) !important;
+            }
+            .text-accent-theme {
+                color: var(--kit-accent) !important;
+            }
+            .border-accent-theme {
+                border-color: var(--kit-accent) !important;
+            }
+            .accent-theme-tint {
+                accent-color: var(--kit-accent) !important;
+            }
+            .bg-accent-theme-alpha {
+                background-color: color-mix(in srgb, var(--kit-accent) 14%, transparent) !important;
+            }
+            .hover-bg-accent-theme-alpha:hover {
+                background-color: color-mix(in srgb, var(--kit-accent) 20%, transparent) !important;
+            }
+
+            /* Định nghĩa Switch Pill độ tương phản cao */
+            .switch-pill {
+                width: 44px;
+                height: 24px;
+                background-color: rgba(0, 0, 0, 0.12) !important;
+                border-radius: 9999px;
+                position: relative;
+                cursor: pointer;
+                transition: background-color 0.2s ease, border-color 0.2s ease;
+                padding: 2px;
+                border: 1px solid rgba(0, 0, 0, 0.08);
+                display: inline-flex;
+                align-items: center;
+                flex-shrink: 0;
+            }
+            .dark .switch-pill {
+                background-color: rgba(255, 255, 255, 0.16) !important;
+                border-color: rgba(255, 255, 255, 0.12);
+            }
+            .switch-pill .switch-thumb {
+                width: 18px;
+                height: 18px;
+                background-color: #ffffff;
+                border-radius: 9999px;
+                transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+            }
+            .switch-pill.active {
+                background-color: var(--kit-accent) !important;
+                border-color: transparent !important;
+            }
+            .switch-pill.active .switch-thumb {
+                transform: translateX(20px);
+            }
+        </style>
+
+        <!-- MAIN SCROLLER -->
+        <main class="w-full h-full overflow-y-auto no-scrollbar px-3.5 sm:px-6 pt-6 pb-24 max-w-4xl mx-auto space-y-5">
+            
+            <!-- SEAMLESS HERO TITLE -->
+            <div class="px-1 flex items-start justify-between">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-accent-theme shadow-sm transition-colors"></span>
+                        <span class="text-[11px] font-mono tracking-wider font-semibold uppercase text-accent-theme">HunqOS Utility</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">Base64 Converter</h1>
+                    <p class="text-[12px] text-zinc-500 dark:text-zinc-400 font-normal">Mã hóa văn bản, tập tin thành Base64 và ngược lại với chuẩn an toàn URL.</p>
+                </div>
+            </div>
+
+            <!-- CONTROLS & OPTIONS CARD -->
+            <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-3.5 sm:p-4 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    
+                    <!-- SEGMENTED TABS ĐÃ FIX ĐỘ TƯƠNG PHẢN DARK MODE -->
+                    <div class="grid grid-cols-2 gap-1 p-1 rounded-[14px] bg-black/[0.05] dark:bg-black/50 border border-black/[0.04] dark:border-white/[0.08] w-full sm:w-64" id="b64-tabs">
+                        <button id="tab-text" class="tab-btn active py-1.5 rounded-[10px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all flex items-center justify-center gap-1.5">
+                            <i class="fas fa-font text-[11px]"></i> Văn bản
+                        </button>
+                        <button id="tab-file" class="tab-btn py-1.5 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all flex items-center justify-center gap-1.5">
+                            <i class="fas fa-file-arrow-up text-[11px]"></i> Tập tin
+                        </button>
+                    </div>
+
+                    <!-- URL-SAFE TOGGLE SWITCH -->
+                    <div class="flex items-center justify-between sm:justify-end gap-3 bg-[#f2f2f7] dark:bg-black/40 px-3.5 py-1.5 rounded-[14px] border border-black/[0.04] dark:border-white/[0.06]">
+                        <span class="text-xs font-medium text-zinc-700 dark:text-zinc-300">URL-Safe Mode</span>
+                        <button id="url-safe-switch" class="switch-pill" type="button" aria-label="Toggle URL-Safe Mode">
+                            <div class="switch-thumb"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WORKSPACE GRID -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 items-stretch">
+                
+                <!-- INPUT CARD -->
+                <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-5 shadow-sm flex flex-col justify-between space-y-4">
+                    <div class="space-y-3 flex-1 flex flex-col">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Đầu vào (Input)</h3>
+                            <span class="text-[10px] text-zinc-400 font-mono">Raw Content</span>
+                        </div>
+
+                        <!-- Text Input Pane -->
+                        <div id="pane-text-input" class="flex-1 flex flex-col min-h-[220px]">
+                            <textarea id="b64-text-input" 
+                                class="flex-1 w-full bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[16px] p-3.5 outline-none text-xs font-mono text-zinc-900 dark:text-white resize-y placeholder-zinc-400 transition-all focus:border-accent-theme"
+                                placeholder="Nhập văn bản thô hoặc dán mã Base64..."></textarea>
+                        </div>
+
+                        <!-- File Input Pane -->
+                        <div id="pane-file-input" class="hidden flex-1 min-h-[220px] flex-col items-center justify-center p-6 border-2 border-dashed border-black/[0.1] dark:border-white/[0.15] rounded-[18px] bg-[#f2f2f7]/50 dark:bg-black/20 hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer relative group">
+                            <input type="file" id="file-upload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                            <div class="w-12 h-12 rounded-[16px] bg-white dark:bg-[#27272a] shadow-sm flex items-center justify-center text-zinc-600 dark:text-zinc-300 mb-3 group-hover:scale-105 transition-transform border border-black/[0.04] dark:border-white/[0.06]">
+                                <i class="fas fa-cloud-arrow-up text-lg text-accent-theme"></i>
+                            </div>
+                            <p class="text-xs font-semibold text-zinc-800 dark:text-zinc-200 text-center">Kéo thả hoặc nhấn để chọn file</p>
+                            <p class="text-[11px] text-zinc-400 text-center mt-1" id="file-name-display">Hỗ trợ ảnh, tài liệu (Khuyến nghị &lt; 5MB)</p>
+                        </div>
+                    </div>
+
+                    <!-- Encode/Decode Actions -->
+                    <div class="flex gap-2 pt-2 border-t border-black/[0.05] dark:border-white/[0.08]">
+                        <button id="btn-encode" class="flex-1 h-11 rounded-[14px] bg-accent-theme text-white font-bold text-xs tracking-wide flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm">
+                            <i class="fas fa-lock text-xs"></i> Mã hóa
+                        </button>
+                        <button id="btn-decode" class="flex-1 h-11 rounded-[14px] bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-800 dark:text-zinc-200 font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                            <i class="fas fa-lock-open text-xs"></i> Giải mã
+                        </button>
+                    </div>
+                </div>
+
+                <!-- OUTPUT CARD -->
+                <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-5 shadow-sm flex flex-col justify-between space-y-4">
+                    <div class="space-y-3 flex-1 flex flex-col">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Kết quả (Output)</h3>
+                            <div class="flex items-center gap-1">
+                                <button id="btn-download" class="hidden px-2.5 py-1 rounded-[8px] bg-accent-theme-alpha text-accent-theme font-semibold text-[11px] transition-colors">
+                                    <i class="fas fa-download mr-1"></i> Tải File
+                                </button>
+                                <button id="btn-copy" class="px-2 py-1 rounded-[8px] hover:bg-black/5 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-[11px] font-medium transition-colors">
+                                    <i class="far fa-copy mr-1"></i> Chép
+                                </button>
+                                <button id="btn-clear" class="px-2 py-1 rounded-[8px] hover:bg-rose-500/10 text-rose-500 text-[11px] font-medium transition-colors">
+                                    <i class="far fa-trash-can mr-1"></i> Xóa
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Output Box & Preview -->
+                        <div class="relative flex-1 flex flex-col min-h-[220px]">
+                            <textarea id="b64-output" readonly
+                                class="flex-1 w-full bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[16px] p-3.5 outline-none text-xs font-mono text-zinc-800 dark:text-zinc-200 resize-y placeholder-zinc-400 select-all"
+                                placeholder="Kết quả sau khi chuyển đổi sẽ hiển thị tại đây..."></textarea>
+                            
+                            <!-- Media / Image Preview Overlay -->
+                            <div id="image-preview-container" class="absolute inset-0 bg-white/95 dark:bg-[#161618]/95 backdrop-blur-md rounded-[16px] border border-black/[0.04] dark:border-white/[0.06] hidden flex-col items-center justify-center p-4">
+                                <div class="relative group max-w-full max-h-[160px] mb-2 rounded-[12px] overflow-hidden border border-black/[0.05] dark:border-white/[0.1]">
+                                    <img id="image-preview" class="max-w-full max-h-[160px] object-contain" alt="Base64 Preview">
+                                    <button id="btn-zoom-image" class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white" title="Xem toàn màn hình">
+                                        <i class="fas fa-expand text-sm"></i>
+                                    </button>
+                                </div>
+                                <span class="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">Đã nhận diện tệp hình ảnh</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Info Note -->
+                    <div class="pt-2 border-t border-black/[0.05] dark:border-white/[0.08] flex items-center justify-between text-[11px] text-zinc-400">
+                        <span id="output-length">0 ký tự</span>
+                        <span class="font-mono text-[10px]">UTF-8 Ready</span>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+    `;
+}
+
+// =============================================================================
+// 3. LOGIC HOOKS & EVENT DISPATCHING
+// =============================================================================
+export function init(hostElement) {
+    const rootContainer = hostElement.querySelector('#b64-root-container') || hostElement;
+
+    // Áp dụng màu chủ đạo từ hệ thống
+    const updateAccent = () => ThemeKit.applyAccent(rootContainer);
+    updateAccent();
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'hunqos_accent_color' || e.key === 'hunqos_icon_custom_bg') {
+            updateAccent();
+        }
+    });
+
+    // Query DOM Elements
+    const tabText = hostElement.querySelector('#tab-text');
+    const tabFile = hostElement.querySelector('#tab-file');
+    const paneText = hostElement.querySelector('#pane-text-input');
+    const paneFile = hostElement.querySelector('#pane-file-input');
+
+    const txtInput = hostElement.querySelector('#b64-text-input');
+    const fileUpload = hostElement.querySelector('#file-upload');
+    const fileNameDisplay = hostElement.querySelector('#file-name-display');
+    const output = hostElement.querySelector('#b64-output');
+    const outputLength = hostElement.querySelector('#output-length');
+
+    const btnEncode = hostElement.querySelector('#btn-encode');
+    const btnDecode = hostElement.querySelector('#btn-decode');
+    const btnCopy = hostElement.querySelector('#btn-copy');
+    const btnClear = hostElement.querySelector('#btn-clear');
+    const btnDownload = hostElement.querySelector('#btn-download');
+
+    const switchUrlSafe = hostElement.querySelector('#url-safe-switch');
+    const imgPreviewContainer = hostElement.querySelector('#image-preview-container');
+    const imgPreview = hostElement.querySelector('#image-preview');
+    const btnZoomImage = hostElement.querySelector('#btn-zoom-image');
+
+    let currentMode = 'text';
     let currentFile = null;
+    let isUrlSafe = false;
 
-    // --- TAB SWITCH LOGIC ---
+    // Toggle Switch (URL-Safe)
+    switchUrlSafe?.addEventListener('click', () => {
+        switchUrlSafe.classList.toggle('active');
+        isUrlSafe = switchUrlSafe.classList.contains('active');
+    });
+
+    // Segmented Tabs Switcher với class tương phản cao
+    const activeClass = 'tab-btn active py-1.5 rounded-[10px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all flex items-center justify-center gap-1.5';
+    const inactiveClass = 'tab-btn py-1.5 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all flex items-center justify-center gap-1.5';
+
     const switchTab = (mode) => {
         currentMode = mode;
+
         if (mode === 'text') {
-            tabText.classList.replace('text-zinc-500', 'text-zinc-900');
-            tabText.classList.replace('hover:text-zinc-900', 'bg-white');
-            tabText.classList.add('dark:text-white', 'dark:bg-zinc-700', 'shadow-sm', 'font-semibold');
-            tabText.classList.remove('font-medium', 'dark:hover:text-white');
-
-            tabFile.classList.remove('text-zinc-900', 'bg-white', 'dark:text-white', 'dark:bg-zinc-700', 'shadow-sm', 'font-semibold');
-            tabFile.classList.add('text-zinc-500', 'hover:text-zinc-900', 'dark:hover:text-white', 'font-medium');
-
-            txtInput.classList.remove('hidden');
-            fileInputArea.classList.add('hidden');
+            tabText.className = activeClass;
+            tabFile.className = inactiveClass;
+            paneText.classList.remove('hidden');
+            paneFile.classList.add('hidden');
+            paneFile.classList.remove('flex');
         } else {
-            tabFile.classList.replace('text-zinc-500', 'text-zinc-900');
-            tabFile.classList.replace('hover:text-zinc-900', 'bg-white');
-            tabFile.classList.add('dark:text-white', 'dark:bg-zinc-700', 'shadow-sm', 'font-semibold');
-            tabFile.classList.remove('font-medium', 'dark:hover:text-white');
-
-            tabText.classList.remove('text-zinc-900', 'bg-white', 'dark:text-white', 'dark:bg-zinc-700', 'shadow-sm', 'font-semibold');
-            tabText.classList.add('text-zinc-500', 'hover:text-zinc-900', 'dark:hover:text-white', 'font-medium');
-
-            txtInput.classList.add('hidden');
-            fileInputArea.classList.remove('hidden');
+            tabFile.className = activeClass;
+            tabText.className = inactiveClass;
+            paneText.classList.add('hidden');
+            paneFile.classList.remove('hidden');
+            paneFile.classList.add('flex');
         }
         clearAll();
     };
 
-    tabText.onclick = () => switchTab('text');
-    tabFile.onclick = () => switchTab('file');
+    tabText?.addEventListener('click', () => switchTab('text'));
+    tabFile?.addEventListener('click', () => switchTab('file'));
 
-    // --- HELPER FUNCTIONS ---
-    const encodeUTF8ToBase64 = (str) => {
-        return btoa(unescape(encodeURIComponent(str)));
-    };
-    const decodeBase64ToUTF8 = (str) => {
-        return decodeURIComponent(escape(atob(str)));
-    };
-    const makeUrlSafe = (base64Str) => {
-        return base64Str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    };
-    const revertUrlSafe = (base64Str) => {
-        let str = base64Str.replace(/-/g, '+').replace(/_/g, '/');
+    // Helpers
+    const encodeUTF8ToBase64 = (str) => btoa(unescape(encodeURIComponent(str)));
+    const decodeBase64ToUTF8 = (str) => decodeURIComponent(escape(atob(str)));
+
+    const makeUrlSafe = (b64) => b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const revertUrlSafe = (b64) => {
+        let str = b64.replace(/-/g, '+').replace(/_/g, '/');
         while (str.length % 4) str += '=';
         return str;
     };
 
-    // --- FILE INPUT LOGIC ---
-    fileUpload.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
+    const updateOutput = (val) => {
+        output.value = val;
+        outputLength.textContent = `${val.length.toLocaleString()} ký tự`;
+    };
+
+    // File Input
+    fileUpload?.addEventListener('change', (e) => {
+        if (e.target.files?.length > 0) {
             currentFile = e.target.files[0];
             fileNameDisplay.textContent = `${currentFile.name} (${(currentFile.size / 1024).toFixed(1)} KB)`;
         }
     });
 
-    // --- ENCODE LOGIC ---
-    btnEncode.addEventListener('click', () => {
+    // Encode Action
+    btnEncode?.addEventListener('click', () => {
+        imgPreviewContainer.classList.add('hidden');
+        btnDownload.classList.add('hidden');
+
         if (currentMode === 'text') {
             const str = txtInput.value;
-            if (!str) return UI.showAlert('Thông báo', 'Vui lòng nhập văn bản cần mã hóa', 'warning');
+            if (!str) return IslandKit.notify('Thiếu dữ liệu', 'Vui lòng nhập văn bản cần mã hóa.', 'warning');
+            
             try {
                 let encoded = encodeUTF8ToBase64(str);
-                if (urlSafeToggle.checked) encoded = makeUrlSafe(encoded);
-                output.value = encoded;
+                if (isUrlSafe) encoded = makeUrlSafe(encoded);
+                updateOutput(encoded);
+                IslandKit.notify('Thành công', 'Đã mã hóa Base64.', 'success');
             } catch (e) {
-                UI.showAlert('Lỗi', 'Không thể mã hóa văn bản này', 'error');
+                IslandKit.notify('Lỗi mã hóa', 'Không thể mã hóa chuỗi ký tự này.', 'error');
             }
         } else {
-            if (!currentFile) return UI.showAlert('Thông báo', 'Vui lòng chọn một tập tin', 'warning');
+            if (!currentFile) return IslandKit.notify('Thiếu tập tin', 'Vui lòng chọn một tập tin.', 'warning');
+            
             const reader = new FileReader();
             reader.onload = (e) => {
-                let result = e.target.result; // Data URL format: data:image/png;base64,iVBORw0KGgo...
-                if (urlSafeToggle.checked) {
+                let result = e.target.result;
+                if (isUrlSafe) {
                     const parts = result.split(',');
                     if (parts.length === 2) result = parts[0] + ',' + makeUrlSafe(parts[1]);
                 }
-                output.value = result;
-                UI.showAlert('Thành công', 'Đã chuyển file thành mã Base64', 'success');
+                updateOutput(result);
+                IslandKit.notify('Thành công', `Đã chuyển đổi ${currentFile.name}.`, 'success');
             };
+            reader.onerror = () => IslandKit.notify('Lỗi đọc file', 'Không thể đọc nội dung tập tin.', 'error');
             reader.readAsDataURL(currentFile);
         }
     });
 
-    // --- DECODE LOGIC ---
-    btnDecode.addEventListener('click', () => {
+    // Decode Action
+    btnDecode?.addEventListener('click', () => {
         imgPreviewContainer.classList.add('hidden');
+        imgPreviewContainer.classList.remove('flex');
         btnDownload.classList.add('hidden');
 
-        if (currentMode === 'text') {
-            let str = txtInput.value.trim();
-            if (!str) return UI.showAlert('Thông báo', 'Vui lòng dán mã Base64 cần giải mã', 'warning');
-            try {
-                str = revertUrlSafe(str);
-                output.value = decodeBase64ToUTF8(str);
-            } catch (e) {
-                UI.showAlert('Lỗi', 'Chuỗi Base64 không hợp lệ', 'error');
-            }
-        } else {
-            // Trong tab File, nếu giải mã, user vẫn phải paste mã Base64 vào output (hoặc input text rồi switch)
-            // Để tiện lợi, chúng ta sẽ lấy text từ output nếu input trống
-            let str = txtInput.value.trim();
-            if (!str && output.value) str = output.value.trim();
-            
-            if (!str) return UI.showAlert('Thông báo', 'Vui lòng dán chuỗi Base64 (có data URI) vào vùng Nhập hoặc Kết quả', 'warning');
+        let rawInput = txtInput.value.trim();
+        if (!rawInput && output.value.trim()) rawInput = output.value.trim();
 
-            // Xử lý xem có phải là file/ảnh không (có data:image/png;base64,... không)
-            const isDataURI = str.match(/^data:(.*?);base64,(.*)$/);
-            
-            try {
-                if (isDataURI) {
-                    const mime = isDataURI[1];
-                    const b64Data = revertUrlSafe(isDataURI[2]);
-                    
-                    if (mime.startsWith('image/')) {
-                        imgPreview.src = `data:${mime};base64,${b64Data}`;
-                        imgPreviewContainer.classList.remove('hidden');
-                        imgPreviewContainer.classList.add('flex');
-                    }
-                    
-                    // Setup nút download
-                    btnDownload.classList.remove('hidden');
-                    btnDownload.onclick = () => {
-                        const a = document.createElement('a');
-                        a.href = `data:${mime};base64,${b64Data}`;
-                        a.download = `downloaded_file.${mime.split('/')[1] || 'bin'}`;
-                        a.click();
+        if (!rawInput) {
+            return IslandKit.notify('Thiếu dữ liệu', 'Vui lòng nhập mã Base64 cần giải mã.', 'warning');
+        }
+
+        const isDataURI = rawInput.match(/^data:(.*?);base64,(.*)$/);
+
+        try {
+            if (isDataURI) {
+                const mime = isDataURI[1];
+                const cleanBase64 = revertUrlSafe(isDataURI[2]);
+                const finalDataUri = `data:${mime};base64,${cleanBase64}`;
+
+                if (mime.startsWith('image/')) {
+                    imgPreview.src = finalDataUri;
+                    imgPreviewContainer.classList.remove('hidden');
+                    imgPreviewContainer.classList.add('flex');
+
+                    btnZoomImage.onclick = () => {
+                        UI.showMediaFullscreen(finalDataUri, 'image');
                     };
-                    UI.showAlert('Thành công', 'Đã giải mã thành tập tin thành công', 'success');
-                } else {
-                    // Cố gắng giải mã text thuần
-                    output.value = decodeBase64ToUTF8(revertUrlSafe(str));
-                    UI.showAlert('Giải mã văn bản', 'Mã Base64 này không chứa định dạng File, đã giải mã ra văn bản thường.', 'info');
                 }
-            } catch (e) {
-                UI.showAlert('Lỗi', 'Mã Base64 không hợp lệ hoặc bị hỏng', 'error');
+
+                btnDownload.classList.remove('hidden');
+                btnDownload.onclick = () => {
+                    const anchor = document.createElement('a');
+                    anchor.href = finalDataUri;
+                    anchor.download = `decoded_file.${mime.split('/')[1]?.split('+')[0] || 'bin'}`;
+                    anchor.click();
+                };
+
+                updateOutput(rawInput);
+                IslandKit.notify('Thành công', `Đã nhận diện tệp [${mime}].`, 'success');
+            } else {
+                const decodedText = decodeBase64ToUTF8(revertUrlSafe(rawInput));
+                updateOutput(decodedText);
+                IslandKit.notify('Thành công', 'Đã giải mã ra văn bản.', 'success');
             }
+        } catch (e) {
+            IslandKit.notify('Lỗi giải mã', 'Chuỗi Base64 không hợp lệ.', 'error');
         }
     });
 
-    // --- ACTIONS ---
-    btnCopy.addEventListener('click', () => {
+    // Copy & Clear
+    btnCopy?.addEventListener('click', async () => {
         if (!output.value) return;
-        navigator.clipboard.writeText(output.value);
-        UI.showAlert('Đã sao chép', 'Kết quả đã được lưu vào Clipboard', 'success');
+        try {
+            await navigator.clipboard.writeText(output.value);
+            IslandKit.notify('Đã sao chép', 'Đã lưu vào bộ nhớ tạm.', 'success');
+        } catch (e) {
+            IslandKit.notify('Lỗi', 'Không thể truy cập clipboard.', 'error');
+        }
     });
 
     const clearAll = () => {
         txtInput.value = '';
-        output.value = '';
+        updateOutput('');
         currentFile = null;
         fileUpload.value = '';
-        fileNameDisplay.textContent = 'Max 5MB (Khuyến nghị)';
+        fileNameDisplay.textContent = 'Hỗ trợ ảnh, tài liệu (Khuyến nghị < 5MB)';
         imgPreviewContainer.classList.add('hidden');
         imgPreviewContainer.classList.remove('flex');
         btnDownload.classList.add('hidden');
+        imgPreview.src = '';
     };
 
-    btnClear.addEventListener('click', clearAll);
-};
+    btnClear?.addEventListener('click', clearAll);
+}

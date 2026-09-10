@@ -1,158 +1,246 @@
 import { UI } from '../../js/ui.js';
 
+// =============================================================================
+// 0. DYNAMIC THEME ACCENT CONTROLLER
+// =============================================================================
+const DEFAULT_EMERALD = '#10b981';
+
+export const ThemeKit = {
+    getAccentColor: () => {
+        return localStorage.getItem('hunqos_accent_color') || 
+               localStorage.getItem('hunqos_icon_custom_bg') || 
+               DEFAULT_EMERALD;
+    },
+    applyAccent: (container) => {
+        if (!container) return;
+        const accent = ThemeKit.getAccentColor();
+        container.style.setProperty('--kit-accent', accent);
+    }
+};
+
+// =============================================================================
+// 1. ADAPTIVE ISLAND & TOAST FALLBACK CONTROLLER
+// =============================================================================
+export const IslandKit = {
+    isIslandActive: () => {
+        const isEnabled = localStorage.getItem('hunqos_dynamic_island') !== 'false';
+        const wrapper = document.getElementById('dynamic-island-wrapper');
+        const isDOMVisible = wrapper && !wrapper.classList.contains('hidden') && window.getComputedStyle(wrapper).display !== 'none';
+        return Boolean(isEnabled && isDOMVisible && typeof window.triggerIslandNotification === 'function');
+    },
+
+    notify: (title, desc, type = 'info', duration = 2800) => {
+        if (IslandKit.isIslandActive()) {
+            window.triggerIslandNotification(title, desc, type, duration);
+        } else {
+            UI.showAlert(title, desc, type, duration);
+        }
+    }
+};
+
+// =============================================================================
+// 2. TEMPLATE RENDERER (SEAMLESS EMERALD FLAT)
+// =============================================================================
 export function template() {
     return `
+    <div id="entity-root-container" class="w-full h-full bg-[#f4f4f6] dark:bg-[#000000] text-[#18181b] dark:text-[#f4f4f6] select-none overflow-hidden font-sans transition-colors duration-200">
+        
         <style>
-            /* Kế thừa Scrollbar và Animation từ UI Kit */
-            .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
-            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; }
-
-            .btn-premium { transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s; user-select: none; cursor: pointer; }
-            .btn-premium:active { transform: scale(0.96); opacity: 0.8; }
-            .btn-premium:disabled { opacity: 0.4; pointer-events: none; transform: scale(1); }
-
-            .ui-fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-            @keyframes fadeIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
-            
-            .ui-block { position: relative; }
+            #entity-root-container {
+                --kit-accent: #10b981;
+            }
+            .bg-accent-theme {
+                background-color: var(--kit-accent) !important;
+            }
+            .text-accent-theme {
+                color: var(--kit-accent) !important;
+            }
+            .border-accent-theme {
+                border-color: var(--kit-accent) !important;
+            }
+            .bg-accent-theme-alpha {
+                background-color: color-mix(in srgb, var(--kit-accent) 14%, transparent) !important;
+            }
+            .hover-bg-accent-theme-alpha:hover {
+                background-color: color-mix(in srgb, var(--kit-accent) 20%, transparent) !important;
+            }
         </style>
 
-        <div class="relative flex flex-col w-full max-w-[1000px] mx-auto min-h-[600px] pb-10">
+        <!-- MAIN SCROLLER -->
+        <main class="w-full h-full overflow-y-auto no-scrollbar px-3.5 sm:px-6 pt-6 pb-24 max-w-5xl mx-auto space-y-5">
             
-            <!-- Header -->
-            <div class="mb-8 px-2 ui-fade-in">
-                <h2 class="text-[28px] font-black text-zinc-900 dark:text-white tracking-tight leading-none mb-2">Entity Encoder / Decoder</h2>
-                <p class="text-[13px] text-zinc-500 font-medium">Chuyển đổi ký tự đặc biệt sang HTML Entities và ngược lại một cách an toàn.</p>
+            <!-- SEAMLESS HERO TITLE -->
+            <div class="px-1 space-y-1">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-accent-theme shadow-sm transition-colors"></span>
+                    <span class="text-[11px] font-mono tracking-wider font-semibold uppercase text-accent-theme">HunqOS Dev Kit</span>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">Entity Encoder / Decoder</h1>
+                <p class="text-[12px] text-zinc-500 dark:text-zinc-400 font-normal">Chuyển đổi ký tự đặc biệt sang HTML Entities an toàn, chống lỗ hổng XSS khi hiển thị mã.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch ui-fade-in" style="animation-delay: 100ms;">
+            <!-- WORKSPACE GRID -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 items-stretch">
                 
-                <!-- Input Block -->
-                <div class="ui-block bg-white dark:bg-[#0c0c0e] rounded-[32px] ring-1 ring-inset ring-zinc-200 dark:ring-zinc-800/80 p-6 flex flex-col">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Đầu vào (Input)</h3>
-                        <button id="btn-clear" class="btn-premium w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center hover:text-red-500 dark:hover:text-red-400" title="Xóa dữ liệu"><i class="fas fa-trash-alt text-xs"></i></button>
+                <!-- INPUT CARD -->
+                <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-4 sm:p-5 shadow-sm flex flex-col justify-between space-y-4">
+                    <div class="space-y-3 flex-1 flex flex-col">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Đầu vào (Input)</h3>
+                            <button id="btn-clear" class="w-7 h-7 rounded-[8px] hover:bg-rose-500/10 text-zinc-400 hover:text-rose-500 flex items-center justify-center transition-colors" title="Xóa dữ liệu">
+                                <i class="far fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+
+                        <div class="flex-1 flex flex-col min-h-[260px]">
+                            <textarea id="entity-input" 
+                                class="flex-1 w-full bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[16px] p-3.5 outline-none text-xs font-mono text-zinc-900 dark:text-white resize-y placeholder-zinc-400 transition-all focus:border-accent-theme"
+                                placeholder="Nhập văn bản thô, mã HTML, dấu câu đặc biệt..."></textarea>
+                        </div>
                     </div>
-                    
-                    <textarea id="entity-input" class="w-full flex-1 min-h-[250px] bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 outline-none text-sm font-medium text-zinc-900 dark:text-white resize-y custom-scrollbar placeholder-zinc-400 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-shadow" placeholder="Nhập văn bản hoặc mã HTML cần chuyển đổi..."></textarea>
-                    
-                    <div class="flex gap-3 mt-4">
-                        <button id="btn-encode" class="btn-premium flex-1 py-3.5 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-sm tracking-widest uppercase flex items-center justify-center gap-2">
-                            <i class="fas fa-code"></i> Encode
+
+                    <!-- ACTION BUTTONS -->
+                    <div class="flex gap-2 pt-2 border-t border-black/[0.05] dark:border-white/[0.08]">
+                        <button id="btn-encode" class="flex-1 h-11 rounded-[14px] bg-accent-theme text-white font-bold text-xs tracking-wide flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm">
+                            <i class="fas fa-code text-xs"></i> Encode
                         </button>
-                        <button id="btn-decode" class="btn-premium flex-1 py-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 font-black text-sm tracking-widest uppercase flex items-center justify-center gap-2 bg-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                            <i class="fas fa-file-code"></i> Decode
+                        <button id="btn-decode" class="flex-1 h-11 rounded-[14px] bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-800 dark:text-zinc-200 font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                            <i class="fas fa-file-code text-xs"></i> Decode
                         </button>
                     </div>
                 </div>
 
-                <!-- Output Block -->
-                <div class="ui-block bg-white dark:bg-[#0c0c0e] rounded-[32px] ring-1 ring-inset ring-zinc-200 dark:ring-zinc-800/80 p-6 flex flex-col">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Kết quả (Output)</h3>
-                        <button id="btn-copy" class="btn-premium w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center hover:text-emerald-600 dark:hover:text-emerald-400" title="Copy kết quả"><i class="far fa-copy text-xs"></i></button>
-                    </div>
-                    
-                    <textarea id="entity-output" class="w-full flex-1 min-h-[250px] bg-zinc-50 dark:bg-[#121214]/50 border border-transparent rounded-2xl p-4 outline-none text-sm font-medium text-zinc-900 dark:text-white resize-y custom-scrollbar placeholder-zinc-400/50" placeholder="Kết quả sẽ hiển thị ở đây..." readonly></textarea>
-                    
-                    <div class="mt-4 bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl p-3 flex items-center gap-3 border border-zinc-100 dark:border-zinc-800/50">
-                        <div class="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                            <i class="fas fa-info-circle"></i>
+                <!-- OUTPUT CARD -->
+                <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-4 sm:p-5 shadow-sm flex flex-col justify-between space-y-4">
+                    <div class="space-y-3 flex-1 flex flex-col">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Kết quả (Output)</h3>
+                            <button id="btn-copy" class="px-2.5 py-1 rounded-[8px] bg-black/5 dark:bg-white/10 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-colors" title="Sao chép">
+                                <i class="far fa-copy text-[11px]"></i> Chép
+                            </button>
                         </div>
-                        <div class="flex-1">
-                            <p id="status-text" class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Đang chờ thao tác</p>
-                            <p class="text-[10px] text-zinc-400 font-medium mt-0.5">Hệ thống hỗ trợ xử lý mã an toàn, không chạy các script độc hại.</p>
+
+                        <div class="flex-1 flex flex-col min-h-[260px]">
+                            <textarea id="entity-output" readonly
+                                class="flex-1 w-full bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[16px] p-3.5 outline-none text-xs font-mono text-zinc-800 dark:text-zinc-200 resize-y placeholder-zinc-400 select-all"
+                                placeholder="Kết quả chuyển đổi Entities sẽ hiển thị tại đây..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- STATUS DISPLAY -->
+                    <div class="p-3 rounded-[14px] bg-accent-theme-alpha border border-black/[0.03] dark:border-white/[0.05] flex items-center gap-2.5">
+                        <div class="w-6 h-6 rounded-[8px] bg-white dark:bg-[#1c1c1e] text-accent-theme flex items-center justify-center text-xs shrink-0 shadow-sm">
+                            <i class="fas fa-shield-halved text-[10px]"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p id="status-text" class="text-[11px] font-bold text-accent-theme uppercase tracking-wider truncate">Đang chờ thao tác</p>
+                            <p class="text-[10px] text-zinc-400 truncate">Hệ thống xử lý qua DOMParser an toàn, vô hiệu hóa script độc hại.</p>
                         </div>
                     </div>
                 </div>
 
             </div>
-        </div>
+
+        </main>
+    </div>
     `;
 }
 
-export function init() {
-    const inputEl = document.getElementById('entity-input');
-    const outputEl = document.getElementById('entity-output');
-    const btnEncode = document.getElementById('btn-encode');
-    const btnDecode = document.getElementById('btn-decode');
-    const btnClear = document.getElementById('btn-clear');
-    const btnCopy = document.getElementById('btn-copy');
-    const statusText = document.getElementById('status-text');
+// =============================================================================
+// 3. LOGIC HOOKS & EVENT DISPATCHING
+// =============================================================================
+export function init(hostElement) {
+    if (!hostElement) return;
 
-    // Hàm an toàn để Encode HTML
+    const rootContainer = hostElement.querySelector('#entity-root-container') || hostElement;
+
+    // Khởi tạo ThemeKit
+    const updateAccent = () => ThemeKit.applyAccent(rootContainer);
+    updateAccent();
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'hunqos_accent_color' || e.key === 'hunqos_icon_custom_bg') {
+            updateAccent();
+        }
+    });
+
+    const _ = sel => hostElement.querySelector(sel);
+
+    const inputEl = _('#entity-input');
+    const outputEl = _('#entity-output');
+    const btnEncode = _('#btn-encode');
+    const btnDecode = _('#btn-decode');
+    const btnClear = _('#btn-clear');
+    const btnCopy = _('#btn-copy');
+    const statusText = _('#status-text');
+
     const encodeHTML = (str) => {
-        return str.replace(/[\u00A0-\u9999<>\&"']/g, (i) => {
+        return str.replace(/[\u00A0-\u9999<>&"']/g, (i) => {
             return '&#' + i.charCodeAt(0) + ';';
         });
     };
 
-    // Hàm an toàn để Decode HTML (Sử dụng DOMParser để tránh XSS so với innerHTML trực tiếp)
     const decodeHTML = (html) => {
         const doc = new DOMParser().parseFromString(html, "text/html");
-        return doc.documentElement.textContent;
+        return doc.documentElement.textContent || "";
     };
 
-    // Cập nhật trạng thái hiển thị
     const updateStatus = (message, isSuccess = true) => {
+        if (!statusText) return;
         statusText.textContent = message;
-        statusText.classList.remove('text-zinc-500', 'text-emerald-500', 'text-red-500');
-        statusText.classList.add(isSuccess ? 'text-emerald-500' : 'text-red-500');
+        statusText.className = isSuccess 
+            ? 'text-[11px] font-bold text-accent-theme uppercase tracking-wider truncate' 
+            : 'text-[11px] font-bold text-rose-500 uppercase tracking-wider truncate';
         
         setTimeout(() => {
-            statusText.textContent = 'Sẵn sàng';
-            statusText.classList.remove('text-emerald-500', 'text-red-500');
-            statusText.classList.add('text-zinc-500');
-        }, 3000);
+            if (statusText) {
+                statusText.textContent = 'Sẵn sàng';
+                statusText.className = 'text-[11px] font-bold text-accent-theme uppercase tracking-wider truncate';
+            }
+        }, 2800);
     };
 
-    // Nút Encode
-    btnEncode.addEventListener('click', () => {
-        const val = inputEl.value;
+    btnEncode?.addEventListener('click', () => {
+        const val = inputEl?.value || '';
         if (!val.trim()) {
-            UI.showAlert('Cảnh báo', 'Vui lòng nhập dữ liệu vào ô đầu vào.', 'error');
+            IslandKit.notify('Cảnh báo', 'Vui lòng nhập văn bản hoặc thẻ HTML cần Encode.', 'warning');
             return;
         }
-        outputEl.value = encodeHTML(val);
+        if (outputEl) outputEl.value = encodeHTML(val);
         updateStatus('Đã mã hóa (Encode) thành công');
-        UI.showAlert('Thành công', 'Văn bản đã được chuyển đổi sang Entities.', 'success');
+        IslandKit.notify('Thành công', 'Đã chuyển đổi văn bản sang HTML Entities.', 'success');
     });
 
-    // Nút Decode
-    btnDecode.addEventListener('click', () => {
-        const val = inputEl.value;
+    btnDecode?.addEventListener('click', () => {
+        const val = inputEl?.value || '';
         if (!val.trim()) {
-            UI.showAlert('Cảnh báo', 'Vui lòng nhập dữ liệu vào ô đầu vào.', 'error');
+            IslandKit.notify('Cảnh báo', 'Vui lòng nhập chuỗi Entities cần giải mã.', 'warning');
             return;
         }
-        outputEl.value = decodeHTML(val);
+        if (outputEl) outputEl.value = decodeHTML(val);
         updateStatus('Đã giải mã (Decode) thành công');
-        UI.showAlert('Thành công', 'Entities đã được khôi phục thành văn bản gốc.', 'success');
+        IslandKit.notify('Thành công', 'Đã khôi phục văn bản gốc từ Entities.', 'success');
     });
 
-    // Nút Copy
-    btnCopy.addEventListener('click', async () => {
-        const val = outputEl.value;
+    btnCopy?.addEventListener('click', async () => {
+        const val = outputEl?.value || '';
         if (!val) {
-            UI.showAlert('Cảnh báo', 'Không có dữ liệu đầu ra để copy.', 'error');
+            IslandKit.notify('Trống', 'Chưa có kết quả để sao chép.', 'info');
             return;
         }
         try {
             await navigator.clipboard.writeText(val);
             updateStatus('Đã sao chép vào Clipboard');
-            UI.showAlert('Đã chép', 'Kết quả đã được sao chép vào Clipboard.', 'success');
+            IslandKit.notify('Đã sao chép', 'Kết quả đã được lưu vào bộ nhớ tạm.', 'success');
         } catch (err) {
-            UI.showAlert('Lỗi', 'Trình duyệt của bạn không hỗ trợ sao chép.', 'error');
+            IslandKit.notify('Lỗi', 'Trình duyệt không hỗ trợ truy cập clipboard.', 'error');
         }
     });
 
-    // Nút Xóa
-    btnClear.addEventListener('click', () => {
-        inputEl.value = '';
-        outputEl.value = '';
-        inputEl.focus();
-        updateStatus('Đã xóa dữ liệu');
+    btnClear?.addEventListener('click', () => {
+        if (inputEl) inputEl.value = '';
+        if (outputEl) outputEl.value = '';
+        inputEl?.focus();
+        updateStatus('Đã dọn dẹp vùng nhập');
     });
 }

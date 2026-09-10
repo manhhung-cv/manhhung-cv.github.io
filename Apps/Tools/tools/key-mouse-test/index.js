@@ -1,280 +1,363 @@
 import { UI } from '../../js/ui.js';
 
+// =============================================================================
+// 0. DYNAMIC THEME ACCENT CONTROLLER
+// =============================================================================
+const DEFAULT_EMERALD = '#10b981';
+
+export const ThemeKit = {
+    getAccentColor: () => {
+        return localStorage.getItem('hunqos_accent_color') || 
+               localStorage.getItem('hunqos_icon_custom_bg') || 
+               DEFAULT_EMERALD;
+    },
+    applyAccent: (container) => {
+        if (!container) return;
+        const accent = ThemeKit.getAccentColor();
+        container.style.setProperty('--kit-accent', accent);
+    }
+};
+
+// =============================================================================
+// 1. ADAPTIVE ISLAND & TOAST FALLBACK CONTROLLER
+// =============================================================================
+export const IslandKit = {
+    isIslandActive: () => {
+        const isEnabled = localStorage.getItem('hunqos_dynamic_island') !== 'false';
+        const wrapper = document.getElementById('dynamic-island-wrapper');
+        const isDOMVisible = wrapper && !wrapper.classList.contains('hidden') && window.getComputedStyle(wrapper).display !== 'none';
+        return Boolean(isEnabled && isDOMVisible && typeof window.triggerIslandNotification === 'function');
+    },
+
+    notify: (title, desc, type = 'info', duration = 2800) => {
+        if (IslandKit.isIslandActive()) {
+            window.triggerIslandNotification(title, desc, type, duration);
+        } else {
+            UI.showAlert(title, desc, type, duration);
+        }
+    }
+};
+
+// =============================================================================
+// 2. TEMPLATE RENDERER (SEAMLESS EMERALD FLAT)
+// =============================================================================
 export function template() {
     return `
+    <div id="kb-mouse-root" class="w-full h-full bg-[#f4f4f6] dark:bg-[#000000] text-[#18181b] dark:text-[#f4f4f6] select-none overflow-hidden font-sans transition-colors duration-200">
+        
         <style>
-            .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
-            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; }
-            
-            .btn-premium { transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s; user-select: none; cursor: pointer; }
-            .btn-premium:active { transform: scale(0.96); opacity: 0.8; }
-            
-            .ui-fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-            @keyframes fadeIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+            #kb-mouse-root {
+                --kit-accent: #10b981;
+            }
+            .bg-accent-theme {
+                background-color: var(--kit-accent) !important;
+            }
+            .text-accent-theme {
+                color: var(--kit-accent) !important;
+            }
+            .border-accent-theme {
+                border-color: var(--kit-accent) !important;
+            }
+            .bg-accent-theme-alpha {
+                background-color: color-mix(in srgb, var(--kit-accent) 14%, transparent) !important;
+            }
+            .hover-bg-accent-theme-alpha:hover {
+                background-color: color-mix(in srgb, var(--kit-accent) 20%, transparent) !important;
+            }
 
             /* --- Responsive Keyboard Layout --- */
-            .kb-wrapper { display: flex; gap: 16px; min-width: 820px; } /* Min-width 820px kết hợp với height 54px tạo form vuông 1:1 cho phím thường */
+            .kb-wrapper { display: flex; gap: 14px; min-width: 820px; }
             .kb-section { display: flex; flex-direction: column; gap: 4px; }
             .kb-main { flex: 15; } 
             .kb-nav { flex: 3; }  
             .kb-numpad { flex: 4; } 
 
-            .kb-row { display: flex; gap: 4px; width: 100%; height: 54px; } /* Ép chiều cao cố định để phím base thành vuông */
+            .kb-row { display: flex; gap: 4px; width: 100%; height: 50px; }
             
-            /* State Đồng bộ & Dark Mode */
+            /* Key States */
             .key-btn {
-                --k-bg: #f4f4f5; 
-                --k-bd: #e4e4e7; 
+                --k-bg: #f4f4f6; 
+                --k-bd: rgba(0, 0, 0, 0.08); 
                 --k-cl: #52525b;
             }
             .dark .key-btn {
-                --k-bg: #18181b; 
-                --k-bd: #27272a; 
+                --k-bg: #161618; 
+                --k-bd: rgba(255, 255, 255, 0.08); 
                 --k-cl: #a1a1aa;
             }
             .key-btn.tested {
-                --k-bg: #ecfdf5; 
-                --k-bd: #a7f3d0; 
-                --k-cl: #059669;
-            }
-            .dark .key-btn.tested {
-                --k-bg: rgba(16, 185, 129, 0.15); 
-                --k-bd: rgba(16, 185, 129, 0.3); 
-                --k-cl: #34d399;
+                --k-bg: color-mix(in srgb, var(--kit-accent) 12%, transparent); 
+                --k-bd: color-mix(in srgb, var(--kit-accent) 30%, transparent); 
+                --k-cl: var(--kit-accent);
             }
             .key-btn.active {
-                --k-bg: #10b981 !important; 
-                --k-bd: #059669 !important; 
-                --k-cl: #fff !important;
-                transform: translateY(2px) scale(0.95);
+                --k-bg: var(--kit-accent) !important; 
+                --k-bd: var(--kit-accent) !important; 
+                --k-cl: #ffffff !important;
+                transform: translateY(2px) scale(0.96);
                 z-index: 20;
             }
-            .dark .key-btn.active {
-                --k-bd: #047857 !important;
-            }
 
-            /* Style Cơ Bản Phím */
             .key-btn:not(.jis-enter-container):not(.tall-key) { 
                 flex: 1; 
-                height: 100%; /* Lấp đầy chiều cao 54px của row */
+                height: 100%;
                 display: flex; flex-direction: column; align-items: center; justify-content: center; 
-                border-radius: 8px; font-size: 13px; font-weight: 600;
+                border-radius: 8px; font-size: 12px; font-weight: 600; font-family: monospace;
                 background: var(--k-bg); border: 1px solid var(--k-bd); color: var(--k-cl);
-                box-shadow: 0 2px 0 rgba(0,0,0,0.02);
-                transition: all 0.1s;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+                transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
                 position: relative;
                 overflow: hidden;
-                padding: 4px;
+                padding: 3px;
                 text-align: center;
-                line-height: 1.2;
+                line-height: 1.15;
             }
-            .dark .key-btn:not(.jis-enter-container):not(.tall-key) { box-shadow: 0 2px 0 rgba(0,0,0,0.2); }
+            .dark .key-btn:not(.jis-enter-container):not(.tall-key) { box-shadow: 0 2px 4px rgba(0,0,0,0.25); }
             
-            /* --- Numpad Tall Keys (+ & Enter) --- */
+            /* Numpad Tall Keys (+ & Enter) */
             .tall-key {
                 position: absolute; top: 0; left: 0; right: 0;
-                height: calc(200% + 4px); /* Cao gấp 2 lần Row + khoảng cách Gap */
+                height: calc(200% + 4px);
                 display: flex; flex-direction: column; align-items: center; justify-content: center; 
-                border-radius: 8px; font-size: 13px; font-weight: 600;
+                border-radius: 8px; font-size: 13px; font-weight: 600; font-family: monospace;
                 background: var(--k-bg); border: 1px solid var(--k-bd); color: var(--k-cl);
-                box-shadow: 0 2px 0 rgba(0,0,0,0.02);
-                transition: all 0.1s; z-index: 10;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+                transition: transform 0.08s ease, background 0.15s ease; z-index: 10;
             }
-            .dark .tall-key { box-shadow: 0 2px 0 rgba(0,0,0,0.2); }
+            .dark .tall-key { box-shadow: 0 2px 4px rgba(0,0,0,0.25); }
 
-            /* --- JIS ENTER SHAPE HACK --- */
+            /* JIS Enter */
             .jis-enter-container {
                 position: absolute; top: 0; right: 0; 
                 width: 100%; height: calc(200% + 4px); 
                 background: transparent !important; border: none !important; box-shadow: none !important;
-                color: var(--k-cl); z-index: 10; transition: transform 0.1s;
+                color: var(--k-cl); z-index: 10; transition: transform 0.08s ease;
             }
             .jis-enter-top {
                 position: absolute; top: 0; right: 0; left: 0; 
                 height: calc(50% - 2px); 
                 background: var(--k-bg); border: 1px solid var(--k-bd);
-                border-radius: 8px 8px 0 8px; transition: all 0.1s;
+                border-radius: 8px 8px 0 8px; transition: all 0.15s;
             }
             .jis-enter-bottom {
                 position: absolute; bottom: 0; right: 0; 
                 width: 83.33%; height: calc(50% + 2px); 
                 background: var(--k-bg); border: 1px solid var(--k-bd);
-                border-radius: 8px 0 8px 8px; transition: all 0.1s;
+                border-radius: 8px 0 8px 8px; transition: all 0.15s;
             }
             .jis-enter-join {
                 position: absolute; top: calc(50% - 4px); right: 1px; 
                 width: calc(83.33% - 2px); height: 5px;
-                background: var(--k-bg); z-index: 2; transition: all 0.1s;
+                background: var(--k-bg); z-index: 2; transition: all 0.15s;
             }
 
-            /* --- Cụm phím mũi tên M3 Mac --- */
+            /* Arrow Columns */
             .key-col { display: flex; flex-direction: column; gap: 4px; height: 100%; }
             .key-col .key-btn { 
-                height: 25px !important; 
+                height: 23px !important; 
                 flex: unset; 
                 padding: 0 !important;
             }
             .key-col-spacer {
-                flex: unset; visibility: hidden; height: 25px;
+                flex: unset; visibility: hidden; height: 23px;
             }
 
-            /* Tỷ Lệ Vàng (Golden Flex Proportions) đảm bảo tổng bằng 15 Units */
             .f-1 { flex: 1; } .f-1-25 { flex: 1.25; } .f-1-5 { flex: 1.5; } 
             .f-1-75 { flex: 1.75; } .f-2 { flex: 2; } .f-2-25 { flex: 2.25; } 
             .f-2-75 { flex: 2.75; } .f-3-25 { flex: 3.25; } .f-4 { flex: 4; } 
             .f-5-5 { flex: 5.5; } .f-space { flex: 6.25; }
             .key-spacer { flex: 0.5; visibility: hidden; } 
 
-            .key-sub { font-size: 10px; opacity: 0.7; position: absolute; top: 4px; left: 8px; }
-            .key-main { margin-top: auto; margin-bottom: auto; display: flex; gap: 6px; align-items: center; }
+            .key-sub { font-size: 9px; opacity: 0.65; position: absolute; top: 3px; left: 6px; }
+            .key-main { margin-top: auto; margin-bottom: auto; display: flex; gap: 4px; align-items: center; }
 
-            #key-history-list li { animation: slideIn 0.2s ease-out; }
-            @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
-
-            /* --- Mouse Tester Styles --- */
-            .mouse-btn-part { transition: all 0.1s; }
+            /* Mouse Tester */
+            .mouse-btn-part { transition: background-color 0.1s ease, transform 0.1s ease; }
             .mouse-active-left { background-color: #3b82f6 !important; }
             .mouse-active-right { background-color: #ef4444 !important; }
-            .mouse-active-mid { background-color: #10b981 !important; transform: translateY(2px); }
-            .mouse-active-scroll-up { box-shadow: 0 -8px 0 0 rgba(16, 185, 129, 0.4) inset; }
-            .mouse-active-scroll-down { box-shadow: 0 8px 0 0 rgba(16, 185, 129, 0.4) inset; }
+            .mouse-active-mid { background-color: var(--kit-accent) !important; transform: translateY(2px); }
+            .mouse-active-scroll-up { box-shadow: 0 -8px 0 0 color-mix(in srgb, var(--kit-accent) 40%, transparent) inset; }
+            .mouse-active-scroll-down { box-shadow: 0 8px 0 0 color-mix(in srgb, var(--kit-accent) 40%, transparent) inset; }
         </style>
 
-        <div class="relative flex flex-col w-full max-w-[1250px] mx-auto min-h-[600px] pb-10 px-4">
+        <!-- MAIN SCROLLER -->
+        <main class="w-full h-full overflow-y-auto no-scrollbar px-3.5 sm:px-6 pt-6 pb-24 max-w-6xl mx-auto space-y-5">
             
-            <div class="mb-6 ui-fade-in">
-                <h2 class="text-[28px] font-black text-zinc-900 dark:text-white tracking-tight leading-none mb-2">Kiểm Tra Bàn Phím và Chuột</h2>
-                <p class="text-[13px] text-zinc-500 font-medium">Kiểm tra hoạt động của bàn phím và chuột.</p>
-            </div>
-
-            <div class="ui-block bg-white dark:bg-[#0c0c0e] rounded-[32px] ring-1 ring-inset ring-zinc-200 dark:ring-zinc-800/80 p-6 md:p-8 ui-fade-in" style="animation-delay: 100ms;">
-                
-                <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
-                    <div class="flex flex-wrap gap-2 bg-zinc-50 dark:bg-zinc-800/30 p-1.5 rounded-2xl w-fit">
-                        <button class="layout-btn btn-premium px-4 py-2 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white text-[11px] font-bold border border-transparent" data-layout="108">108-Key (Full)</button>
-                        <button class="layout-btn btn-premium px-4 py-2 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white text-[11px] font-bold border border-transparent" data-layout="tkl">TKL (87)</button>
-                        <button class="layout-btn btn-premium px-4 py-2 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white text-[11px] font-bold border border-transparent" data-layout="60">60% Layout</button>
-                        <button class="layout-btn btn-premium px-4 py-2 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white text-[11px] font-bold border border-transparent" data-layout="mac">Mac US</button>
-                        <button class="layout-btn active btn-premium px-4 py-2 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white text-[11px] font-bold shadow-sm" data-layout="macjis">Mac JIS</button>
+            <!-- SEAMLESS HERO TITLE -->
+            <div class="px-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-accent-theme shadow-sm transition-colors"></span>
+                        <span class="text-[11px] font-mono tracking-wider font-semibold uppercase text-accent-theme">HunqOS Hardware Testing</span>
                     </div>
-                    <button id="reset-btn" class="btn-premium px-4 py-2 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-[11px] font-bold border border-red-200 dark:border-red-900/50 flex items-center gap-2">
-                        <i class="fas fa-trash-alt"></i> Reset Test
+                    <h1 class="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">Kiểm Tra Bàn Phím & Chuột</h1>
+                    <p class="text-[12px] text-zinc-500 dark:text-zinc-400 font-normal">Xác thực tín hiệu phím, chống dập phím (Anti-Ghosting), click chuột và cuộn con lăn thời gian thực.</p>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                    <button id="reset-btn" class="h-10 px-3.5 rounded-[14px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] text-rose-500 hover:bg-rose-500/10 text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm">
+                        <i class="far fa-trash-can text-xs"></i> Đặt lại
                     </button>
                 </div>
+            </div>
 
-                <div class="w-full overflow-x-auto custom-scrollbar pb-6 border-b border-zinc-100 dark:border-zinc-800/50">
-                    <div id="keyboard-render-area" class="kb-wrapper">
-                        </div>
+            <!-- KEYBOARD TESTER CONTAINER -->
+            <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-4 sm:p-5 shadow-sm space-y-4">
+                
+                <!-- TOP BAR: SEGMENTED TABS CHO CÁC LAYOUT -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+                    <div class="grid grid-cols-5 gap-1 p-1 rounded-[14px] bg-black/[0.05] dark:bg-black/50 border border-black/[0.04] dark:border-white/[0.08] w-full sm:w-[500px]" id="kb-layout-tabs">
+                        <button class="layout-btn active py-1.5 rounded-[10px] text-[11px] font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all text-center truncate" data-layout="macjis">Mac JIS</button>
+                        <button class="layout-btn py-1.5 rounded-[10px] text-[11px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all text-center truncate" data-layout="mac">Mac US</button>
+                        <button class="layout-btn py-1.5 rounded-[10px] text-[11px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all text-center truncate" data-layout="60">60% Mini</button>
+                        <button class="layout-btn py-1.5 rounded-[10px] text-[11px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all text-center truncate" data-layout="tkl">TKL (87)</button>
+                        <button class="layout-btn py-1.5 rounded-[10px] text-[11px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all text-center truncate" data-layout="108">Full 108</button>
+                    </div>
+
+                    <span class="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 hidden sm:inline">Phát hiện tự động</span>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
-                    <div class="col-span-1 space-y-4">
-                        <h3 class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Event Lần Cuối</h3>
-                        <div class="space-y-3">
-                            <div class="bg-zinc-50 dark:bg-zinc-800/30 rounded-xl p-3 flex justify-between items-center ring-1 ring-inset ring-zinc-100 dark:ring-zinc-800">
-                                <span class="text-[10px] font-bold text-zinc-500 uppercase">Key</span>
-                                <span id="info-key" class="text-sm font-black text-zinc-900 dark:text-white">-</span>
+                <!-- KEYBOARD VISUAL RENDER -->
+                <div class="w-full overflow-x-auto no-scrollbar pb-2 pt-1 border-t border-black/[0.05] dark:border-white/[0.08]">
+                    <div id="keyboard-render-area" class="kb-wrapper mx-auto"></div>
+                </div>
+
+                <!-- KEYBOARD STATUS PANELS -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-black/[0.05] dark:border-white/[0.08]">
+                    <div class="space-y-2.5">
+                        <span class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Tín hiệu phím cuối</span>
+                        <div class="space-y-2">
+                            <div class="bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] p-2.5 flex justify-between items-center">
+                                <span class="text-[10px] font-mono text-zinc-400 uppercase">Ký tự (Key)</span>
+                                <span id="info-key" class="text-xs font-mono font-bold text-zinc-900 dark:text-white">-</span>
                             </div>
-                            <div class="bg-zinc-50 dark:bg-zinc-800/30 rounded-xl p-3 flex justify-between items-center ring-1 ring-inset ring-zinc-100 dark:ring-zinc-800">
-                                <span class="text-[10px] font-bold text-zinc-500 uppercase">Code</span>
-                                <span id="info-code" class="text-sm font-black text-zinc-900 dark:text-white">-</span>
+                            <div class="bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] p-2.5 flex justify-between items-center">
+                                <span class="text-[10px] font-mono text-zinc-400 uppercase">Mã (Code)</span>
+                                <span id="info-code" class="text-xs font-mono font-bold text-accent-theme">-</span>
                             </div>
                         </div>
-                        <div class="mt-4 p-4 bg-zinc-50 dark:bg-[#121214]/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80">
-                            <h4 class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Anti-Ghosting</h4>
-                            <p class="text-sm font-medium text-zinc-600 dark:text-zinc-400">Đang giữ: <strong id="ghosting-count" class="text-emerald-600 dark:text-emerald-400 text-xl ml-1">0</strong></p>
+
+                        <div class="p-3 bg-accent-theme-alpha rounded-[16px] border border-accent-theme/20 flex items-center justify-between">
+                            <span class="text-[10px] font-bold text-accent-theme uppercase tracking-wider">Anti-Ghosting</span>
+                            <div class="text-sm font-black font-mono text-accent-theme">
+                                <span id="ghosting-count">0</span> <span class="text-[10px] font-normal text-zinc-400">phím nhấn cùng lúc</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="col-span-1 md:col-span-2 flex flex-col h-[230px]">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Lịch sử phím</h3>
-                            <button id="clear-history" class="text-[10px] font-bold text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Xóa</button>
+                    <div class="md:col-span-2 flex flex-col h-[180px] space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Lịch sử phím bấm</span>
+                            <button id="clear-history" class="text-[10px] font-bold text-zinc-400 hover:text-accent-theme transition-colors">Xóa danh sách</button>
                         </div>
-                        <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 bg-zinc-50/50 dark:bg-zinc-800/10 rounded-2xl p-2 border border-zinc-100 dark:border-zinc-800/50">
-                            <ul id="key-history-list" class="space-y-2">
-                                <li class="text-xs text-zinc-400 dark:text-zinc-500 italic text-center mt-4">Chưa có thao tác nào</li>
+
+                        <div class="flex-1 overflow-y-auto no-scrollbar bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[16px] p-2.5">
+                            <ul id="key-history-list" class="space-y-1.5">
+                                <li class="text-xs font-mono text-zinc-400 italic text-center py-4">Chưa có phím nào được nhấn</li>
                             </ul>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div id="mouse-tester-area" class="mt-8 ui-block bg-white dark:bg-[#0c0c0e] rounded-[32px] ring-1 ring-inset ring-zinc-200 dark:ring-zinc-800/80 p-6 md:p-8 ui-fade-in" style="animation-delay: 200ms;">
-                <div class="flex items-center justify-between mb-8">
-                    <h3 class="text-lg font-black text-zinc-900 dark:text-white">Mouse Tester</h3>
-                    <span class="text-xs font-medium text-zinc-500 px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full">Test right here</span>
+            <!-- MOUSE TESTER CONTAINER -->
+            <div id="mouse-tester-area" class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-4 sm:p-6 shadow-sm space-y-4">
+                <div class="flex items-center justify-between pb-2 border-b border-black/[0.05] dark:border-white/[0.08]">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-mouse text-accent-theme text-sm"></i>
+                        <h3 class="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Kiểm tra chuột (Mouse Tester)</h3>
+                    </div>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-zinc-500">Click & Scroll trong khung này</span>
                 </div>
-                <div class="flex flex-col md:flex-row gap-12 items-center justify-center">
+
+                <div class="flex flex-col md:flex-row gap-8 items-center justify-center py-2">
                     
-                    <div id="mouse-model" class="relative w-36 h-56 border-[3px] border-zinc-200 dark:border-zinc-700 rounded-[3rem] flex flex-col items-center p-3 gap-2 shadow-sm bg-zinc-50 dark:bg-zinc-800/20">
+                    <!-- SVG / CSS MOUSE MODEL -->
+                    <div id="mouse-model" class="relative w-36 h-56 border-2 border-black/[0.1] dark:border-white/[0.15] rounded-[3rem] flex flex-col items-center p-3 gap-2 shadow-sm bg-[#f2f2f7] dark:bg-black/40">
                         <div class="flex w-full gap-2 h-20">
-                            <div id="mouse-left" class="mouse-btn-part flex-1 rounded-tl-[2rem] rounded-bl-xl bg-zinc-200 dark:bg-zinc-700"></div>
-                            <div id="mouse-mid-container" class="w-8 h-12 mx-auto self-center flex items-center justify-center overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
-                                <div id="mouse-mid" class="mouse-btn-part w-full h-full rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
+                            <div id="mouse-left" class="mouse-btn-part flex-1 rounded-tl-[2rem] rounded-bl-xl bg-black/10 dark:bg-white/15"></div>
+                            <div id="mouse-mid-container" class="w-8 h-12 mx-auto self-center flex items-center justify-center overflow-hidden rounded-full bg-black/10 dark:bg-white/15">
+                                <div id="mouse-mid" class="mouse-btn-part w-full h-full rounded-full bg-black/20 dark:bg-white/30"></div>
                             </div>
-                            <div id="mouse-right" class="mouse-btn-part flex-1 rounded-tr-[2rem] rounded-br-xl bg-zinc-200 dark:bg-zinc-700"></div>
+                            <div id="mouse-right" class="mouse-btn-part flex-1 rounded-tr-[2rem] rounded-br-xl bg-black/10 dark:bg-white/15"></div>
                         </div>
-                        <div id="mouse-body" class="mouse-btn-part flex-1 w-full rounded-b-[2rem] bg-zinc-200 dark:bg-zinc-700 mt-1 flex flex-col items-center justify-center opacity-80">
-                            <i class="fas fa-arrows-alt text-zinc-400 dark:text-zinc-500 mb-1"></i>
+                        <div id="mouse-body" class="mouse-btn-part flex-1 w-full rounded-b-[2rem] bg-black/5 dark:bg-white/10 mt-1 flex flex-col items-center justify-center">
+                            <i class="fas fa-arrows-up-down-left-right text-zinc-400 text-xs mb-1"></i>
                         </div>
                     </div>
 
-                    <div class="space-y-4 w-full md:w-64">
-                        <div class="flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/30 rounded-xl p-4 ring-1 ring-inset ring-zinc-100 dark:ring-zinc-800">
-                            <span class="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Click</span>
-                            <span id="mouse-btn-info" class="text-sm font-black text-zinc-900 dark:text-white">-</span>
+                    <!-- MOUSE SPECS INFO -->
+                    <div class="space-y-2.5 w-full md:w-72">
+                        <div class="flex justify-between items-center bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] p-3">
+                            <span class="text-[10px] font-mono font-bold text-zinc-400 uppercase">Nút bấm (Click)</span>
+                            <span id="mouse-btn-info" class="text-xs font-mono font-black text-zinc-900 dark:text-white">-</span>
                         </div>
-                        <div class="flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/30 rounded-xl p-4 ring-1 ring-inset ring-zinc-100 dark:ring-zinc-800">
-                            <span class="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Scroll</span>
-                            <span id="mouse-scroll-info" class="text-sm font-black text-zinc-900 dark:text-white">-</span>
+                        <div class="flex justify-between items-center bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] p-3">
+                            <span class="text-[10px] font-mono font-bold text-zinc-400 uppercase">Con lăn (Scroll)</span>
+                            <span id="mouse-scroll-info" class="text-xs font-mono font-black text-zinc-900 dark:text-white">-</span>
                         </div>
-                        <div class="flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/30 rounded-xl p-4 ring-1 ring-inset ring-zinc-100 dark:ring-zinc-800">
-                            <span class="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Pointer</span>
-                            <span id="mouse-pos-info" class="text-[13px] font-black font-mono text-zinc-900 dark:text-white">X: 0, Y: 0</span>
+                        <div class="flex justify-between items-center bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] p-3">
+                            <span class="text-[10px] font-mono font-bold text-zinc-400 uppercase">Tọa độ (Pointer)</span>
+                            <span id="mouse-pos-info" class="text-xs font-mono font-black text-accent-theme">X: 0, Y: 0</span>
                         </div>
                     </div>
+
                 </div>
             </div>
 
-        </div>
+        </main>
+    </div>
     `;
 }
 
-export function init() {
-    // ==========================================
-    // 1. DATA & RENDER KEYBOARD (Đã cập nhật Icon & Tỷ lệ chuẩn)
-    // ==========================================
+// =============================================================================
+// 3. LOGIC HOOKS & EVENT DISPATCHING
+// =============================================================================
+export function init(hostElement) {
+    if (!hostElement) return;
+
+    const rootContainer = hostElement.querySelector('#kb-mouse-root') || hostElement;
+
+    // Khởi tạo ThemeKit
+    const updateAccent = () => ThemeKit.applyAccent(rootContainer);
+    updateAccent();
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'hunqos_accent_color' || e.key === 'hunqos_icon_custom_bg') {
+            updateAccent();
+        }
+    });
+
+    const _ = sel => hostElement.querySelector(sel);
+    const $$ = sel => hostElement.querySelectorAll(sel);
+
+    // =========================================================================
+    // 1. DATA KEYBOARD LAYOUTS
+    // =========================================================================
     const kbData = {
-        // --- STANDARD ANSI (Main) ---
         mainRow0: [{c:'⎋ Esc',k:'Escape'},{w:'key-spacer'},{c:'F1',k:'F1'},{c:'F2',k:'F2'},{c:'F3',k:'F3'},{c:'F4',k:'F4'},{w:'key-spacer'},{c:'F5',k:'F5'},{c:'F6',k:'F6'},{c:'F7',k:'F7'},{c:'F8',k:'F8'},{w:'key-spacer'},{c:'F9',k:'F9'},{c:'F10',k:'F10'},{c:'F11',k:'F11'},{c:'F12',k:'F12'}],
-        mainRow1: [{s:'~',c:'`',k:'Backquote'},{s:'!',c:'1',k:'Digit1'},{s:'@',c:'2',k:'Digit2'},{s:'#',c:'3',k:'Digit3'},{s:'$',c:'4',k:'Digit4'},{s:'%',c:'5',k:'Digit5'},{s:'^',c:'6',k:'Digit6'},{s:'&',c:'7',k:'Digit7'},{s:'*',c:'8',k:'Digit8'},{s:'(',c:'9',k:'Digit9'},{s:')',c:'0',k:'Digit0'},{s:'_',c:'-',k:'Minus'},{s:'+',c:'=',k:'Equal'},{c:'<i class="fas fa-backspace text-sm"></i>',k:'Backspace',w:'f-2'}],
+        mainRow1: [{s:'~',c:'`',k:'Backquote'},{s:'!',c:'1',k:'Digit1'},{s:'@',c:'2',k:'Digit2'},{s:'#',c:'3',k:'Digit3'},{s:'$',c:'4',k:'Digit4'},{s:'%',c:'5',k:'Digit5'},{s:'^',c:'6',k:'Digit6'},{s:'&',c:'7',k:'Digit7'},{s:'*',c:'8',k:'Digit8'},{s:'(',c:'9',k:'Digit9'},{s:')',c:'0',k:'Digit0'},{s:'_',c:'-',k:'Minus'},{s:'+',c:'=',k:'Equal'},{c:'<i class="fas fa-backspace text-xs"></i>',k:'Backspace',w:'f-2'}],
         mainRow2: [{c:'⇥ Tab',k:'Tab',w:'f-1-5'},{c:'Q',k:'KeyQ'},{c:'W',k:'KeyW'},{c:'E',k:'KeyE'},{c:'R',k:'KeyR'},{c:'T',k:'KeyT'},{c:'Y',k:'KeyY'},{c:'U',k:'KeyU'},{c:'I',k:'KeyI'},{c:'O',k:'KeyO'},{c:'P',k:'KeyP'},{s:'{',c:'[',k:'BracketLeft'},{s:'}',c:']',k:'BracketRight'},{s:'|',c:'\\',k:'Backslash',w:'f-1-5'}],
         mainRow3: [{c:'⇪ Caps',k:'CapsLock',w:'f-1-75'},{c:'A',k:'KeyA'},{c:'S',k:'KeyS'},{c:'D',k:'KeyD'},{c:'F',k:'KeyF'},{c:'G',k:'KeyG'},{c:'H',k:'KeyH'},{c:'J',k:'KeyJ'},{c:'K',k:'KeyK'},{c:'L',k:'KeyL'},{s:':',c:';',k:'Semicolon'},{s:'"',c:"'",k:'Quote'},{c:'↵ Enter',k:'Enter',w:'f-2-25'}],
         mainRow4: [{c:'⇧ Shift',k:'ShiftLeft',w:'f-2-25'},{c:'Z',k:'KeyZ'},{c:'X',k:'KeyX'},{c:'C',k:'KeyC'},{c:'V',k:'KeyV'},{c:'B',k:'KeyB'},{c:'N',k:'KeyN'},{c:'M',k:'KeyM'},{s:'<',c:',',k:'Comma'},{s:'>',c:'.',k:'Period'},{s:'?',c:'/',k:'Slash'},{c:'⇧ Shift',k:'ShiftRight',w:'f-2-75'}],
         mainRow5: [{c:'⌃ Ctrl',k:'ControlLeft',w:'f-1-25'},{c:'<i class="fab fa-windows"></i>',k:'MetaLeft',w:'f-1-25'},{c:'⎇ Alt',k:'AltLeft',w:'f-1-25'},{c:'',k:'Space',w:'f-space'},{c:'⎇ Alt',k:'AltRight',w:'f-1-25'},{c:'<i class="fab fa-windows"></i>',k:'MetaRight',w:'f-1-25'},{c:'<i class="fas fa-bars"></i>',k:'ContextMenu',w:'f-1-25'},{c:'⌃ Ctrl',k:'ControlRight',w:'f-1-25'}],
         
-        // --- M3 MACBOOK PRO US ---
-        macUSRow0: [{c:'⎋ esc',k:'Escape',w:'f-1-5'},{c:'F1',k:'F1'},{c:'F2',k:'F2'},{c:'F3',k:'F3'},{c:'F4',k:'F4'},{c:'F5',k:'F5'},{c:'F6',k:'F6'},{c:'F7',k:'F7'},{c:'F8',k:'F8'},{c:'F9',k:'F9'},{c:'F10',k:'F10'},{c:'F11',k:'F11'},{c:'F12',k:'F12'},{c:'<i class="fas fa-fingerprint"></i>',k:'Power',w:'f-1-5'}],
+        macUSRow0: [{c:'⎋ esc',k:'Escape',w:'f-1-5'},{c:'F1',k:'F1'},{c:'F2',k:'F2'},{c:'F3',k:'F3'},{c:'F4',k:'F4'},{c:'F5',k:'F5'},{c:'F6',k:'F6'},{c:'F7',k:'F7'},{c:'F8',k:'F8'},{c:'F9',k:'F9'},{c:'F10',k:'F10'},{c:'F11',k:'F11'},{c:'F12',k:'F12'},{c:'<i class="fas fa-fingerprint text-xs"></i>',k:'Power',w:'f-1-5'}],
         macUSRow5: [{c:'🌐 fn',k:'Fn',w:'f-1'},{c:'⌃ ctrl',k:'ControlLeft',w:'f-1'},{c:'⌥ opt',k:'AltLeft',w:'f-1'},{c:'⌘ cmd',k:'MetaLeft',w:'f-1-25'},{c:'',k:'Space',w:'f-5-5'},{c:'⌘ cmd',k:'MetaRight',w:'f-1-25'},{c:'⌥ opt',k:'AltRight',w:'f-1'},{t:'col', w:'f-1', keys: [{t:'spacer'}, {c:'◀',k:'ArrowLeft'}]},{t:'col', w:'f-1', keys: [{c:'▲',k:'ArrowUp'}, {c:'▼',k:'ArrowDown'}]},{t:'col', w:'f-1', keys: [{t:'spacer'}, {c:'▶',k:'ArrowRight'}]}],
 
-        // --- M3 MACBOOK PRO JIS ---
-        macJisRow0: [{c:'⎋ esc',k:'Escape',w:'f-1-5'},{c:'F1',k:'F1'},{c:'F2',k:'F2'},{c:'F3',k:'F3'},{c:'F4',k:'F4'},{c:'F5',k:'F5'},{c:'F6',k:'F6'},{c:'F7',k:'F7'},{c:'F8',k:'F8'},{c:'F9',k:'F9'},{c:'F10',k:'F10'},{c:'F11',k:'F11'},{c:'F12',k:'F12'},{c:'<i class="fas fa-fingerprint"></i>',k:'Power',w:'f-1-5'}],
-        macJisRow1: [{s:'!',c:'1',k:'Digit1'},{s:'"',c:'2',k:'Digit2'},{s:'#',c:'3',k:'Digit3'},{s:'$',c:'4',k:'Digit4'},{s:'%',c:'5',k:'Digit5'},{s:'&',c:'6',k:'Digit6'},{s:"'",c:'7',k:'Digit7'},{s:'(',c:'8',k:'Digit8'},{s:')',c:'9',k:'Digit9'},{s:'',c:'0',k:'Digit0'},{s:'=',c:'-',k:'Minus'},{s:'~',c:'^',k:'Equal'},{s:'|',c:'¥',k:'IntlYen'},{c:'<i class="fas fa-backspace"></i>',k:'Backspace',w:'f-2'}],
+        macJisRow0: [{c:'⎋ esc',k:'Escape',w:'f-1-5'},{c:'F1',k:'F1'},{c:'F2',k:'F2'},{c:'F3',k:'F3'},{c:'F4',k:'F4'},{c:'F5',k:'F5'},{c:'F6',k:'F6'},{c:'F7',k:'F7'},{c:'F8',k:'F8'},{c:'F9',k:'F9'},{c:'F10',k:'F10'},{c:'F11',k:'F11'},{c:'F12',k:'F12'},{c:'<i class="fas fa-fingerprint text-xs"></i>',k:'Power',w:'f-1-5'}],
+        macJisRow1: [{s:'!',c:'1',k:'Digit1'},{s:'"',c:'2',k:'Digit2'},{s:'#',c:'3',k:'Digit3'},{s:'$',c:'4',k:'Digit4'},{s:'%',c:'5',k:'Digit5'},{s:'&',c:'6',k:'Digit6'},{s:"'",c:'7',k:'Digit7'},{s:'(',c:'8',k:'Digit8'},{s:')',c:'9',k:'Digit9'},{s:'',c:'0',k:'Digit0'},{s:'=',c:'-',k:'Minus'},{s:'~',c:'^',k:'Equal'},{s:'|',c:'¥',k:'IntlYen'},{c:'<i class="fas fa-backspace text-xs"></i>',k:'Backspace',w:'f-2'}],
         macJisRow2: [{c:'⇥ tab',k:'Tab',w:'f-1-5'},{c:'Q',k:'KeyQ'},{c:'W',k:'KeyW'},{c:'E',k:'KeyE'},{c:'R',k:'KeyR'},{c:'T',k:'KeyT'},{c:'Y',k:'KeyY'},{c:'U',k:'KeyU'},{c:'I',k:'KeyI'},{c:'O',k:'KeyO'},{c:'P',k:'KeyP'},{s:'`',c:'@',k:'BracketLeft'},{s:'{',c:'[',k:'BracketRight'},{c:'↵ enter',k:'Enter',w:'f-1-5', type:'jis-enter'}],
         macJisRow3: [{c:'⌃ ctrl',k:'ControlLeft',w:'f-1-75'},{c:'A',k:'KeyA'},{c:'S',k:'KeyS'},{c:'D',k:'KeyD'},{c:'F',k:'KeyF'},{c:'G',k:'KeyG'},{c:'H',k:'KeyH'},{c:'J',k:'KeyJ'},{c:'K',k:'KeyK'},{c:'L',k:'KeyL'},{s:'+',c:';',k:'Semicolon'},{s:'*',c:':',k:'Quote'},{s:'}',c:']',k:'Backslash'},{w:'f-1-25', type:'jis-spacer'}],
         macJisRow4: [{c:'⇧ shift',k:'ShiftLeft',w:'f-2-25'},{c:'Z',k:'KeyZ'},{c:'X',k:'KeyX'},{c:'C',k:'KeyC'},{c:'V',k:'KeyV'},{c:'B',k:'KeyB'},{c:'N',k:'KeyN'},{c:'M',k:'KeyM'},{s:'<',c:',',k:'Comma'},{s:'>',c:'.',k:'Period'},{s:'?',c:'/',k:'Slash'},{s:'_',c:'\\',k:'IntlRo'},{c:'⇧ shift',k:'ShiftRight',w:'f-1-75'}],
         macJisRow5: [{c:'⇪ caps',k:'CapsLock',w:'f-1-25'},{c:'⌥ opt',k:'AltLeft',w:'f-1-25'},{c:'⌘ cmd',k:'MetaLeft',w:'f-1-25'},{c:'英数',k:'Lang2',w:'f-1-25'},{c:'',k:'Space',w:'f-3-25'},{c:'かな',k:'Lang1',w:'f-1-25'},{c:'⌘ cmd',k:'MetaRight',w:'f-1-25'},{c:'🌐 fn',k:'Fn',w:'f-1-25'},{t:'col', w:'f-1', keys: [{t:'spacer'}, {c:'◀',k:'ArrowLeft'}]},{t:'col', w:'f-1', keys: [{c:'▲',k:'ArrowUp'}, {c:'▼',k:'ArrowDown'}]},{t:'col', w:'f-1', keys: [{t:'spacer'}, {c:'▶',k:'ArrowRight'}]}],
         
-        // --- NAV & 108 NUMPAD ---
         navBlock: [
             [{c:'PrtSc',k:'PrintScreen'},{c:'ScrLk',k:'ScrollLock'},{c:'Pause',k:'Pause'}],
             [{c:'Ins',k:'Insert'},{c:'Home',k:'Home'},{c:'PgUp',k:'PageUp'}],
             [{c:'Del',k:'Delete'},{c:'End',k:'End'},{c:'PgDn',k:'PageDown'}],
             [{w:'key-spacer'}],
-             [{w:'key-spacer'}],
+            [{w:'key-spacer'}],
             [{w:'key-spacer'},{c:'▲',k:'ArrowUp'},{w:'key-spacer'}],
             [{c:'◀',k:'ArrowLeft'},{c:'▼',k:'ArrowDown'},{c:'▶',k:'ArrowRight'}]
         ],
@@ -345,66 +428,68 @@ export function init() {
         `
     };
 
-    const container = document.getElementById('keyboard-render-area');
+    const container = _('#keyboard-render-area');
+    const testedKeys = new Set();
+    const pressedKeys = new Set();
+
     const applyLayout = (type) => {
+        if (!container) return;
         container.innerHTML = layouts[type]();
         testedKeys.forEach(code => {
-            document.querySelectorAll(`[data-code="${code}"]`).forEach(el => el.classList.add('tested'));
+            hostElement.querySelectorAll(`[data-code="${code}"]`).forEach(el => el.classList.add('tested'));
         });
     };
 
-    const btns = document.querySelectorAll('.layout-btn');
-    btns.forEach(btn => {
+    // Segmented Tabs Layout Switch
+    const activeLayoutClass = 'layout-btn active py-1.5 rounded-[10px] text-[11px] font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all text-center truncate';
+    const inactiveLayoutClass = 'layout-btn py-1.5 rounded-[10px] text-[11px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all text-center truncate';
+
+    const layoutBtns = $$('.layout-btn');
+    layoutBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            btns.forEach(b => {
-                b.classList.remove('active', 'bg-white', 'dark:bg-[#121214]', 'border-zinc-200', 'dark:border-zinc-700', 'text-zinc-900', 'dark:text-white', 'shadow-sm');
-                b.classList.add('text-zinc-500', 'border-transparent');
-            });
-            btn.classList.add('active', 'bg-white', 'dark:bg-[#121214]', 'border-zinc-200', 'dark:border-zinc-700', 'text-zinc-900', 'dark:text-white', 'shadow-sm');
-            btn.classList.remove('text-zinc-500', 'border-transparent');
+            layoutBtns.forEach(b => b.className = inactiveLayoutClass);
+            btn.className = activeLayoutClass;
             applyLayout(btn.dataset.layout);
         });
     });
 
-    // ==========================================
-    // 2. KEYBOARD STATE & EVENTS LOGIC
-    // ==========================================
-    const pressedKeys = new Set();
-    const testedKeys = new Set();
-    
-    const elGhosting = document.getElementById('ghosting-count');
-    const elInfoKey = document.getElementById('info-key');
-    const elInfoCode = document.getElementById('info-code');
-    const elHistoryList = document.getElementById('key-history-list');
+    // =========================================================================
+    // 2. KEYBOARD LOGIC
+    // =========================================================================
+    const elGhosting = _('#ghosting-count');
+    const elInfoKey = _('#info-key');
+    const elInfoCode = _('#info-code');
+    const elHistoryList = _('#key-history-list');
 
     const updateEventInfo = (e) => {
         let displayKey = e.key === ' ' ? 'Space' : e.key;
-        elInfoKey.textContent = displayKey;
-        elInfoCode.textContent = e.code;
+        if (elInfoKey) elInfoKey.textContent = displayKey;
+        if (elInfoCode) elInfoCode.textContent = e.code;
     };
 
     const addHistory = (e) => {
+        if (!elHistoryList) return;
         const firstChild = elHistoryList.firstElementChild;
-        if(firstChild && firstChild.tagName !== 'LI') elHistoryList.innerHTML = ''; 
+        if (firstChild && firstChild.tagName !== 'LI') elHistoryList.innerHTML = ''; 
         
         const li = document.createElement('li');
-        li.className = 'flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800';
+        li.className = 'flex items-center justify-between p-2 rounded-[10px] bg-white dark:bg-[#1c1c1e] border border-black/[0.04] dark:border-white/[0.06] text-xs font-mono shadow-sm';
         
         let displayKey = e.key === ' ' ? 'Space' : e.key;
         li.innerHTML = `
-            <div class="flex items-center gap-3">
-                <span class="min-w-8 h-8 px-2 rounded-md bg-white dark:bg-[#121214] flex items-center justify-center text-xs font-bold text-zinc-900 dark:text-white shadow-sm border border-zinc-200 dark:border-zinc-700">${displayKey}</span>
-                <span class="text-[11px] font-medium text-zinc-500">${e.code}</span>
+            <div class="flex items-center gap-2">
+                <span class="min-w-6 h-6 px-1.5 rounded-[6px] bg-[#f2f2f7] dark:bg-black/50 flex items-center justify-center font-bold text-zinc-900 dark:text-white border border-black/[0.04] dark:border-white/[0.06]">${displayKey}</span>
+                <span class="text-[11px] text-zinc-400 font-semibold">${e.code}</span>
             </div>
-            <span class="text-[10px] text-zinc-400 font-mono">cd:${e.keyCode}</span>
+            <span class="text-[10px] text-zinc-400 opacity-60">code: ${e.keyCode}</span>
         `;
         
         elHistoryList.prepend(li);
-        if(elHistoryList.children.length > 50) elHistoryList.lastElementChild.remove();
+        if (elHistoryList.children.length > 50) elHistoryList.lastElementChild.remove();
     };
 
     const toggleKeyVisual = (code, isActive) => {
-        const els = document.querySelectorAll(`[data-code="${code}"]`);
+        const els = hostElement.querySelectorAll(`[data-code="${code}"]`);
         els.forEach(el => {
             if (isActive) {
                 el.classList.add('active');
@@ -416,24 +501,23 @@ export function init() {
         });
     };
 
-    window.addEventListener('keydown', (e) => {
-        // [FIX EVKEY/UNIKEY]
+    const onKeyDown = (e) => {
         if (e.isComposing || e.keyCode === 229) {
             pressedKeys.forEach(code => toggleKeyVisual(code, false));
             pressedKeys.clear();
-            elGhosting.textContent = '0';
+            if (elGhosting) elGhosting.textContent = '0';
             
             if (e.code) {
                 testedKeys.add(e.code);
-                document.querySelectorAll(`[data-code="${e.code}"]`).forEach(el => el.classList.add('tested'));
+                hostElement.querySelectorAll(`[data-code="${e.code}"]`).forEach(el => el.classList.add('tested'));
             }
             return;
         }
 
-        if (e.code && !e.code.includes('Mouse')) { // Tránh conflict nếu có fake event
+        if (e.code && !e.code.includes('Mouse')) {
             e.preventDefault(); 
             pressedKeys.add(e.code);
-            elGhosting.textContent = pressedKeys.size;
+            if (elGhosting) elGhosting.textContent = pressedKeys.size;
             testedKeys.add(e.code);
             
             updateEventInfo(e);
@@ -441,117 +525,136 @@ export function init() {
             
             if (!e.repeat) addHistory(e);
         }
-    }, { passive: false });
+    };
 
-    window.addEventListener('keyup', (e) => {
+    const onKeyUp = (e) => {
         if (e.code) {
             pressedKeys.delete(e.code);
-            elGhosting.textContent = pressedKeys.size;
+            if (elGhosting) elGhosting.textContent = pressedKeys.size;
             toggleKeyVisual(e.code, false);
         }
-    });
+    };
 
-    window.addEventListener('blur', () => {
+    const onBlur = () => {
         pressedKeys.forEach(code => toggleKeyVisual(code, false));
         pressedKeys.clear();
-        elGhosting.textContent = '0';
-    });
+        if (elGhosting) elGhosting.textContent = '0';
+    };
 
-    document.getElementById('reset-btn').addEventListener('click', () => {
+    window.addEventListener('keydown', onKeyDown, { passive: false });
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+
+    _('#reset-btn')?.addEventListener('click', () => {
         testedKeys.clear();
         pressedKeys.clear();
-        elGhosting.textContent = '0';
-        document.querySelectorAll('[data-code]').forEach(el => el.classList.remove('active', 'tested'));
-        UI.showAlert('Đã Reset', 'Toàn bộ trạng thái test đã được làm mới.', 'success');
+        if (elGhosting) elGhosting.textContent = '0';
+        hostElement.querySelectorAll('[data-code]').forEach(el => el.classList.remove('active', 'tested'));
+        IslandKit.notify('Đã đặt lại', 'Trạng thái kiểm tra bàn phím đã được làm mới.', 'info');
     });
 
-    document.getElementById('clear-history').addEventListener('click', () => {
-        elHistoryList.innerHTML = '<li class="text-xs text-zinc-400 dark:text-zinc-500 italic text-center mt-4">Chưa có thao tác nào</li>';
-        elInfoKey.textContent = '-'; elInfoCode.textContent = '-';
+    _('#clear-history')?.addEventListener('click', () => {
+        if (elHistoryList) {
+            elHistoryList.innerHTML = '<li class="text-xs font-mono text-zinc-400 italic text-center py-4">Chưa có phím nào được nhấn</li>';
+        }
+        if (elInfoKey) elInfoKey.textContent = '-';
+        if (elInfoCode) elInfoCode.textContent = '-';
     });
 
-    // ==========================================
+    // =========================================================================
     // 3. MOUSE TESTER LOGIC
-    // ==========================================
-    const mouseLeft = document.getElementById('mouse-left');
-    const mouseMid = document.getElementById('mouse-mid');
-    const mouseRight = document.getElementById('mouse-right');
-    const mouseMidContainer = document.getElementById('mouse-mid-container');
-    const mouseBtnInfo = document.getElementById('mouse-btn-info');
-    const mouseScrollInfo = document.getElementById('mouse-scroll-info');
-    const mousePosInfo = document.getElementById('mouse-pos-info');
-    const mouseTesterArea = document.getElementById('mouse-tester-area');
+    // =========================================================================
+    const mouseLeft = _('#mouse-left');
+    const mouseMid = _('#mouse-mid');
+    const mouseRight = _('#mouse-right');
+    const mouseMidContainer = _('#mouse-mid-container');
+    const mouseBtnInfo = _('#mouse-btn-info');
+    const mouseScrollInfo = _('#mouse-scroll-info');
+    const mousePosInfo = _('#mouse-pos-info');
 
-    // Cập nhật vị trí trỏ chuột
-    window.addEventListener('mousemove', (e) => {
-        mousePosInfo.textContent = `X: ${e.clientX}, Y: ${e.clientY}`;
-    });
+    const onMouseMove = (e) => {
+        if (mousePosInfo) mousePosInfo.textContent = `X: ${e.clientX}, Y: ${e.clientY}`;
+    };
 
-    // Xử lý Click
-    window.addEventListener('mousedown', (e) => {
-        if (e.button === 0) {
+    const onMouseDown = (e) => {
+        if (e.button === 0 && mouseLeft) {
             mouseLeft.classList.add('mouse-active-left');
-            mouseBtnInfo.textContent = 'Left Click';
-            mouseBtnInfo.className = 'text-sm font-black text-blue-500';
+            if (mouseBtnInfo) {
+                mouseBtnInfo.textContent = 'Left Click';
+                mouseBtnInfo.className = 'text-xs font-mono font-black text-blue-500';
+            }
         }
-        if (e.button === 1) {
-            e.preventDefault(); // Ngăn auto-scroll behavior
+        if (e.button === 1 && mouseMid) {
+            e.preventDefault();
             mouseMid.classList.add('mouse-active-mid');
-            mouseBtnInfo.textContent = 'Middle Click';
-            mouseBtnInfo.className = 'text-sm font-black text-emerald-500';
+            if (mouseBtnInfo) {
+                mouseBtnInfo.textContent = 'Middle Click';
+                mouseBtnInfo.className = 'text-xs font-mono font-black text-accent-theme';
+            }
         }
-        if (e.button === 2) {
+        if (e.button === 2 && mouseRight) {
             mouseRight.classList.add('mouse-active-right');
-            mouseBtnInfo.textContent = 'Right Click';
-            mouseBtnInfo.className = 'text-sm font-black text-red-500';
+            if (mouseBtnInfo) {
+                mouseBtnInfo.textContent = 'Right Click';
+                mouseBtnInfo.className = 'text-xs font-mono font-black text-rose-500';
+            }
         }
-    });
+    };
 
-    window.addEventListener('mouseup', (e) => {
-        if (e.button === 0) mouseLeft.classList.remove('mouse-active-left');
-        if (e.button === 1) mouseMid.classList.remove('mouse-active-mid');
-        if (e.button === 2) mouseRight.classList.remove('mouse-active-right');
+    const onMouseUp = (e) => {
+        if (e.button === 0 && mouseLeft) mouseLeft.classList.remove('mouse-active-left');
+        if (e.button === 1 && mouseMid) mouseMid.classList.remove('mouse-active-mid');
+        if (e.button === 2 && mouseRight) mouseRight.classList.remove('mouse-active-right');
         
-        // Reset info view if no buttons held
-        if (e.buttons === 0) {
+        if (e.buttons === 0 && mouseBtnInfo) {
             mouseBtnInfo.textContent = '-';
-            mouseBtnInfo.className = 'text-sm font-black text-zinc-900 dark:text-white';
+            mouseBtnInfo.className = 'text-xs font-mono font-black text-zinc-900 dark:text-white';
         }
-    });
+    };
 
-    // Xử lý Scroll
     let scrollTimeout;
-    window.addEventListener('wheel', (e) => {
-        // Chỉ ngăn chặn scroll trang nếu người dùng cuộn ở trong tester area
-        if(e.target.closest('#mouse-tester-area')) {
+    const onWheel = (e) => {
+        if (e.target.closest('#mouse-tester-area')) {
             e.preventDefault();
         }
 
         if (e.deltaY > 0) {
-            mouseScrollInfo.textContent = 'Scroll Down';
-            mouseScrollInfo.className = 'text-sm font-black text-emerald-500';
-            mouseMidContainer.classList.add('mouse-active-scroll-down');
-            mouseMidContainer.classList.remove('mouse-active-scroll-up');
+            if (mouseScrollInfo) {
+                mouseScrollInfo.textContent = 'Scroll Down';
+                mouseScrollInfo.className = 'text-xs font-mono font-black text-accent-theme';
+            }
+            mouseMidContainer?.classList.add('mouse-active-scroll-down');
+            mouseMidContainer?.classList.remove('mouse-active-scroll-up');
         } else if (e.deltaY < 0) {
-            mouseScrollInfo.textContent = 'Scroll Up';
-            mouseScrollInfo.className = 'text-sm font-black text-emerald-500';
-            mouseMidContainer.classList.add('mouse-active-scroll-up');
-            mouseMidContainer.classList.remove('mouse-active-scroll-down');
+            if (mouseScrollInfo) {
+                mouseScrollInfo.textContent = 'Scroll Up';
+                mouseScrollInfo.className = 'text-xs font-mono font-black text-accent-theme';
+            }
+            mouseMidContainer?.classList.add('mouse-active-scroll-up');
+            mouseMidContainer?.classList.remove('mouse-active-scroll-down');
         }
 
         clearTimeout(scrollTimeout);
         scrollTimeout = setTimeout(() => {
-            mouseScrollInfo.textContent = '-';
-            mouseScrollInfo.className = 'text-sm font-black text-zinc-900 dark:text-white';
-            mouseMidContainer.classList.remove('mouse-active-scroll-up', 'mouse-active-scroll-down');
+            if (mouseScrollInfo) {
+                mouseScrollInfo.textContent = '-';
+                mouseScrollInfo.className = 'text-xs font-mono font-black text-zinc-900 dark:text-white';
+            }
+            mouseMidContainer?.classList.remove('mouse-active-scroll-up', 'mouse-active-scroll-down');
         }, 150);
-    }, { passive: false });
+    };
 
-    // Vô hiệu hóa Context Menu (Right Click) ở trang để tiện test Right Click
-    window.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-    });
+    const onContextMenu = (e) => {
+        if (e.target.closest('#mouse-tester-area') || e.target.closest('#keyboard-render-area')) {
+            e.preventDefault();
+        }
+    };
 
-    // Mặc định load layout Mac JIS
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('contextmenu', onContextMenu);
+
     applyLayout('macjis');
 }

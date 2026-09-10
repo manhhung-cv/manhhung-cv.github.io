@@ -2,7 +2,7 @@ import { CATEGORIES as CONFIG_CATEGORIES, TOOLS } from './config.js';
 import { UI } from './ui.js';
 
 // ==========================================
-// KHAI BÁO CÁC DOM CONTAINER CỐT LÕI (TRÁNH LỖI HOISTING/TDZ)
+// KHAI BÁO CÁC DOM CONTAINER CỐT LÕI
 // ==========================================
 const contentsContainer = document.getElementById('tab-contents-container');
 const singleAppHost = document.getElementById('single-app-host');
@@ -14,7 +14,94 @@ const switcherCardsWrapper = document.getElementById('switcher-cards-wrapper');
 const wallpaperLayer = document.getElementById('wallpaper-layer');
 
 // ==========================================
-// 0. NHẬN DIỆN THIẾT BỊ VÀ THIẾT LẬP LƯỚI MA TRẬN
+// SANDBOX BÀN PHÍM: CÔ LẬP SỰ KIỆN THEO TỪNG TOOL ID
+// ==========================================
+const KEYBOARD_EVENTS = ['keydown', 'keyup', 'keypress'];
+let currentLoadingToolId = null; 
+
+const nativeWindowAddEventListener = window.addEventListener.bind(window);
+const nativeDocumentAddEventListener = document.addEventListener.bind(document);
+
+function isToolVisibleOnScreen(ownerToolId) {
+    if (!ownerToolId) return true; // Listener thuộc về hệ thống HunqOS
+
+    if (!contentsContainer) return false;
+    const isHomeVisible = contentsContainer.classList.contains('hidden') || contentsContainer.style.display === 'none';
+    const isModalOpen = (settingsModal && settingsModal.classList.contains('active')) ||
+                        (cmdPalette && cmdPalette.classList.contains('spotlight-active')) ||
+                        (appSwitcher && appSwitcher.classList.contains('opacity-100'));
+    if (isHomeVisible || isModalOpen) return false;
+
+    // Chế độ chia đôi màn hình
+    if (state.isSplitActive) {
+        return state.splitLeftToolId === ownerToolId || state.splitRightToolId === ownerToolId;
+    }
+
+    // Chế độ một ứng dụng: Phải đúng là tab đang hiển thị
+    const activeTab = state.tabs.find(t => t.tabId === state.activeTabId);
+    return activeTab && activeTab.toolId === ownerToolId;
+}
+
+function interceptKeyboardListener(target, type, listener, options) {
+    if (KEYBOARD_EVENTS.includes(type)) {
+        const ownerToolId = currentLoadingToolId;
+
+        const wrapped = function (event) {
+            // Nếu Tool không hiển thị trên màn hình -> Không thực thi listener của tool
+            if (!isToolVisibleOnScreen(ownerToolId)) {
+                return;
+            }
+            if (typeof listener === 'function') {
+                return listener.call(this, event);
+            } else if (listener && typeof listener.handleEvent === 'function') {
+                return listener.handleEvent(event);
+            }
+        };
+
+        return wrapped;
+    }
+    return listener;
+}
+
+window.addEventListener = function (type, listener, options) {
+    const fn = interceptKeyboardListener(window, type, listener, options);
+    return nativeWindowAddEventListener(type, fn, options);
+};
+
+document.addEventListener = function (type, listener, options) {
+    const fn = interceptKeyboardListener(document, type, listener, options);
+    return nativeDocumentAddEventListener(type, fn, options);
+};
+
+// ==========================================
+// 0. ACCENT COLOR ĐỘNG CHO HỆ THỐNG
+// ==========================================
+let currentAccentColor = localStorage.getItem('hunqos_accent_color') || '#10b981';
+
+function applySystemAccent(color) {
+    currentAccentColor = color;
+    document.documentElement.style.setProperty('--hunq-accent', color);
+    
+    const picker = document.getElementById('system-accent-picker');
+    if (picker) picker.value = color;
+
+    window.dispatchEvent(new CustomEvent('hunqos-accent-changed', { detail: { color } }));
+}
+
+window.setSystemAccent = (color) => {
+    localStorage.setItem('hunqos_accent_color', color);
+    applySystemAccent(color);
+    UI.showAlert('Màu chủ đạo', `Đã đổi màu hệ thống sang ${color}`, 'success');
+};
+
+document.getElementById('system-accent-picker')?.addEventListener('input', (e) => {
+    const color = e.target.value;
+    localStorage.setItem('hunqos_accent_color', color);
+    applySystemAccent(color);
+});
+
+// ==========================================
+// 1. NHẬN DIỆN THIẾT BỊ VÀ LƯỚI MA TRẬN
 // ==========================================
 let forcedDeviceMode = localStorage.getItem('hunqos_device_mode') || 'auto';
 
@@ -38,6 +125,11 @@ function detectDeviceMode() {
 
     document.documentElement.setAttribute('data-device-mode', mode);
     return mode;
+}
+
+function isTouchDevice() {
+    const mode = detectDeviceMode();
+    return mode === 'phone' || mode === 'tablet' || (('ontouchstart' in window) && mode !== 'desktop');
 }
 
 function getGridDimensions() {
@@ -67,9 +159,9 @@ window.setForcedDeviceMode = (mode) => {
         const btn = document.getElementById(`mode-btn-${m}`);
         if (btn) {
             if (m === mode) {
-                btn.className = "py-2 px-1 text-[11px] rounded-xl bg-indigo-600 text-white font-medium border border-white/20 text-center";
+                btn.className = "py-2 rounded-xl bg-accent-theme text-white font-medium text-xs text-center border border-white/20";
             } else {
-                btn.className = "py-2 px-1 text-[11px] rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-center";
+                btn.className = "py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs text-center";
             }
         }
     });
@@ -88,8 +180,29 @@ window.setForcedDeviceMode = (mode) => {
 };
 
 // ==========================================
-// 1. CHẶN MENU CHUỘT PHẢI
+// 2. TẮT / BẬT STATUS BAR & CHẶN CHUỘT PHẢI
 // ==========================================
+let isStatusbarEnabled = localStorage.getItem('hunqos_statusbar_visible') !== 'false';
+
+function applyStatusbarVisibility(visible) {
+    const toggleBtn = document.getElementById('toggle-statusbar-setting');
+    if (visible) {
+        document.body.classList.remove('hide-statusbar');
+        toggleBtn?.classList.add('active');
+    } else {
+        document.body.classList.add('hide-statusbar');
+        toggleBtn?.classList.remove('active');
+    }
+}
+applyStatusbarVisibility(isStatusbarEnabled);
+
+document.getElementById('toggle-statusbar-setting')?.addEventListener('click', () => {
+    isStatusbarEnabled = !isStatusbarEnabled;
+    localStorage.setItem('hunqos_statusbar_visible', isStatusbarEnabled);
+    applyStatusbarVisibility(isStatusbarEnabled);
+    UI.showAlert('Thanh trạng thái', isStatusbarEnabled ? 'Đã bật Status Bar.' : 'Đã ẩn Status Bar để mở rộng toàn màn hình.', 'info');
+});
+
 let isContextMenuBlocked = localStorage.getItem('hunqos_block_contextmenu') !== 'false';
 
 function handleContextMenu(e) {
@@ -100,20 +213,26 @@ function handleContextMenu(e) {
     }
 }
 function handleSelectStart(e) {
-    if (isContextMenuBlocked) {
-        e.preventDefault();
-        return false;
+    if (!isContextMenuBlocked) return;
+    
+    const tag = e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) {
+        return true;
     }
+    
+    e.preventDefault();
+    return false;
 }
 document.addEventListener('contextmenu', handleContextMenu, { capture: true });
 document.addEventListener('selectstart', handleSelectStart);
 
 // ==========================================
-// 2. GRADIENT XANH LÁ & QUẢN LÝ HÌNH NỀN
+// 3. GRADIENT & QUẢN LÝ HÌNH NỀN
 // ==========================================
 const DB_NAME = 'HunqOS_DB';
 const DB_STORE = 'settings';
 let dbInstance = null;
+let currentCustomWallpaper = null;
 
 const DEFAULT_WP_DARK = 'radial-gradient(circle at 15% 15%, #064e3b 0%, #06241b 45%, #020f0b 100%)';
 const DEFAULT_WP_LIGHT = 'radial-gradient(circle at 15% 15%, #d1fae5 0%, #a7f3d0 45%, #6ee7b7 100%)';
@@ -162,21 +281,35 @@ async function getWallpaperFromDB() {
     }
 }
 
+async function syncWallpaperDisplay() {
+    if (!wallpaperLayer) return;
+    if (currentCustomWallpaper === null) {
+        currentCustomWallpaper = await getWallpaperFromDB();
+    }
+
+    if (currentCustomWallpaper && !currentCustomWallpaper.startsWith('radial-gradient')) {
+        wallpaperLayer.style.backgroundImage = `url('${currentCustomWallpaper}')`;
+    } else {
+        wallpaperLayer.style.backgroundImage = getDefaultWallpaper();
+    }
+}
+
 function applyWallpaper(wp) {
+    currentCustomWallpaper = wp;
     if (!wallpaperLayer) return;
 
     if (wp && !wp.startsWith('radial-gradient')) {
         wallpaperLayer.style.backgroundImage = `url('${wp}')`;
     } else {
-        const activeDefault = getDefaultWallpaper();
-        wallpaperLayer.style.backgroundImage = activeDefault;
+        wallpaperLayer.style.backgroundImage = getDefaultWallpaper();
     }
 }
 
 window.resetWallpaper = async () => {
+    currentCustomWallpaper = null;
     await saveWallpaperToDB(null);
     applyWallpaper(getDefaultWallpaper());
-    UI.showAlert('Hình nền', 'Đã khôi phục nền xanh lá mặc định.', 'info');
+    UI.showAlert('Hình nền', 'Đã khôi phục nền mặc định.', 'info');
 };
 
 const wallpaperFileInput = document.getElementById('wallpaper-file-input');
@@ -196,50 +329,49 @@ if (wallpaperFileInput) {
 }
 
 // ==========================================
-// 3. DARK MODE & ĐỒNG BỘ STATUS BAR / NỀN
+// 4. DARK MODE & ĐỒNG BỘ STATUS BAR / NỀN / ĐÁY
 // ==========================================
 let isDarkMode = localStorage.getItem('hunqos_darkmode') !== 'false';
 
 function updateStatusbarBackground() {
     const topBar = document.getElementById('top-system-bar');
-    if (!topBar) return;
+    const bottomNav = document.getElementById('bottom-nav-container');
 
     const container = contentsContainer || document.getElementById('tab-contents-container');
     const isHome = !container || container.classList.contains('hidden') || container.style.display === 'none';
 
-    topBar.classList.remove('statusbar-home', 'statusbar-app-dark', 'statusbar-app-light');
+    if (topBar) {
+        topBar.classList.remove('statusbar-home', 'statusbar-app-dark', 'statusbar-app-light');
+        if (isHome) {
+            topBar.classList.add('statusbar-home');
+        } else {
+            topBar.classList.add(isDarkMode ? 'statusbar-app-dark' : 'statusbar-app-light');
+        }
+    }
 
-    if (isHome) {
-        topBar.classList.add('statusbar-home');
-    } else {
-        topBar.classList.add(isDarkMode ? 'statusbar-app-dark' : 'statusbar-app-light');
+    if (bottomNav) {
+        bottomNav.classList.remove('nav-home', 'nav-app-dark', 'nav-app-light');
+        if (isHome) {
+            bottomNav.classList.add('nav-home');
+        } else {
+            bottomNav.classList.add(isDarkMode ? 'nav-app-dark' : 'nav-app-light');
+        }
     }
 }
 
 function applyDarkMode(enable) {
     const htmlEl = document.documentElement;
-    const darkToggleThumb = document.getElementById('darkmode-toggle-thumb');
     const darkToggleBtn = document.getElementById('toggle-darkmode-setting');
-    const darkIcon = document.getElementById('darkmode-icon');
 
     if (enable) {
         htmlEl.classList.add('dark');
-        darkToggleThumb?.classList.add('translate-x-6');
-        darkToggleBtn?.classList.replace('bg-zinc-700', 'bg-indigo-600');
-        if (darkIcon) darkIcon.className = 'fas fa-moon text-indigo-400';
+        darkToggleBtn?.classList.add('active');
     } else {
         htmlEl.classList.remove('dark');
-        darkToggleThumb?.classList.remove('translate-x-6');
-        darkToggleBtn?.classList.replace('bg-indigo-600', 'bg-zinc-700');
-        if (darkIcon) darkIcon.className = 'fas fa-sun text-amber-400';
+        darkToggleBtn?.classList.remove('active');
     }
 
-    getWallpaperFromDB().then(savedWp => {
-        if (!savedWp || savedWp.startsWith('radial-gradient')) {
-            applyWallpaper(getDefaultWallpaper());
-        }
-    });
-
+    syncWallpaperDisplay();
     updateStatusbarBackground();
 }
 applyDarkMode(isDarkMode);
@@ -251,19 +383,17 @@ document.getElementById('toggle-darkmode-setting')?.addEventListener('click', ()
     UI.showAlert('Giao diện', `Đã chuyển sang chế độ ${isDarkMode ? 'Tối' : 'Sáng'}.`, 'info');
 });
 
-
 // ==========================================
-// QUẢN LÝ THEME ICON: HÌNH DẠNG & MÀU SẮC
+// 5. QUẢN LÝ THEME ICON
 // ==========================================
 const themeConfig = {
-    shape: localStorage.getItem('hunqos_icon_shape') || 'rounded', // 'rounded' | 'circle' | 'square'
-    bgMode: localStorage.getItem('hunqos_icon_bgmode') || 'glass',  // 'glass' | 'config' | 'custom'
-    customBg: localStorage.getItem('hunqos_icon_custom_bg') || '#6366f1',
-    colorMode: localStorage.getItem('hunqos_icon_colormode') || 'white', // 'white' | 'config' | 'custom'
+    shape: localStorage.getItem('hunqos_icon_shape') || 'rounded',
+    bgMode: localStorage.getItem('hunqos_icon_bgmode') || 'glass',
+    customBg: localStorage.getItem('hunqos_icon_custom_bg') || '#10b981',
+    colorMode: localStorage.getItem('hunqos_icon_colormode') || 'white',
     customColor: localStorage.getItem('hunqos_icon_custom_color') || '#ffffff'
 };
 
-// Áp dụng class hình dạng lên thẻ html
 function applyThemeShape() {
     document.documentElement.classList.remove('shape-rounded', 'shape-circle', 'shape-square');
     document.documentElement.classList.add(`shape-${themeConfig.shape}`);
@@ -271,27 +401,26 @@ function applyThemeShape() {
     ['rounded', 'circle', 'square'].forEach(s => {
         const btn = document.getElementById(`shape-btn-${s}`);
         if (btn) {
-            if (s === themeConfig.shape) btn.className = "py-1.5 px-2 text-[11px] rounded-xl bg-indigo-600 text-white font-medium border border-white/20 text-center";
-            else btn.className = "py-1.5 px-2 text-[11px] rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-center";
+            if (s === themeConfig.shape) btn.className = "py-2 px-2 text-xs rounded-xl bg-accent-theme text-white font-medium text-center";
+            else btn.className = "py-2 px-2 text-xs rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-center";
         }
     });
 }
 
-// Cập nhật trạng thái nút và khung chọn màu
 function updateThemeUIControls() {
     ['glass', 'config', 'custom'].forEach(m => {
         const btn = document.getElementById(`bgmode-btn-${m}`);
         if (btn) {
-            if (m === themeConfig.bgMode) btn.className = "py-1.5 px-1 text-[11px] rounded-xl bg-indigo-600 text-white font-medium border border-white/20 text-center";
-            else btn.className = "py-1.5 px-1 text-[11px] rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-center";
+            if (m === themeConfig.bgMode) btn.className = "py-2 px-1 text-xs rounded-xl bg-accent-theme text-white font-medium text-center";
+            else btn.className = "py-2 px-1 text-xs rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-center";
         }
     });
 
     ['white', 'config', 'custom'].forEach(m => {
         const btn = document.getElementById(`colormode-btn-${m}`);
         if (btn) {
-            if (m === themeConfig.colorMode) btn.className = "py-1.5 px-1 text-[11px] rounded-xl bg-indigo-600 text-white font-medium border border-white/20 text-center";
-            else btn.className = "py-1.5 px-1 text-[11px] rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-center";
+            if (m === themeConfig.colorMode) btn.className = "py-2 px-1 text-xs rounded-xl bg-accent-theme text-white font-medium text-center";
+            else btn.className = "py-2 px-1 text-xs rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-center";
         }
     });
 
@@ -302,21 +431,18 @@ function updateThemeUIControls() {
     if (customIconWrap) customIconWrap.classList.toggle('hidden', themeConfig.colorMode !== 'custom');
 }
 
-// Helper: Tính toán Style cho Nền và Biểu tượng của Tool
 function computeIconStyles(tool) {
-    // 1. Màu nền
     let bgStyle = '';
     if (themeConfig.bgMode === 'glass') {
-        bgStyle = 'background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.25)); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.2);';
+        bgStyle = 'background: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.32)); backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.35);';
     } else if (themeConfig.bgMode === 'config') {
-        const colorVal = tool.color || 'linear-gradient(135deg, #6366f1, #4f46e5)';
-        bgStyle = colorVal.includes('gradient') ? `background-image: ${colorVal}; border: 1px solid rgba(255,255,255,0.2);` : `background-color: ${colorVal}; border: 1px solid rgba(255,255,255,0.15);`;
+        const colorVal = tool.color || 'linear-gradient(135deg, #10b981, #059669)';
+        bgStyle = colorVal.includes('gradient') ? `background-image: ${colorVal}; border: 1px solid rgba(255,255,255,0.3);` : `background-color: ${colorVal}; border: 1px solid rgba(255,255,255,0.25);`;
     } else if (themeConfig.bgMode === 'custom') {
         const custom = themeConfig.customBg;
-        bgStyle = custom.includes('gradient') ? `background-image: ${custom}; border: 1px solid rgba(255,255,255,0.2);` : `background-color: ${custom}; border: 1px solid rgba(255,255,255,0.15);`;
+        bgStyle = custom.includes('gradient') ? `background-image: ${custom}; border: 1px solid rgba(255,255,255,0.3);` : `background-color: ${custom}; border: 1px solid rgba(255,255,255,0.25);`;
     }
 
-    // 2. Màu biểu tượng
     let iconStyle = '';
     let iconClass = '';
     let chosenColor = '#ffffff';
@@ -329,15 +455,14 @@ function computeIconStyles(tool) {
 
     if (chosenColor.includes('gradient')) {
         iconClass = 'icon-gradient-text';
-        iconStyle = `background-image: ${chosenColor};`;
+        iconStyle = `background-image: ${chosenColor}; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));`;
     } else {
-        iconStyle = `color: ${chosenColor};`;
+        iconStyle = `color: ${chosenColor}; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));`;
     }
 
     return { bgStyle, iconStyle, iconClass };
 }
 
-// Event Setters
 window.setIconShape = (shape) => {
     themeConfig.shape = shape;
     localStorage.setItem('hunqos_icon_shape', shape);
@@ -385,12 +510,8 @@ window.applyCustomIconColor = () => {
     UI.showAlert('Theme', `Đã lưu màu biểu tượng tùy chọn.`, 'success');
 };
 
-
-
-
-
 // ==========================================
-// 4. CLOCK ENGINE
+// 6. CLOCK ENGINE
 // ==========================================
 let clockMode = localStorage.getItem('hunqos_clock_mode') || 'device';
 let customTimezone = localStorage.getItem('hunqos_timezone') || 'Asia/Ho_Chi_Minh';
@@ -437,7 +558,7 @@ function getFormattedTime() {
             });
             const parts = timeString.split(':');
             return { hours: parts[0], minutes: parts[1], seconds: parts[2] || '00' };
-        } catch (e) { }
+        } catch (e) {}
     }
     return {
         hours: String(now.getHours()).padStart(2, '0'),
@@ -455,7 +576,7 @@ setInterval(updateOSClock, 1000);
 updateOSClock();
 
 // ==========================================
-// 5. APPS & TIỆN ÍCH
+// 7. APPS & TIỆN ÍCH
 // ==========================================
 function getToolData(toolId) {
     if (toolId === 'home') return { id: 'home', name: 'Bàn làm việc', icon: 'fas fa-home', desc: 'Màn hình chính HunqOS' };
@@ -463,7 +584,7 @@ function getToolData(toolId) {
 }
 
 // ==========================================
-// 6. QUẢN LÝ DOCK (KÉO THẢ VÀO / XOÁ KHỎI DOCK)
+// 8. QUẢN LÝ DOCK
 // ==========================================
 const DEFAULT_DOCK = [
     { type: 'tool', id: 'home' },
@@ -489,13 +610,14 @@ function renderDock() {
             let badgeHtml = '';
             let bgClass = 'bg-zinc-800 text-white';
 
-            if (item.action === 'spotlight') onclickAttr = 'window.openSpotlight()';
-            else if (item.action === 'multitask') {
+            if (item.action === 'spotlight') {
+                onclickAttr = 'window.openSpotlight()';
+            } else if (item.action === 'multitask') {
                 onclickAttr = 'window.openMultitasking()';
-                bgClass = 'bg-indigo-600 text-white';
+                bgClass = 'bg-accent-theme text-white';
                 badgeHtml = `<span id="dock-tab-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-[10px] font-bold rounded-full flex items-center justify-center text-white border-2 border-black">${state.tabs.length}</span>`;
             } else if (item.action === 'settings') {
-                onclickAttr = 'document.getElementById("open-settings-btn").click()';
+                onclickAttr = 'window.openSettings()';
             }
 
             return `
@@ -518,7 +640,7 @@ function renderDock() {
         const bgClass = isHomeBtn ? 'bg-white text-zinc-900' : 'bg-gradient-to-tr from-white/15 to-white/30 border border-white/20 text-white';
 
         return `
-            <div class="relative group" draggable="true" ondragstart="window.handleDockDragStart(event, ${idx})">
+            <div class="relative group" draggable="${!isTouchDevice()}" ondragstart="window.handleDockDragStart(event, ${idx})">
                 <button onclick="window.openToolGlobal('${item.id}')" class="dock-item ${bgClass} flex items-center justify-center text-lg hover:scale-110 active:scale-95 transition-all shadow-md ${isHomeEditMode ? 'jiggling' : ''}" title="${tool.name}">
                     <i class="${tool.icon}"></i>
                 </button>
@@ -539,12 +661,14 @@ window.removeDockItem = (index) => {
 };
 
 window.handleDockDragStart = (e, index) => {
+    if (isTouchDevice()) return;
     e.dataTransfer.setData('text/plain', JSON.stringify({ from: 'dock', index }));
 };
 
 const dockElement = document.getElementById('hunqos-dock');
 if (dockElement) {
     dockElement.addEventListener('dragover', (e) => {
+        if (isTouchDevice()) return;
         e.preventDefault();
         dockElement.classList.add('dock-hover-target');
     });
@@ -552,6 +676,7 @@ if (dockElement) {
         dockElement.classList.remove('dock-hover-target');
     });
     dockElement.addEventListener('drop', (e) => {
+        if (isTouchDevice()) return;
         e.preventDefault();
         dockElement.classList.remove('dock-hover-target');
         const raw = e.dataTransfer.getData('text/plain');
@@ -568,12 +693,12 @@ if (dockElement) {
                 saveDock();
                 UI.showAlert('Dock', 'Đã thêm ứng dụng vào Dock.', 'success');
             }
-        } catch (err) { }
+        } catch (err) {}
     });
 }
 
 // ==========================================
-// 7. SẮP XẾP TỰ DO ICON (ROW x COL) & PHÂN TRANG
+// 9. ĐIỀU PHỐI KÉO THẢ & CHUYỂN TRANG 120HZ/144HZ
 // ==========================================
 let homeLayout = [];
 let currentPageIndex = 0;
@@ -581,10 +706,16 @@ let totalPages = 1;
 let isHomeEditMode = false;
 let draggedItemInfo = null;
 
+let touchGhostEl = null;
+let touchDragOriginItem = null;
+let currentTouchHoverCell = null;
+let touchLongPressTimer = null;
+let isTouchDraggingActive = false;
+
 function getInitialLayout() {
     const raw = localStorage.getItem(activeGrid.key);
     if (raw) {
-        try { return JSON.parse(raw); } catch (e) { }
+        try { return JSON.parse(raw); } catch (e) {}
     }
 
     const layout = [];
@@ -611,6 +742,18 @@ function saveHomeLayout() {
     localStorage.setItem(activeGrid.key, JSON.stringify(homeLayout));
 }
 
+function findFirstEmptySlotOnPage(pageIndex) {
+    for (let r = 0; r < activeGrid.rows; r++) {
+        for (let c = 0; c < activeGrid.cols; c++) {
+            const occupied = homeLayout.some(it => it.page === pageIndex && it.row === r && it.col === c);
+            if (!occupied) {
+                return { row: r, col: c };
+            }
+        }
+    }
+    return null;
+}
+
 window.resetLayout = () => {
     localStorage.removeItem(activeGrid.key);
     localStorage.removeItem('hunqos_dock_items');
@@ -631,15 +774,18 @@ window.addNewPage = () => {
 
 window.enterHomeEditMode = () => {
     isHomeEditMode = true;
-    document.getElementById('edit-done-btn')?.classList.remove('hidden');
+    const floatingBtn = document.getElementById('floating-edit-done');
+    if (floatingBtn) floatingBtn.classList.remove('hidden');
     document.querySelectorAll('.home-item').forEach(el => el.classList.add('jiggling'));
     renderDock();
 };
 
 window.exitHomeEditMode = () => {
     isHomeEditMode = false;
-    document.getElementById('edit-done-btn')?.classList.add('hidden');
+    const floatingBtn = document.getElementById('floating-edit-done');
+    if (floatingBtn) floatingBtn.classList.add('hidden');
     document.querySelectorAll('.home-item').forEach(el => el.classList.remove('jiggling'));
+    cleanupTouchDrag();
     renderDock();
 };
 
@@ -652,6 +798,7 @@ function initHomescreenPages() {
     if (!pagesSlider) return;
 
     activeGrid = getGridDimensions();
+    const isTouch = isTouchDevice();
 
     const maxPageInLayout = homeLayout.reduce((m, it) => Math.max(m, it.page), 0);
     totalPages = Math.max(totalPages, maxPageInLayout + 1);
@@ -665,6 +812,30 @@ function initHomescreenPages() {
         pageEl.className = 'launcher-page';
         pageEl.dataset.page = p;
 
+        if (!isTouch) {
+            pageEl.addEventListener('dragover', (e) => e.preventDefault());
+            pageEl.addEventListener('drop', (e) => {
+                if (!e.target.closest('.grid-cell') && draggedItemInfo) {
+                    e.preventDefault();
+                    const targetPage = p;
+                    const currentItem = homeLayout.find(x => x.id === draggedItemInfo.id);
+                    if (!currentItem) return;
+
+                    if (currentItem.page !== targetPage) {
+                        const emptySlot = findFirstEmptySlotOnPage(targetPage);
+                        if (emptySlot) {
+                            currentItem.page = targetPage;
+                            currentItem.row = emptySlot.row;
+                            currentItem.col = emptySlot.col;
+                            saveHomeLayout();
+                            initHomescreenPages();
+                            UI.showAlert('Bố cục', `Đã chuyển icon sang Trang ${targetPage + 1}.`, 'info');
+                        }
+                    }
+                }
+            });
+        }
+
         const gridContainer = document.createElement('div');
         gridContainer.className = 'grid-layer-container';
 
@@ -673,7 +844,6 @@ function initHomescreenPages() {
         gridLayer.style.gridTemplateColumns = `repeat(${activeGrid.cols}, 1fr)`;
         gridLayer.style.gridTemplateRows = `repeat(${activeGrid.rows}, 1fr)`;
 
-        // Tạo lưới tọa độ tự do
         for (let r = 0; r < activeGrid.rows; r++) {
             for (let c = 0; c < activeGrid.cols; c++) {
                 const cell = document.createElement('div');
@@ -682,62 +852,50 @@ function initHomescreenPages() {
                 cell.dataset.row = r;
                 cell.dataset.col = c;
 
-                cell.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    cell.classList.add('cell-hover-target');
-                });
-                cell.addEventListener('dragleave', () => {
-                    cell.classList.remove('cell-hover-target');
-                });
-                cell.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    cell.classList.remove('cell-hover-target');
-                    handleDropOnCell(p, r, c);
-                });
+                if (!isTouch) {
+                    cell.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        cell.classList.add('cell-hover-target');
+                    });
+                    cell.addEventListener('dragleave', () => {
+                        cell.classList.remove('cell-hover-target');
+                    });
+                    cell.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        cell.classList.remove('cell-hover-target');
+                        handleDropOnCell(p, r, c);
+                    });
+                }
 
-                // Tìm icon tại vị trí này
                 const item = homeLayout.find(it => it.page === p && it.row === r && it.col === c);
                 if (item) {
                     const tool = getToolData(item.id);
                     const itemEl = document.createElement('div');
-                    itemEl.draggable = true;
                     itemEl.className = `home-item cursor-pointer select-none ${isHomeEditMode ? 'jiggling' : ''}`;
                     itemEl.dataset.id = item.id;
+                    itemEl.draggable = !isTouch;
                     const { bgStyle, iconStyle, iconClass } = computeIconStyles(tool);
 
                     itemEl.innerHTML = `
-                        <div class="w-full h-full flex flex-col items-center justify-center group">
-                            <div class="app-icon-box relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 flex items-center justify-center text-lg sm:text-xl md:text-2xl shadow-lg group-hover:scale-105 active:scale-95 transition-all"
+                        <div class="w-full h-full flex flex-col items-center justify-center group pointer-events-none">
+                            <div class="app-icon-box relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 flex items-center justify-center text-lg sm:text-xl md:text-2xl shadow-xl group-hover:scale-105 active:scale-95 transition-all"
                                 style="${bgStyle}">
                                 <i class="${tool.icon} ${iconClass}" style="${iconStyle}"></i>
                             </div>
-                            <span class="app-icon-label mt-1.5 text-[10px] sm:text-[11px] font-medium text-white/90 tracking-tight text-center truncate w-16 sm:w-20 drop-shadow">${tool.name}</span>
+                            <span class="app-icon-label mt-1.5 text-[10px] sm:text-[11px] font-medium tracking-tight text-center truncate w-16 sm:w-20">${tool.name}</span>
                         </div>
                     `;
-                    itemEl.onclick = () => {
-                        if (isHomeEditMode) return;
+
+                    itemEl.onclick = (e) => {
+                        if (isHomeEditMode || isTouchDraggingActive) return;
                         window.openToolGlobal(item.id);
                     };
 
-                    // Bắt đầu kéo icon
-                    itemEl.addEventListener('dragstart', (e) => {
-                        draggedItemInfo = { from: 'launcher', id: item.id };
-                        e.dataTransfer.setData('text/plain', JSON.stringify(draggedItemInfo));
-                        itemEl.classList.add('dragging-item');
-                        edgeLeft?.classList.add('active-dnd');
-                        edgeRight?.classList.add('active-dnd');
-                    });
-
-                    itemEl.addEventListener('dragend', () => {
-                        itemEl.classList.remove('dragging-item');
-                        draggedItemInfo = null;
-                        clearTimeout(edgeTimer);
-                        edgeLeft?.classList.remove('active-dnd');
-                        edgeRight?.classList.remove('active-dnd');
-                    });
-
-                    // Chạm giữ để kích hoạt chế độ chỉnh sửa
-                    attachLongPress(itemEl);
+                    if (isTouch) {
+                        attachTouchDragEvents(itemEl, item);
+                    } else {
+                        attachMouseDragEvents(itemEl, item);
+                    }
 
                     cell.appendChild(itemEl);
                 }
@@ -755,6 +913,199 @@ function initHomescreenPages() {
     goToPage(currentPageIndex);
 }
 
+function attachMouseDragEvents(itemEl, item) {
+    itemEl.addEventListener('dragstart', (e) => {
+        draggedItemInfo = { from: 'launcher', id: item.id };
+        e.dataTransfer.setData('text/plain', JSON.stringify(draggedItemInfo));
+        itemEl.classList.add('item-being-dragged');
+        edgeLeft?.classList.add('active-dnd');
+        edgeRight?.classList.add('active-dnd');
+    });
+
+    itemEl.addEventListener('dragend', () => {
+        itemEl.classList.remove('item-being-dragged');
+        draggedItemInfo = null;
+        clearTimeout(edgeTimer);
+        edgeTimer = null;
+        edgeLeft?.classList.remove('active-dnd', 'edge-hovering');
+        edgeRight?.classList.remove('active-dnd', 'edge-hovering');
+    });
+
+    itemEl.addEventListener('mousedown', () => {
+        touchLongPressTimer = setTimeout(() => window.enterHomeEditMode(), 550);
+    });
+    itemEl.addEventListener('mouseup', () => clearTimeout(touchLongPressTimer));
+    itemEl.addEventListener('mouseleave', () => clearTimeout(touchLongPressTimer));
+}
+
+function attachTouchDragEvents(itemEl, item) {
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    itemEl.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+
+        touchLongPressTimer = setTimeout(() => {
+            if (!isHomeEditMode) {
+                window.enterHomeEditMode();
+                if (navigator.vibrate) navigator.vibrate(60);
+            }
+        }, 550);
+
+        if (isHomeEditMode) {
+            draggedItemInfo = { from: 'launcher', id: item.id };
+            touchDragOriginItem = itemEl;
+        }
+    }, { passive: true });
+
+    itemEl.addEventListener('touchmove', (e) => {
+        const touch = e.touches[0];
+        const moveDistance = Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY);
+
+        if (moveDistance > 10) {
+            clearTimeout(touchLongPressTimer);
+        }
+
+        if (isHomeEditMode && draggedItemInfo && moveDistance > 12) {
+            if (!isTouchDraggingActive) {
+                isTouchDraggingActive = true;
+                itemEl.classList.add('item-being-dragged');
+                createTouchGhost(itemEl, touch.clientX, touch.clientY);
+                edgeLeft?.classList.add('active-dnd');
+                edgeRight?.classList.add('active-dnd');
+            }
+
+            updateTouchGhostPosition(touch.clientX, touch.clientY);
+            handleTouchHoverAtPoint(touch.clientX, touch.clientY);
+        }
+    }, { passive: false });
+
+    const handleTouchEndOrCancel = () => {
+        clearTimeout(touchLongPressTimer);
+        if (isTouchDraggingActive) {
+            finishTouchDrag();
+        }
+    };
+
+    itemEl.addEventListener('touchend', handleTouchEndOrCancel);
+    itemEl.addEventListener('touchcancel', handleTouchEndOrCancel);
+}
+
+function createTouchGhost(sourceEl, x, y) {
+    cleanupTouchDrag();
+    touchGhostEl = sourceEl.cloneNode(true);
+    touchGhostEl.id = 'touch-drag-ghost';
+    touchGhostEl.classList.remove('jiggling', 'item-being-dragged');
+    touchGhostEl.style.left = `${x}px`;
+    touchGhostEl.style.top = `${y}px`;
+    document.body.appendChild(touchGhostEl);
+}
+
+function updateTouchGhostPosition(x, y) {
+    if (touchGhostEl) {
+        touchGhostEl.style.left = `${x}px`;
+        touchGhostEl.style.top = `${y}px`;
+    }
+}
+
+function handleTouchHoverAtPoint(x, y) {
+    if (touchGhostEl) touchGhostEl.style.display = 'none';
+    const targetEl = document.elementFromPoint(x, y);
+    if (touchGhostEl) touchGhostEl.style.display = '';
+
+    if (currentTouchHoverCell) {
+        currentTouchHoverCell.classList.remove('cell-hover-target', 'dock-hover-target');
+        currentTouchHoverCell = null;
+    }
+
+    if (!targetEl) return;
+
+    const dock = targetEl.closest('#hunqos-dock');
+    if (dock) {
+        dock.classList.add('dock-hover-target');
+        currentTouchHoverCell = dock;
+        return;
+    }
+
+    if (x < 65) {
+        triggerEdgeTransition('left');
+        return;
+    } else if (x > window.innerWidth - 65) {
+        triggerEdgeTransition('right');
+        return;
+    } else {
+        clearTimeout(edgeTimer);
+        edgeTimer = null;
+    }
+
+    const cell = targetEl.closest('.grid-cell');
+    if (cell) {
+        cell.classList.add('cell-hover-target');
+        currentTouchHoverCell = cell;
+    }
+}
+
+function triggerEdgeTransition(direction) {
+    if (!edgeTimer && draggedItemInfo) {
+        edgeTimer = setTimeout(() => {
+            if (direction === 'left' && currentPageIndex > 0) {
+                goToPage(currentPageIndex - 1);
+            } else if (direction === 'right' && currentPageIndex < totalPages - 1) {
+                goToPage(currentPageIndex + 1);
+            }
+            edgeTimer = null;
+        }, 500);
+    }
+}
+
+function finishTouchDrag() {
+    if (!draggedItemInfo) {
+        cleanupTouchDrag();
+        return;
+    }
+
+    if (currentTouchHoverCell) {
+        if (currentTouchHoverCell.id === 'hunqos-dock') {
+            if (!dockList.some(d => d.id === draggedItemInfo.id)) {
+                dockList.push({ type: 'tool', id: draggedItemInfo.id });
+                saveDock();
+                UI.showAlert('Dock', 'Đã thêm ứng dụng vào Dock.', 'success');
+            }
+        } else if (currentTouchHoverCell.classList.contains('grid-cell')) {
+            const tp = parseInt(currentTouchHoverCell.dataset.page, 10);
+            const tr = parseInt(currentTouchHoverCell.dataset.row, 10);
+            const tc = parseInt(currentTouchHoverCell.dataset.col, 10);
+            handleDropOnCell(tp, tr, tc);
+        }
+    }
+
+    cleanupTouchDrag();
+}
+
+function cleanupTouchDrag() {
+    isTouchDraggingActive = false;
+    draggedItemInfo = null;
+    touchDragOriginItem?.classList.remove('item-being-dragged');
+    touchDragOriginItem = null;
+
+    if (currentTouchHoverCell) {
+        currentTouchHoverCell.classList.remove('cell-hover-target', 'dock-hover-target');
+        currentTouchHoverCell = null;
+    }
+
+    if (touchGhostEl) {
+        touchGhostEl.remove();
+        touchGhostEl = null;
+    }
+
+    clearTimeout(edgeTimer);
+    edgeTimer = null;
+    edgeLeft?.classList.remove('active-dnd', 'edge-hovering');
+    edgeRight?.classList.remove('active-dnd', 'edge-hovering');
+}
+
 function handleDropOnCell(targetPage, targetRow, targetCol) {
     if (!draggedItemInfo) return;
 
@@ -763,7 +1114,6 @@ function handleDropOnCell(targetPage, targetRow, targetCol) {
         const currentItem = homeLayout.find(x => x.id === id);
         if (!currentItem) return;
 
-        // Nếu ô mục tiêu đã có icon, đổi vị trí (swap)
         const targetItem = homeLayout.find(x => x.page === targetPage && x.row === targetRow && x.col === targetCol);
         if (targetItem) {
             targetItem.page = currentItem.page;
@@ -780,49 +1130,38 @@ function handleDropOnCell(targetPage, targetRow, targetCol) {
     }
 }
 
-// Chạm giữ để vào Edit Mode
-function attachLongPress(el) {
-    let timer = null;
-    el.addEventListener('touchstart', () => {
-        timer = setTimeout(() => {
-            window.enterHomeEditMode();
-            if (navigator.vibrate) navigator.vibrate(50);
-        }, 550);
-    }, { passive: true });
-    el.addEventListener('touchend', () => clearTimeout(timer));
-    el.addEventListener('touchmove', () => clearTimeout(timer));
-
-    el.addEventListener('mousedown', () => {
-        timer = setTimeout(() => window.enterHomeEditMode(), 550);
-    });
-    el.addEventListener('mouseup', () => clearTimeout(timer));
-    el.addEventListener('mouseleave', () => clearTimeout(timer));
-}
-
-// Chuyển trang khi kéo sát mép
 if (edgeLeft && edgeRight) {
-    edgeLeft.addEventListener('dragover', () => {
-        if (!edgeTimer && currentPageIndex > 0) {
+    const handleEdgeHover = (direction, edgeEl) => {
+        if (isTouchDevice()) return;
+        edgeEl.classList.add('edge-hovering');
+        if (!edgeTimer && draggedItemInfo) {
             edgeTimer = setTimeout(() => {
-                goToPage(currentPageIndex - 1);
+                if (direction === 'left' && currentPageIndex > 0) {
+                    goToPage(currentPageIndex - 1);
+                } else if (direction === 'right' && currentPageIndex < totalPages - 1) {
+                    goToPage(currentPageIndex + 1);
+                }
                 edgeTimer = null;
-            }, 600);
+            }, 450);
         }
+    };
+
+    edgeLeft.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        handleEdgeHover('left', edgeLeft);
     });
     edgeLeft.addEventListener('dragleave', () => {
+        edgeLeft.classList.remove('edge-hovering');
         clearTimeout(edgeTimer);
         edgeTimer = null;
     });
 
-    edgeRight.addEventListener('dragover', () => {
-        if (!edgeTimer && currentPageIndex < totalPages - 1) {
-            edgeTimer = setTimeout(() => {
-                goToPage(currentPageIndex + 1);
-                edgeTimer = null;
-            }, 600);
-        }
+    edgeRight.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        handleEdgeHover('right', edgeRight);
     });
     edgeRight.addEventListener('dragleave', () => {
+        edgeRight.classList.remove('edge-hovering');
         clearTimeout(edgeTimer);
         edgeTimer = null;
     });
@@ -846,23 +1185,33 @@ function renderPageDots() {
     }
 }
 
-function goToPage(index) {
+function goToPage(index, animate = true) {
     if (index < 0) index = 0;
     if (index >= totalPages) index = totalPages - 1;
     currentPageIndex = index;
 
     const pagesSlider = document.getElementById('launcher-pages-slider');
     if (pagesSlider) {
-        pagesSlider.style.transform = `translateX(-${currentPageIndex * 100}%)`;
+        if (animate) {
+            pagesSlider.style.transition = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
+        } else {
+            pagesSlider.style.transition = 'none';
+        }
+        pagesSlider.style.transform = `translate3d(-${currentPageIndex * 100}%, 0, 0)`;
     }
     renderPageDots();
 }
 
-// Điều hướng vuốt trang & con lăn chuột
 const launcherViewport = document.getElementById('launcher-viewport');
 let wheelCooldown = false;
 
 if (launcherViewport) {
+    launcherViewport.addEventListener('click', (e) => {
+        if (isHomeEditMode && !e.target.closest('.home-item') && !e.target.closest('#floating-edit-done')) {
+            window.exitHomeEditMode();
+        }
+    });
+
     launcherViewport.addEventListener('wheel', (e) => {
         const mode = detectDeviceMode();
         if (mode !== 'desktop' || wheelCooldown) return;
@@ -876,80 +1225,135 @@ if (launcherViewport) {
         }
     }, { passive: true });
 
-    let swipeStartX = 0;
-    let swipeStartY = 0;
-    let isHorizontalDragging = false;
+    // CẢM ỨNG ĐỒNG BỘ 60HZ / 120HZ / 144HZ
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let currentDeltaX = 0;
+    let isSwiping = false;
+    let touchStartTime = 0;
+    let rAFId = null;
 
-    launcherViewport.addEventListener('touchstart', e => {
+    launcherViewport.addEventListener('touchstart', (e) => {
         const mode = detectDeviceMode();
-        if (mode === 'desktop' || isHomeEditMode) return;
-        swipeStartX = e.touches[0].clientX;
-        swipeStartY = e.touches[0].clientY;
-        isHorizontalDragging = true;
+        if (mode === 'desktop' || isHomeEditMode || isTouchDraggingActive) return;
+
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchStartTime = performance.now();
+        currentDeltaX = 0;
+        isSwiping = false;
+
+        const pagesSlider = document.getElementById('launcher-pages-slider');
+        if (pagesSlider) pagesSlider.style.transition = 'none';
     }, { passive: true });
 
-    launcherViewport.addEventListener('touchmove', e => {
-        if (!isHorizontalDragging || isHomeEditMode) return;
-        const currentX = e.touches[0].clientX;
-        const diffX = currentX - swipeStartX;
-        const pagesSlider = document.getElementById('launcher-pages-slider');
-        if (pagesSlider) {
-            pagesSlider.style.transform = `translateX(calc(-${currentPageIndex * 100}% + ${diffX}px))`;
+    launcherViewport.addEventListener('touchmove', (e) => {
+        if (isHomeEditMode || isTouchDraggingActive) return;
+        const touch = e.touches[0];
+        const diffX = touch.clientX - touchStartX;
+        const diffY = touch.clientY - touchStartY;
+
+        if (!isSwiping) {
+            if (Math.abs(diffX) > 8 && Math.abs(diffX) > Math.abs(diffY)) {
+                isSwiping = true;
+            }
+        }
+
+        if (isSwiping) {
+            currentDeltaX = diffX;
+
+            // Kháng lực biên
+            if ((currentPageIndex === 0 && diffX > 0) || (currentPageIndex === totalPages - 1 && diffX < 0)) {
+                currentDeltaX = diffX * 0.32;
+            }
+
+            if (!rAFId) {
+                rAFId = requestAnimationFrame(() => {
+                    const pagesSlider = document.getElementById('launcher-pages-slider');
+                    if (pagesSlider) {
+                        pagesSlider.style.transform = `translate3d(calc(-${currentPageIndex * 100}% + ${currentDeltaX}px), 0, 0)`;
+                    }
+                    rAFId = null;
+                });
+            }
         }
     }, { passive: true });
 
-    launcherViewport.addEventListener('touchend', e => {
-        if (!isHorizontalDragging || isHomeEditMode) return;
-        isHorizontalDragging = false;
-        const endX = e.changedTouches[0].clientX;
-        const endY = e.changedTouches[0].clientY;
-        const diffX = endX - swipeStartX;
-        const diffY = endY - swipeStartY;
-
-        if (diffY > 90 && Math.abs(diffX) < 45) {
-            window.openSpotlight();
+    launcherViewport.addEventListener('touchend', (e) => {
+        if (!isSwiping) {
+            const endY = e.changedTouches[0].clientY;
+            const diffY = endY - touchStartY;
+            const diffX = e.changedTouches[0].clientX - touchStartX;
+            if (diffY > 90 && Math.abs(diffX) < 45) {
+                window.openSpotlight();
+            }
             return;
         }
 
-        if (diffX > 50) goToPage(currentPageIndex - 1);
-        else if (diffX < -50) goToPage(currentPageIndex + 1);
-        else goToPage(currentPageIndex);
-    });
+        if (rAFId) {
+            cancelAnimationFrame(rAFId);
+            rAFId = null;
+        }
+
+        isSwiping = false;
+        const duration = performance.now() - touchStartTime;
+        const velocityX = Math.abs(currentDeltaX) / duration;
+
+        const screenW = window.innerWidth;
+        const isFlick = velocityX > 0.45 && Math.abs(currentDeltaX) > 25;
+        const isPassedThreshold = Math.abs(currentDeltaX) > screenW * 0.35;
+
+        if (isFlick || isPassedThreshold) {
+            if (currentDeltaX < 0 && currentPageIndex < totalPages - 1) {
+                goToPage(currentPageIndex + 1, true);
+            } else if (currentDeltaX > 0 && currentPageIndex > 0) {
+                goToPage(currentPageIndex - 1, true);
+            } else {
+                goToPage(currentPageIndex, true);
+            }
+        } else {
+            goToPage(currentPageIndex, true);
+        }
+    }, { passive: true });
 }
 
 document.addEventListener('keydown', (e) => {
+    const activeEl = document.activeElement;
+    const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+    const isSpotlightOpen = cmdPalette && cmdPalette.classList.contains('spotlight-active');
+    
+    if (isTyping || isSpotlightOpen) return;
+
     const homescreenLauncher = document.getElementById('homescreen-launcher');
     const isHomeScreenVisible = !homescreenLauncher.classList.contains('hidden') && homescreenLauncher.style.opacity !== '0';
     if (!isHomeScreenVisible) return;
 
     if (e.key === 'ArrowLeft') goToPage(currentPageIndex - 1);
     else if (e.key === 'ArrowRight') goToPage(currentPageIndex + 1);
+    else if (e.key === 'Escape' && isHomeEditMode) window.exitHomeEditMode();
 });
 
 // ==========================================
-// 8. SPOTLIGHT SEARCH
+// 10. SPOTLIGHT SEARCH
 // ==========================================
 const cmdPalette = document.getElementById('cmd-palette');
-const spotlightCard = document.getElementById('spotlight-card');
 const cmdInput = document.getElementById('cmd-input');
 const cmdResults = document.getElementById('cmd-results');
 const spotlightSectionTitle = document.getElementById('spotlight-section-title');
 
 window.openSpotlight = () => {
     if (!cmdPalette) return;
-    cmdPalette.classList.remove('hidden');
-    cmdPalette.classList.replace('opacity-0', 'opacity-100');
-    spotlightCard.classList.replace('scale-95', 'scale-100');
+    cmdPalette.classList.add('spotlight-active');
     cmdInput.value = '';
-    cmdInput.focus();
     renderSpotlightResults(TOOLS.slice(0, 6), true);
+    setTimeout(() => cmdInput.focus(), 50);
 };
 
 window.closeSpotlight = () => {
     if (!cmdPalette) return;
-    cmdPalette.classList.replace('opacity-100', 'opacity-0');
-    spotlightCard.classList.replace('scale-100', 'scale-95');
-    setTimeout(() => cmdPalette.classList.add('hidden'), 250);
+    cmdPalette.classList.remove('spotlight-active');
+    cmdInput.blur();
 };
 
 function renderSpotlightResults(list, isSuggestion = false) {
@@ -996,18 +1400,18 @@ if (cmdPalette) {
 }
 
 document.addEventListener('keydown', e => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        if (cmdPalette.classList.contains('hidden')) window.openSpotlight();
-        else window.closeSpotlight();
+        if (cmdPalette.classList.contains('spotlight-active')) window.closeSpotlight();
+        else window.openSpotlight();
     }
-    if (e.key === 'Escape' && cmdPalette && !cmdPalette.classList.contains('hidden')) {
+    if (e.key === 'Escape' && cmdPalette && cmdPalette.classList.contains('spotlight-active')) {
         window.closeSpotlight();
     }
 });
 
 // ==========================================
-// 9. QUẢN LÝ CỬA SỔ & ĐA NHIỆM
+// 11. QUẢN LÝ CỬA SỔ & ĐA NHIỆM
 // ==========================================
 const savedState = JSON.parse(localStorage.getItem('app_workspace_state'));
 let tabCounter = savedState ? savedState.tabCounter : 1;
@@ -1081,7 +1485,7 @@ function renderSwitcherCards() {
             </div>
 
             <div class="flex-1 my-3 bg-black/30 rounded-xl border border-white/5 flex flex-col items-center justify-center p-3 text-center">
-                <div class="w-12 h-12 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-2xl mb-2">
+                <div class="w-12 h-12 rounded-2xl bg-accent-theme/20 text-accent-theme flex items-center justify-center text-2xl mb-2">
                     <i class="${tool.icon}"></i>
                 </div>
                 <p class="text-[11px] text-zinc-400 line-clamp-3">${tool.desc || 'Ứng dụng hệ thống'}</p>
@@ -1089,7 +1493,7 @@ function renderSwitcherCards() {
 
             <div class="flex items-center gap-2 pt-2 border-t border-white/10">
                 <button onclick="window.requestSplitScreen('${tab.toolId}')" 
-                    class="flex-1 py-1.5 px-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/60 border border-indigo-500/40 text-indigo-300 text-xs font-semibold flex items-center justify-center gap-1 transition-all" title="Chia 2 app">
+                    class="flex-1 py-1.5 px-2 rounded-xl bg-accent-theme/25 hover:bg-accent-theme/40 border border-accent-theme/40 text-accent-theme text-xs font-semibold flex items-center justify-center gap-1 transition-all" title="Chia 2 app">
                     <i class="fas fa-columns text-[10px]"></i> Chia đôi
                 </button>
                 <button class="py-1.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-all" title="Mở">
@@ -1144,14 +1548,14 @@ if (homeBar) {
 }
 
 // ==========================================
-// 10. DYNAMIC ISLAND NOTIFICATION
+// 12. DYNAMIC ISLAND NOTIFICATION (PHẢN HỒI NHANH)
 // ==========================================
 const dynamicIsland = document.getElementById('dynamic-island');
 const compactView = document.getElementById('island-compact-view');
 const alertView = document.getElementById('island-alert-view');
 let islandAlertTimer = null;
 
-window.triggerIslandNotification = (title, desc, type = 'info', duration = 3200) => {
+window.triggerIslandNotification = (title, desc, type = 'info', duration = 2800) => {
     if (!dynamicIsland || !alertView) return;
     if (islandAlertTimer) clearTimeout(islandAlertTimer);
 
@@ -1162,8 +1566,8 @@ window.triggerIslandNotification = (title, desc, type = 'info', duration = 3200)
     const iconMap = {
         info: { icon: 'fa-info-circle', color: 'text-blue-400' },
         success: { icon: 'fa-check-circle', color: 'text-emerald-400' },
-        error: { icon: 'fa-exclamation-triangle', color: 'text-rose-400' },
-        warning: { icon: 'fa-exclamation-circle', color: 'text-amber-400' }
+        error: { icon: 'fa-exclamation-circle', color: 'text-rose-400' },
+        warning: { icon: 'fa-exclamation-triangle', color: 'text-amber-400' }
     };
     const cfg = iconMap[type] || iconMap.info;
 
@@ -1177,7 +1581,11 @@ window.triggerIslandNotification = (title, desc, type = 'info', duration = 3200)
 
     alertView.classList.remove('hidden');
     alertView.classList.add('flex');
-    requestAnimationFrame(() => alertView.classList.replace('opacity-0', 'opacity-100'));
+    
+    requestAnimationFrame(() => {
+        alertView.classList.remove('opacity-0');
+        alertView.classList.add('opacity-100');
+    });
 
     islandAlertTimer = setTimeout(() => {
         alertView.classList.replace('opacity-100', 'opacity-0');
@@ -1186,50 +1594,79 @@ window.triggerIslandNotification = (title, desc, type = 'info', duration = 3200)
             alertView.classList.add('hidden');
             dynamicIsland.classList.remove('island-alert');
             dynamicIsland.classList.add('island-compact');
-            compactView.classList.remove('hidden');
+            
+            if (compactView.innerHTML.trim() !== '') {
+                compactView.classList.remove('hidden');
+            }
             islandAlertTimer = null;
-        }, 250);
+        }, 220);
     }, duration);
 };
 
 // ==========================================
-// 11. ĐIỀU HƯỚNG APP VÀ MÀN HÌNH CHÍNH
+// 13. ĐIỀU HƯỚNG APP VÀ CÔ LẬP NỘI DUNG
 // ==========================================
+function notifyAppStateChange(isActive, toolId = null) {
+    window.dispatchEvent(new CustomEvent('hunqos-tool-visibility', {
+        detail: { active: isActive, toolId: toolId }
+    }));
+}
+
 function showHomescreen() {
     if (contentsContainer) {
         contentsContainer.classList.add('hidden');
         contentsContainer.style.display = 'none';
+        contentsContainer.setAttribute('inert', '');
     }
+
+    if (document.activeElement && document.activeElement !== document.body) {
+        document.activeElement.blur();
+    }
+
     const homescreenLauncher = document.getElementById('homescreen-launcher');
     if (homescreenLauncher) {
         homescreenLauncher.classList.remove('hidden');
-        requestAnimationFrame(() => {
-            homescreenLauncher.style.opacity = '1';
-            homescreenLauncher.style.transform = 'scale(1)';
-            homescreenLauncher.style.pointerEvents = 'auto';
-        });
+        homescreenLauncher.style.display = 'flex';
+        homescreenLauncher.style.opacity = '1';
+        homescreenLauncher.style.transform = 'scale(1)';
+        homescreenLauncher.style.pointerEvents = 'auto';
     }
+
+    notifyAppStateChange(false, null);
     updateStatusbarBackground();
-    goToPage(0);
+    goToPage(currentPageIndex || 0);
 }
 
 function hideHomescreen() {
     if (contentsContainer) {
         contentsContainer.classList.remove('hidden');
         contentsContainer.style.display = 'flex';
+        contentsContainer.removeAttribute('inert');
     }
     const homescreenLauncher = document.getElementById('homescreen-launcher');
     if (homescreenLauncher) {
         homescreenLauncher.style.opacity = '0';
         homescreenLauncher.style.transform = 'scale(0.96)';
         homescreenLauncher.style.pointerEvents = 'none';
-        setTimeout(() => homescreenLauncher.classList.add('hidden'), 250);
+        setTimeout(() => {
+            if (contentsContainer && !contentsContainer.classList.contains('hidden')) {
+                homescreenLauncher.classList.add('hidden');
+                homescreenLauncher.style.display = 'none';
+            }
+        }, 250);
     }
+
+    const activeTab = state.tabs.find(t => t.tabId === state.activeTabId);
+    notifyAppStateChange(true, activeTab ? activeTab.toolId : null);
     updateStatusbarBackground();
 }
 
 window.goHome = () => {
     closeMultitasking();
+    state.activeTabId = 'tab-1';
+    const homeTab = state.tabs.find(t => t.toolId === 'home');
+    if (homeTab) state.activeTabId = homeTab.tabId;
+    saveState();
     showHomescreen();
 };
 
@@ -1264,45 +1701,12 @@ async function openTool(toolId, openInNewTab = false) {
 }
 window.openToolGlobal = (id, newTab = false) => openTool(id, newTab);
 
-function createPaneHtml(tool, targetTabId, isSplit = false) {
-    return `
-        <div class="app-window-header">
-            <div class="flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]"></span>
-                <i class="${tool.icon} text-indigo-400 text-xs"></i>
-                <span class="text-xs font-bold tracking-tight text-white">${tool.name}</span>
-            </div>
-            
-            <div class="flex items-center gap-1.5">
-                ${!isSplit ? `
-                    <button onclick="window.requestSplitScreen('${tool.id}')" class="window-tool-btn hover:border-indigo-400" title="Chia đôi màn hình">
-                        <i class="fas fa-columns text-indigo-400"></i> Chia 2 app
-                    </button>
-                ` : ''}
-                ${isSplit ? `
-                    <button onclick="window.exitSplitView()" class="window-tool-btn text-rose-300 hover:bg-rose-500/20" title="Trở về 1 màn hình">
-                        <i class="fas fa-compress-arrows-alt"></i> Thoát chia đôi
-                    </button>
-                ` : ''}
-                <button onclick="window.closeTab(event, '${targetTabId}')" class="window-tool-btn hover:text-red-400" title="Đóng ứng dụng">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-        <div class="view-pane-body" id="body-${targetTabId}">
-            <div class="flex items-center gap-3 py-32 justify-center text-zinc-400">
-                <i class="fas fa-circle-notch fa-spin text-xl"></i> Đang tải tiện ích...
-            </div>
-        </div>
-    `;
-}
-
 async function renderSinglePane(targetTabId, toolId) {
     let pane = document.getElementById(`pane-${targetTabId}`);
     if (!pane) {
         pane = document.createElement('div');
         pane.id = `pane-${targetTabId}`;
-        pane.className = 'view-pane w-full h-full bg-white dark:bg-[#0d1117] text-zinc-900 dark:text-zinc-100 shadow-2xl transition-colors duration-300';
+        pane.className = 'view-pane w-full h-full';
         singleAppHost.appendChild(pane);
     }
 
@@ -1315,20 +1719,35 @@ async function renderSinglePane(targetTabId, toolId) {
         return;
     }
 
-    pane.innerHTML = createPaneHtml(tool, targetTabId, false);
-    const paneBody = pane.querySelector(`#body-${targetTabId}`);
+    pane.innerHTML = `
+        <div class="w-full h-full flex items-center justify-center text-zinc-400">
+            <i class="fas fa-circle-notch fa-spin text-xl"></i>
+        </div>
+    `;
 
     try {
+        currentLoadingToolId = toolId;
+
         const module = await import(`../tools/${toolId}/index.js`);
-        paneBody.innerHTML = module.template();
-        if (module.init) module.init();
+        if (module.template) {
+            pane.innerHTML = module.template();
+        }
+        if (module.init) {
+            module.init(pane);
+        }
     } catch (e) {
-        paneBody.innerHTML = `<div class="p-8 text-center text-red-500 bg-red-50 dark:bg-red-950/20 rounded-3xl border border-red-200 dark:border-red-900 m-4">Lỗi nạp tiện ích: ${e.message}</div>`;
+        pane.innerHTML = `
+            <div class="w-full h-full flex items-center justify-center p-6 text-rose-400 text-xs">
+                Lỗi khởi tạo ứng dụng: ${e.message}
+            </div>
+        `;
+    } finally {
+        currentLoadingToolId = null;
     }
 }
 
 // ==========================================
-// 12. CHIA ĐÔI MÀN HÌNH VÀ THANH KÉO RESIZER
+// 14. CHIA ĐÔI MÀN HÌNH VÀ THANH KÉO RESIZER
 // ==========================================
 const splitPickerModal = document.getElementById('split-picker-modal');
 const splitPickerApps = document.getElementById('split-picker-apps');
@@ -1356,13 +1775,13 @@ window.requestSplitScreen = (currentToolId) => {
 function openSplitPickerModal(currentToolId, listToRender, title, desc) {
     if (!splitPickerApps) return;
 
-    if (splitPickerTitle) splitPickerTitle.innerHTML = `<i class="fas fa-columns text-indigo-400"></i> ${title}`;
+    if (splitPickerTitle) splitPickerTitle.innerHTML = `<i class="fas fa-columns text-accent-theme"></i> ${title}`;
     if (splitPickerDesc) splitPickerDesc.textContent = desc;
 
     splitPickerApps.innerHTML = listToRender.map(t => `
         <div onclick="window.startSplitView('${currentToolId}', '${t.id}')"
             class="p-3 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 border border-white/15 cursor-pointer flex flex-col items-center justify-center text-center transition-all group">
-            <div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-xl text-indigo-300 group-hover:scale-110 transition-transform mb-2">
+            <div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-xl text-accent-theme group-hover:scale-110 transition-transform mb-2">
                 <i class="${t.icon}"></i>
             </div>
             <div class="text-xs font-semibold text-white truncate w-full">${t.name}</div>
@@ -1402,22 +1821,28 @@ window.startSplitView = async (leftToolId, rightToolId) => {
         splitRightPane.style.width = `${100 - state.splitRatio}%`;
     }
 
-    const toolL = getToolData(leftToolId);
-    splitLeftPane.innerHTML = createPaneHtml(toolL, `split-left-${leftToolId}`, true);
     try {
+        currentLoadingToolId = leftToolId;
         const modL = await import(`../tools/${leftToolId}/index.js`);
-        splitLeftPane.querySelector(`#body-split-left-${leftToolId}`).innerHTML = modL.template();
-        if (modL.init) modL.init();
-    } catch (e) { }
+        if (modL.template) splitLeftPane.innerHTML = modL.template();
+        if (modL.init) modL.init(splitLeftPane);
+    } catch (e) {
+    } finally {
+        currentLoadingToolId = null;
+    }
 
-    const toolR = getToolData(rightToolId);
-    splitRightPane.innerHTML = createPaneHtml(toolR, `split-right-${rightToolId}`, true);
     try {
+        currentLoadingToolId = rightToolId;
         const modR = await import(`../tools/${rightToolId}/index.js`);
-        splitRightPane.querySelector(`#body-split-right-${rightToolId}`).innerHTML = modR.template();
-        if (modR.init) modR.init();
-    } catch (e) { }
+        if (modR.template) splitRightPane.innerHTML = modR.template();
+        if (modR.init) modR.init(splitRightPane);
+    } catch (e) {
+    } finally {
+        currentLoadingToolId = null;
+    }
 
+    const toolL = getToolData(leftToolId);
+    const toolR = getToolData(rightToolId);
     UI.showAlert('Split View', `Đang chạy song song ${toolL.name} & ${toolR.name}`, 'info');
 };
 
@@ -1429,7 +1854,6 @@ window.exitSplitView = () => {
     splitRightPane.innerHTML = '';
 };
 
-// Kéo chỉnh kích thước thanh chia đôi
 const splitResizer = document.getElementById('split-resizer');
 let isResizing = false;
 
@@ -1515,7 +1939,10 @@ window.closeTab = (e, tabId) => {
 
     state.tabs = state.tabs.filter(t => t.tabId !== tabId);
     const pane = document.getElementById(`pane-${tabId}`);
-    if (pane) pane.remove();
+    if (pane) {
+        pane.innerHTML = '';
+        pane.remove();
+    }
 
     if (state.tabs.length === 0) {
         openTool('home', true);
@@ -1565,7 +1992,7 @@ function renderDesktopTabs() {
     }).join('');
 }
 
-// Battery API
+// Battery Status
 if ('getBattery' in navigator) {
     navigator.getBattery().then(battery => {
         const update = () => {
@@ -1577,78 +2004,194 @@ if ('getBattery' in navigator) {
     });
 }
 
-// Modal Cài đặt
+// ==========================================
+// 15. QUẢN LÝ CÀI ĐẶT TOÀN MÀN HÌNH
+// ==========================================
 const settingsModal = document.getElementById('settings-modal');
-const settingsContent = document.getElementById('settings-content');
-document.getElementById('open-settings-btn')?.addEventListener('click', () => {
-    settingsModal.classList.remove('pointer-events-none', 'opacity-0');
-    settingsModal.classList.add('opacity-100');
-    settingsContent.classList.replace('scale-95', 'scale-100');
-});
-document.getElementById('close-settings-btn')?.addEventListener('click', () => {
-    settingsModal.classList.replace('opacity-100', 'opacity-0');
-    settingsContent.classList.replace('scale-100', 'scale-95');
-    setTimeout(() => settingsModal.classList.add('pointer-events-none'), 250);
-});
+
+window.openSettings = () => {
+    if (settingsModal) {
+        settingsModal.classList.add('active');
+    }
+};
+
+window.closeSettings = () => {
+    if (settingsModal) {
+        settingsModal.classList.remove('active');
+    }
+};
 
 // Dynamic Island Switch
 const islandToggleBtn = document.getElementById('toggle-island-setting');
-const islandThumb = document.getElementById('island-toggle-thumb');
 const islandWrapper = document.getElementById('dynamic-island-wrapper');
 
 let isIslandEnabled = localStorage.getItem('hunqos_dynamic_island') !== 'false';
 if (!isIslandEnabled) {
-    islandThumb?.classList.remove('translate-x-6');
+    islandToggleBtn?.classList.remove('active');
     islandWrapper?.classList.add('hidden');
 }
 
 islandToggleBtn?.addEventListener('click', () => {
     isIslandEnabled = !isIslandEnabled;
     localStorage.setItem('hunqos_dynamic_island', isIslandEnabled);
-    islandThumb?.classList.toggle('translate-x-6', isIslandEnabled);
+    islandToggleBtn?.classList.toggle('active', isIslandEnabled);
     islandWrapper?.classList.toggle('hidden', !isIslandEnabled);
 });
 
 // Contextmenu Switch
 const contextmenuToggleBtn = document.getElementById('toggle-contextmenu-setting');
-const contextmenuThumb = document.getElementById('contextmenu-toggle-thumb');
-
 if (!isContextMenuBlocked) {
-    contextmenuThumb?.classList.remove('translate-x-6');
-    contextmenuToggleBtn?.classList.replace('bg-indigo-600', 'bg-zinc-700');
+    contextmenuToggleBtn?.classList.remove('active');
 }
 
 contextmenuToggleBtn?.addEventListener('click', () => {
     isContextMenuBlocked = !isContextMenuBlocked;
     localStorage.setItem('hunqos_block_contextmenu', isContextMenuBlocked);
-    contextmenuThumb?.classList.toggle('translate-x-6', isContextMenuBlocked);
+    contextmenuToggleBtn?.classList.toggle('active', isContextMenuBlocked);
     if (isContextMenuBlocked) {
-        contextmenuToggleBtn.classList.replace('bg-zinc-700', 'bg-indigo-600');
         UI.showAlert('Bảo vệ', 'Đã bật chặn menu chuột phải.', 'info');
     } else {
-        contextmenuToggleBtn.classList.replace('bg-indigo-600', 'bg-zinc-700');
         UI.showAlert('Bảo vệ', 'Đã cho phép dùng menu chuột phải.', 'warning');
     }
 });
 
 // ==========================================
-// 13. KHỞI TẠO HUNQOS
+// ĐẶT LẠI CÀI ĐẶT GỐC (FACTORY RESET)
+// ==========================================
+window.factoryResetOS = () => {
+    UI.showConfirm(
+        'Đặt lại cài đặt gốc?',
+        'Hành động này sẽ xóa toàn bộ dữ liệu ứng dụng, IndexedDB, cấu hình cá nhân và LocalStorage. HunqOS sẽ khởi động lại như mới.',
+        async () => {
+            try {
+                if (dbInstance) {
+                    dbInstance.close();
+                    dbInstance = null;
+                }
+
+                if (window.indexedDB && indexedDB.databases) {
+                    const dbs = await indexedDB.databases();
+                    for (const db of dbs) {
+                        if (db.name) {
+                            indexedDB.deleteDatabase(db.name);
+                        }
+                    }
+                } else {
+                    indexedDB.deleteDatabase(DB_NAME);
+                }
+
+                localStorage.clear();
+                sessionStorage.clear();
+
+                UI.showAlert('Khôi phục gốc', 'Đang thiết lập lại hệ điều hành...', 'success', 1500);
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } catch (err) {
+                console.error('Lỗi khi khôi phục cài đặt gốc:', err);
+                localStorage.clear();
+                window.location.reload();
+            }
+        }
+    );
+};
+
+// ==========================================
+// 16. QUẢN LÝ KIỂU ĐIỀU HƯỚNG ĐÁY MÀN HÌNH
+// ==========================================
+let navMode = localStorage.getItem('hunqos_nav_mode') || 'homebar';
+
+function applyNavigationMode(mode) {
+    navMode = mode;
+    const homeBarEl = document.getElementById('home-bar-touch-area');
+    const androidBarEl = document.getElementById('android-nav-bar');
+    const btnHomebar = document.getElementById('nav-mode-btn-homebar');
+    const btnAndroid = document.getElementById('nav-mode-btn-android');
+
+    if (mode === 'android') {
+        document.body.classList.add('nav-mode-android');
+        homeBarEl?.classList.add('hidden');
+        androidBarEl?.classList.remove('hidden');
+        androidBarEl?.classList.add('flex');
+
+        if (btnAndroid && btnHomebar) {
+            btnAndroid.className = "py-2.5 px-3 rounded-xl bg-accent-theme text-white font-medium text-xs text-center border border-white/20 flex items-center justify-center gap-2";
+            btnHomebar.className = "py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs text-center flex items-center justify-center gap-2";
+        }
+    } else {
+        document.body.classList.remove('nav-mode-android');
+        androidBarEl?.classList.add('hidden');
+        androidBarEl?.classList.remove('flex');
+        homeBarEl?.classList.remove('hidden');
+
+        if (btnAndroid && btnHomebar) {
+            btnHomebar.className = "py-2.5 px-3 rounded-xl bg-accent-theme text-white font-medium text-xs text-center border border-white/20 flex items-center justify-center gap-2";
+            btnAndroid.className = "py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs text-center flex items-center justify-center gap-2";
+        }
+    }
+}
+
+window.setNavigationMode = (mode) => {
+    localStorage.setItem('hunqos_nav_mode', mode);
+    applyNavigationMode(mode);
+    UI.showAlert(
+        'Thanh điều hướng', 
+        mode === 'android' ? 'Đã đổi sang kiểu 3 phím cảm ứng.' : 'Đã đổi sang thanh Home cử chỉ.', 
+        'info'
+    );
+};
+
+window.handleNavSplitClick = () => {
+    const currentTab = state.tabs.find(t => t.tabId === state.activeTabId);
+    
+    if (!currentTab || currentTab.toolId === 'home' || contentsContainer.classList.contains('hidden')) {
+        UI.showAlert('Chia đôi màn hình', 'Hãy mở một ứng dụng trước khi kích hoạt chia đôi.', 'warning');
+        return;
+    }
+
+    if (state.isSplitActive) {
+        window.exitSplitView();
+        UI.showAlert('Chia đôi màn hình', 'Đã trở về chế độ toàn màn hình.', 'info');
+        return;
+    }
+
+    window.requestSplitScreen(currentTab.toolId);
+};
+
+// ==========================================
+// 17. KHỞI TẠO HUNQOS & PHỤC HỒI KHI F5
 // ==========================================
 async function initHunqOS() {
+    applySystemAccent(currentAccentColor);
+    applyThemeShape();
+    updateThemeUIControls();
+    applyNavigationMode(navMode);
     detectDeviceMode();
     activeGrid = getGridDimensions();
     homeLayout = getInitialLayout();
 
-    const savedWp = await getWallpaperFromDB();
-    if (savedWp) applyWallpaper(savedWp);
+    await syncWallpaperDisplay();
 
     renderDock();
     initHomescreenPages();
 
+    const activeTab = state.tabs.find(t => t.tabId === state.activeTabId);
+
     for (const tab of state.tabs) {
-        if (tab.toolId !== 'home') await renderSinglePane(tab.tabId, tab.toolId);
+        if (tab.toolId !== 'home') {
+            await renderSinglePane(tab.tabId, tab.toolId);
+        }
     }
-    switchTab(state.activeTabId);
+
+    if (!activeTab || activeTab.toolId === 'home') {
+        showHomescreen();
+    } else {
+        hideHomescreen();
+        switchTab(activeTab.tabId);
+    }
+
+    renderDesktopTabs();
     updateStatusbarBackground();
 }
 

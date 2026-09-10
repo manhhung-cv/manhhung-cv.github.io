@@ -1,131 +1,224 @@
 import { UI } from '../../js/ui.js';
 
+// =============================================================================
+// 0. DYNAMIC THEME ACCENT CONTROLLER
+// =============================================================================
+const DEFAULT_EMERALD = '#10b981';
+
+export const ThemeKit = {
+    getAccentColor: () => {
+        return localStorage.getItem('hunqos_accent_color') || 
+               localStorage.getItem('hunqos_icon_custom_bg') || 
+               DEFAULT_EMERALD;
+    },
+    applyAccent: (container) => {
+        if (!container) return;
+        const accent = ThemeKit.getAccentColor();
+        container.style.setProperty('--kit-accent', accent);
+    }
+};
+
+// =============================================================================
+// 1. ADAPTIVE ISLAND & TOAST FALLBACK CONTROLLER
+// =============================================================================
+export const IslandKit = {
+    isIslandActive: () => {
+        const isEnabled = localStorage.getItem('hunqos_dynamic_island') !== 'false';
+        const wrapper = document.getElementById('dynamic-island-wrapper');
+        const isDOMVisible = wrapper && !wrapper.classList.contains('hidden') && window.getComputedStyle(wrapper).display !== 'none';
+        return Boolean(isEnabled && isDOMVisible && typeof window.triggerIslandNotification === 'function');
+    },
+
+    notify: (title, desc, type = 'info', duration = 2800) => {
+        if (IslandKit.isIslandActive()) {
+            window.triggerIslandNotification(title, desc, type, duration);
+        } else {
+            UI.showAlert(title, desc, type, duration);
+        }
+    }
+};
+
+// =============================================================================
+// 2. TEMPLATE RENDERER (SEAMLESS EMERALD FLAT)
+// =============================================================================
 export function template() {
     return `
-        <div class="space-y-6">
-            <div class="flex justify-between items-end mb-2">
-                <div>
-                    <h2 class="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">Tính Toán Khoản Vay</h2>
-                    <p class="text-sm text-zinc-500 mt-1">Tính lãi suất, khoản trả hàng tháng và xem lịch trả nợ chi tiết.</p>
+    <div id="loan-calc-root" class="w-full h-full bg-[#f4f4f6] dark:bg-[#000000] text-[#18181b] dark:text-[#f4f4f6] overflow-hidden font-sans transition-colors duration-200">
+        
+        <style>
+            #loan-calc-root {
+                --kit-accent: #10b981;
+            }
+            .bg-accent-theme {
+                background-color: var(--kit-accent) !important;
+            }
+            .text-accent-theme {
+                color: var(--kit-accent) !important;
+            }
+            .border-accent-theme {
+                border-color: var(--kit-accent) !important;
+            }
+            .bg-accent-theme-alpha {
+                background-color: color-mix(in srgb, var(--kit-accent) 14%, transparent) !important;
+            }
+            .hover-bg-accent-theme-alpha:hover {
+                background-color: color-mix(in srgb, var(--kit-accent) 20%, transparent) !important;
+            }
+        </style>
+
+        <!-- MAIN SCROLLER -->
+        <main class="w-full h-full overflow-y-auto no-scrollbar px-3.5 sm:px-6 pt-6 pb-24 max-w-6xl mx-auto space-y-5">
+            
+            <!-- SEAMLESS HERO TITLE -->
+            <div class="px-1 space-y-1 select-none">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-accent-theme shadow-sm transition-colors"></span>
+                    <span class="text-[11px] font-mono tracking-wider font-semibold uppercase text-accent-theme">HunqOS Loan Engine</span>
                 </div>
+                <h1 class="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">Tính Toán Khoản Vay</h1>
+                <p class="text-[12px] text-zinc-500 dark:text-zinc-400 font-normal">Dự phóng hạn mức trả gốc lãi, so sánh dư nợ giảm dần và dư nợ ban đầu kèm bảng lịch trả chi tiết.</p>
             </div>
 
+            <!-- WORKSPACE GRID -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                 
-                <div class="lg:col-span-5 premium-card bg-white dark:bg-zinc-900 rounded-[28px] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col p-5 space-y-5 relative">
+                <!-- CỘT TRÁI: THAM SỐ VAY (5 COLS) -->
+                <div class="lg:col-span-5 rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-4 sm:p-5 shadow-sm space-y-4">
                     
-                    <div class="flex p-1 bg-zinc-100/80 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200/50 dark:border-zinc-700/50">
-                        <button class="lc-method-btn active flex-1 py-2 text-[13px] font-bold rounded-xl text-zinc-900 dark:text-white bg-white dark:bg-zinc-700 shadow-sm transition-all flex flex-col items-center gap-0.5" data-method="reducing">
-                            <span>Dư nợ giảm dần</span>
-                            <span class="text-[9px] font-medium opacity-50">Chuẩn Ngân hàng</span>
-                        </button>
-                        <button class="lc-method-btn flex-1 py-2 text-[13px] font-medium rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all flex flex-col items-center gap-0.5" data-method="flat">
-                            <span>Dư nợ ban đầu</span>
-                            <span class="text-[9px] font-medium opacity-50">Vay tiêu dùng</span>
-                        </button>
-                    </div>
-
-                    <div class="space-y-1.5">
-                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1">Số tiền vay (VNĐ)</label>
-                        <div class="relative flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 focus-within:ring-2 focus-within:ring-blue-500/50 transition-all">
-                            <span class="text-zinc-400 font-bold">₫</span>
-                            <input type="text" inputmode="decimal" id="lc-amount" class="w-full bg-transparent border-none py-3 outline-none text-base font-bold text-zinc-900 dark:text-white text-right placeholder-zinc-300 dark:placeholder-zinc-700" placeholder="100.000.000" value="100.000.000">
+                    <!-- PHƯƠNG PHÁP TÍNH LÃI: SEGMENTED TABS TƯƠNG PHẢN CAO -->
+                    <div class="space-y-1 select-none">
+                        <span class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block pl-0.5">Phương thức tính lãi</span>
+                        <div class="grid grid-cols-2 gap-1 p-1 rounded-[14px] bg-black/[0.05] dark:bg-black/50 border border-black/[0.04] dark:border-white/[0.08]" id="lc-method-tabs">
+                            <button type="button" class="lc-method-btn active py-2 rounded-[10px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all flex flex-col items-center gap-0.5" data-method="reducing">
+                                <span>Dư nợ giảm dần</span>
+                                <span class="text-[9px] font-mono opacity-60">Chuẩn Ngân hàng</span>
+                            </button>
+                            <button type="button" class="lc-method-btn py-2 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all flex flex-col items-center gap-0.5" data-method="flat">
+                                <span>Dư nợ ban đầu</span>
+                                <span class="text-[9px] font-mono opacity-60">Vay tiêu dùng</span>
+                            </button>
                         </div>
                     </div>
 
-                    <div class="space-y-1.5">
-                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1">Thời hạn vay</label>
+                    <!-- SỐ TIỀN VAY -->
+                    <div class="space-y-1">
+                        <label for="lc-amount" class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block select-none pl-0.5">Số tiền vay (VNĐ)</label>
+                        <div class="flex items-center bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[16px] px-3.5 py-1.5 focus-within:border-accent-theme transition-all cursor-text" onclick="document.getElementById('lc-amount')?.focus()">
+                            <span class="text-zinc-400 font-bold font-mono text-sm mr-2 select-none">₫</span>
+                            <input type="text" inputmode="decimal" id="lc-amount" 
+                                class="w-full bg-transparent border-none outline-none text-base font-black font-mono text-zinc-900 dark:text-white text-right placeholder-zinc-400 select-text cursor-text pointer-events-auto" 
+                                placeholder="100.000.000" value="100.000.000">
+                        </div>
+                    </div>
+
+                    <!-- THỜI HẠN VAY -->
+                    <div class="space-y-1">
+                        <label for="lc-term" class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block select-none pl-0.5">Thời hạn vay</label>
                         <div class="flex gap-2">
-                            <div class="relative flex-1 flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 focus-within:ring-2 focus-within:ring-blue-500/50 transition-all">
-                                <i class="far fa-calendar-alt text-zinc-400"></i>
-                                <input type="number" inputmode="numeric" id="lc-term" class="w-full bg-transparent border-none py-3 outline-none text-base font-bold text-zinc-900 dark:text-white text-right" placeholder="12" value="12">
+                            <div class="flex-1 flex items-center bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[16px] px-3.5 py-1.5 focus-within:border-accent-theme transition-all cursor-text" onclick="document.getElementById('lc-term')?.focus()">
+                                <i class="far fa-calendar-days text-zinc-400 text-xs mr-2 select-none"></i>
+                                <input type="number" inputmode="numeric" id="lc-term" 
+                                    class="w-full bg-transparent border-none outline-none text-base font-black font-mono text-zinc-900 dark:text-white text-right select-text cursor-text pointer-events-auto" 
+                                    placeholder="12" value="12">
                             </div>
-                            <div class="flex p-1 bg-zinc-100/80 dark:bg-zinc-800/50 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50 shrink-0 w-32">
-                                <button class="lc-term-unit active flex-1 text-[11px] font-bold rounded-lg text-zinc-900 dark:text-white bg-white dark:bg-zinc-700 shadow-sm transition-all" data-unit="months">Tháng</button>
-                                <button class="lc-term-unit flex-1 text-[11px] font-medium rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all" data-unit="years">Năm</button>
+
+                            <!-- ĐƠN VỊ THỜI HẠN: SEGMENTED TABS -->
+                            <div class="grid grid-cols-2 gap-1 p-1 rounded-[14px] bg-black/[0.05] dark:bg-black/50 border border-black/[0.04] dark:border-white/[0.08] shrink-0 w-28 select-none" id="lc-term-unit-tabs">
+                                <button type="button" class="lc-term-unit active py-1 rounded-[10px] text-[11px] font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all text-center" data-unit="months">Tháng</button>
+                                <button type="button" class="lc-term-unit py-1 rounded-[10px] text-[11px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all text-center" data-unit="years">Năm</button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="space-y-1.5">
-                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1">Lãi suất</label>
+                    <!-- LÃI SUẤT -->
+                    <div class="space-y-1">
+                        <label for="lc-rate" class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block select-none pl-0.5">Lãi suất</label>
                         <div class="flex gap-2">
-                            <div class="relative flex-1 flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 focus-within:ring-2 focus-within:ring-blue-500/50 transition-all">
-                                <i class="fas fa-percentage text-zinc-400"></i>
-                                <input type="number" inputmode="decimal" id="lc-rate" class="w-full bg-transparent border-none py-3 outline-none text-base font-bold text-zinc-900 dark:text-white text-right" placeholder="8.5" value="8.5">
+                            <div class="flex-1 flex items-center bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[16px] px-3.5 py-1.5 focus-within:border-accent-theme transition-all cursor-text" onclick="document.getElementById('lc-rate')?.focus()">
+                                <i class="fas fa-percent text-zinc-400 text-xs mr-2 select-none"></i>
+                                <input type="number" inputmode="decimal" id="lc-rate" step="0.1" 
+                                    class="w-full bg-transparent border-none outline-none text-base font-black font-mono text-zinc-900 dark:text-white text-right select-text cursor-text pointer-events-auto" 
+                                    placeholder="8.5" value="8.5">
                             </div>
-                            <div class="flex p-1 bg-zinc-100/80 dark:bg-zinc-800/50 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50 shrink-0 w-32">
-                                <button class="lc-rate-unit active flex-1 text-[11px] font-bold rounded-lg text-zinc-900 dark:text-white bg-white dark:bg-zinc-700 shadow-sm transition-all" data-unit="year">%/Năm</button>
-                                <button class="lc-rate-unit flex-1 text-[11px] font-medium rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all" data-unit="month">%/Tháng</button>
+
+                            <!-- ĐƠN VỊ LÃI SUẤT: SEGMENTED TABS -->
+                            <div class="grid grid-cols-2 gap-1 p-1 rounded-[14px] bg-black/[0.05] dark:bg-black/50 border border-black/[0.04] dark:border-white/[0.08] shrink-0 w-32 select-none" id="lc-rate-unit-tabs">
+                                <button type="button" class="lc-rate-unit active py-1 rounded-[10px] text-[11px] font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all text-center" data-unit="year">%/Năm</button>
+                                <button type="button" class="lc-rate-unit py-1 rounded-[10px] text-[11px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all text-center" data-unit="month">%/Tháng</button>
                             </div>
                         </div>
                     </div>
 
-                    <button id="btn-lc-calc" class="w-full py-3.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-[13px] transition-all hover:opacity-90 active:scale-95 shadow-sm mt-2 flex items-center justify-center gap-2">
-                        <i class="fas fa-calculator"></i> TÍNH TOÁN KẾT QUẢ
+                    <!-- ACTION BUTTON -->
+                    <button type="button" id="btn-lc-calc" class="w-full h-11 bg-accent-theme text-white rounded-[14px] font-bold text-xs tracking-wide uppercase flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-sm select-none">
+                        <i class="fas fa-calculator text-xs"></i> Tính toán kết quả
                     </button>
                 </div>
 
-                <div class="lg:col-span-7 flex flex-col gap-5">
+                <!-- CỘT PHẢI: KẾT QUẢ TỔNG QUAN & BẢNG LỊCH TRẢ (7 COLS) -->
+                <div id="lc-results-col" class="lg:col-span-7 flex flex-col gap-4">
                     
-                    <div class="premium-card bg-zinc-900 dark:bg-zinc-800 rounded-[28px] p-6 shadow-md relative overflow-hidden text-white border border-zinc-800 dark:border-zinc-700">
-                        <div class="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/4"></div>
-                        
-                        <div class="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div>
-                                <p class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1" id="res-hero-title">Số tiền trả tháng đầu</p>
-                                <h3 class="text-3xl sm:text-4xl font-black tracking-tight flex items-baseline gap-2 text-blue-400">
-                                    <span id="res-monthly-pay">0</span>
-                                    <span class="text-sm font-medium text-zinc-400">VNĐ</span>
-                                </h3>
-                                <p class="text-xs text-zinc-400 mt-2 flex items-center gap-1.5" id="res-monthly-desc">
-                                    Gốc <span id="res-monthly-principal" class="text-zinc-300 font-bold">0</span> + Lãi <span id="res-monthly-interest" class="text-zinc-300 font-bold">0</span>
-                                </p>
+                    <!-- HERO SUMMARY CARD -->
+                    <div class="rounded-[24px] p-5 sm:p-6 bg-gradient-to-br from-zinc-900 to-zinc-950 dark:from-[#121214] dark:to-black text-white border border-white/5 shadow-sm relative overflow-hidden space-y-5 select-none">
+                        <div class="absolute top-0 right-0 w-64 h-64 bg-accent-theme-alpha rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/4"></div>
+
+                        <div class="relative z-10 space-y-1">
+                            <span class="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest block" id="res-hero-title">Số tiền trả tháng đầu</span>
+                            <div class="text-3xl sm:text-4xl font-black font-mono tracking-tight flex items-baseline gap-2">
+                                <span id="res-monthly-pay" class="text-accent-theme">0</span>
+                                <span class="text-sm font-medium text-zinc-400 font-sans">VNĐ</span>
                             </div>
+                            <p class="text-[11px] text-zinc-400 font-mono pt-0.5 flex items-center gap-2" id="res-monthly-desc">
+                                Gốc: <span id="res-monthly-principal" class="text-zinc-200 font-bold">0</span> • Lãi: <span id="res-monthly-interest" class="text-rose-400 font-bold">0</span>
+                            </p>
                         </div>
 
-                        <div class="relative z-10 mt-6 pt-5 border-t border-white/10">
-                            <div class="flex justify-between items-end mb-2">
-                                <div>
-                                    <p class="text-[10px] text-zinc-400 uppercase tracking-wider mb-0.5">Tổng tiền gốc</p>
-                                    <p class="text-sm font-bold text-white" id="res-total-principal">0 VNĐ</p>
+                        <!-- THANH TỶ LỆ GỐC / LÃI -->
+                        <div class="relative z-10 pt-4 border-t border-white/10 space-y-2.5">
+                            <div class="flex justify-between items-end text-xs">
+                                <div class="space-y-0.5">
+                                    <span class="text-[9px] font-mono uppercase text-zinc-400 block">Tổng tiền gốc</span>
+                                    <span class="font-mono font-bold text-white" id="res-total-principal">0 VNĐ</span>
                                 </div>
-                                <div class="text-right">
-                                    <p class="text-[10px] text-zinc-400 uppercase tracking-wider mb-0.5">Tổng tiền lãi</p>
-                                    <p class="text-sm font-bold text-rose-400" id="res-total-interest">0 VNĐ</p>
+                                <div class="space-y-0.5 text-right">
+                                    <span class="text-[9px] font-mono uppercase text-zinc-400 block">Tổng tiền lãi</span>
+                                    <span class="font-mono font-bold text-rose-400" id="res-total-interest">0 VNĐ</span>
                                 </div>
                             </div>
-                            <div class="w-full h-2 bg-zinc-800 rounded-full overflow-hidden flex">
-                                <div id="res-bar-principal" class="bg-blue-500 h-full transition-all duration-700" style="width: 70%;"></div>
-                                <div id="res-bar-interest" class="bg-rose-500 h-full transition-all duration-700" style="width: 30%;"></div>
+
+                            <div class="w-full h-2 bg-white/10 rounded-full overflow-hidden flex">
+                                <div id="res-bar-principal" class="bg-accent-theme h-full transition-all duration-500" style="width: 70%;"></div>
+                                <div id="res-bar-interest" class="bg-rose-500 h-full transition-all duration-500" style="width: 30%;"></div>
                             </div>
-                            <div class="mt-3 flex justify-between items-center">
-                                <p class="text-[11px] text-zinc-400">Tổng phải trả (Gốc + Lãi):</p>
-                                <p class="text-base font-black text-white" id="res-total-pay">0 VNĐ</p>
+
+                            <div class="flex justify-between items-center pt-1 text-xs">
+                                <span class="text-zinc-400">Tổng phải trả (Gốc + Lãi):</span>
+                                <span class="font-black font-mono text-white text-sm sm:text-base" id="res-total-pay">0 VNĐ</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="premium-card bg-white dark:bg-zinc-900 rounded-[24px] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm overflow-hidden flex flex-col h-[400px]">
-                        <div class="px-5 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-950/30">
-                            <h3 class="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                                <i class="fas fa-list-alt text-blue-500"></i> Lịch trả nợ chi tiết
+                    <!-- BẢNG LỊCH TRẢ NỢ CHI TIẾT -->
+                    <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] shadow-sm overflow-hidden flex flex-col h-[400px]">
+                        <div class="px-4 py-3 border-b border-black/[0.05] dark:border-white/[0.08] flex justify-between items-center bg-white dark:bg-[#161618] select-none">
+                            <h3 class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fas fa-table-list text-accent-theme"></i> Lịch trả nợ chi tiết
                             </h3>
+                            <span class="text-[9px] font-mono text-zinc-400">Amortization Table</span>
                         </div>
                         
-                        <div class="flex-1 overflow-auto custom-scrollbar relative bg-zinc-50/30 dark:bg-zinc-900/30">
-                            <table class="w-full text-left border-collapse">
-                                <thead class="sticky top-0 bg-zinc-100 dark:bg-zinc-800 shadow-sm z-10">
+                        <div class="flex-1 overflow-auto no-scrollbar relative bg-[#f2f2f7]/30 dark:bg-black/20">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead class="sticky top-0 bg-white dark:bg-[#161618] border-b border-black/[0.05] dark:border-white/[0.08] shadow-sm z-10 select-none">
                                     <tr>
-                                        <th class="py-3 px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Kỳ</th>
-                                        <th class="py-3 px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-wider text-right">Tiền gốc</th>
-                                        <th class="py-3 px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-wider text-right">Tiền lãi</th>
-                                        <th class="py-3 px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-wider text-right">Tổng trả</th>
-                                        <th class="py-3 px-4 text-[10px] font-bold text-zinc-500 uppercase tracking-wider text-right hidden sm:table-cell">Dư nợ còn lại</th>
+                                        <th class="py-2.5 px-3.5 text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Kỳ</th>
+                                        <th class="py-2.5 px-3.5 text-[9px] font-bold text-zinc-400 uppercase tracking-wider text-right">Tiền gốc</th>
+                                        <th class="py-2.5 px-3.5 text-[9px] font-bold text-zinc-400 uppercase tracking-wider text-right">Tiền lãi</th>
+                                        <th class="py-2.5 px-3.5 text-[9px] font-bold text-zinc-400 uppercase tracking-wider text-right">Tổng trả</th>
+                                        <th class="py-2.5 px-3.5 text-[9px] font-bold text-zinc-400 uppercase tracking-wider text-right hidden sm:table-cell">Dư nợ còn lại</th>
                                     </tr>
                                 </thead>
-                                <tbody id="res-schedule-tbody" class="text-[12px] md:text-[13px] font-mono font-medium text-zinc-700 dark:text-zinc-300 divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                                    </tbody>
+                                <tbody id="res-schedule-tbody" class="font-mono text-zinc-800 dark:text-zinc-200 divide-y divide-black/[0.04] dark:divide-white/[0.06]"></tbody>
                             </table>
                         </div>
                     </div>
@@ -133,74 +226,94 @@ export function template() {
                 </div>
 
             </div>
-        </div>
+        </main>
+    </div>
     `;
 }
 
-export function init() {
-    // --- STATE ---
+// =============================================================================
+// 3. LOGIC HOOKS & EVENT DISPATCHING
+// =============================================================================
+export function init(hostElement) {
+    if (!hostElement) return;
+
+    const rootContainer = hostElement.querySelector('#loan-calc-root') || hostElement;
+
+    // Khởi tạo ThemeKit
+    const updateAccent = () => ThemeKit.applyAccent(rootContainer);
+    updateAccent();
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'hunqos_accent_color' || e.key === 'hunqos_icon_custom_bg') {
+            updateAccent();
+        }
+    });
+
     let state = {
-        method: 'reducing', // reducing, flat
+        method: 'reducing',
         amount: 100000000,
         term: 12,
-        termUnit: 'months', // months, years
+        termUnit: 'months',
         rate: 8.5,
-        rateUnit: 'year' // year, month
+        rateUnit: 'year'
     };
 
-    // --- DOM Elements ---
-    const inputAmount = document.getElementById('lc-amount');
-    const inputTerm = document.getElementById('lc-term');
-    const inputRate = document.getElementById('lc-rate');
-    const btnCalc = document.getElementById('btn-lc-calc');
+    const _ = sel => hostElement.querySelector(sel);
+    const $$ = sel => hostElement.querySelectorAll(sel);
+
+    const inputAmount = _('#lc-amount');
+    const inputTerm = _('#lc-term');
+    const inputRate = _('#lc-rate');
+    const btnCalc = _('#btn-lc-calc');
     
-    const btnsMethod = document.querySelectorAll('.lc-method-btn');
-    const btnsTermUnit = document.querySelectorAll('.lc-term-unit');
-    const btnsRateUnit = document.querySelectorAll('.lc-rate-unit');
+    const btnsMethod = $$('.lc-method-btn');
+    const btnsTermUnit = $$('.lc-term-unit');
+    const btnsRateUnit = $$('.lc-rate-unit');
 
     const res = {
-        heroTitle: document.getElementById('res-hero-title'),
-        monthlyPay: document.getElementById('res-monthly-pay'),
-        monthlyDesc: document.getElementById('res-monthly-desc'),
-        monthlyPrincipal: document.getElementById('res-monthly-principal'),
-        monthlyInterest: document.getElementById('res-monthly-interest'),
+        heroTitle: _('#res-hero-title'),
+        monthlyPay: _('#res-monthly-pay'),
+        monthlyDesc: _('#res-monthly-desc'),
+        monthlyPrincipal: _('#res-monthly-principal'),
+        monthlyInterest: _('#res-monthly-interest'),
         
-        totalPrincipal: document.getElementById('res-total-principal'),
-        totalInterest: document.getElementById('res-total-interest'),
-        totalPay: document.getElementById('res-total-pay'),
+        totalPrincipal: _('#res-total-principal'),
+        totalInterest: _('#res-total-interest'),
+        totalPay: _('#res-total-pay'),
         
-        barPrincipal: document.getElementById('res-bar-principal'),
-        barInterest: document.getElementById('res-bar-interest'),
+        barPrincipal: _('#res-bar-principal'),
+        barInterest: _('#res-bar-interest'),
         
-        tbody: document.getElementById('res-schedule-tbody')
+        tbody: _('#res-schedule-tbody')
     };
 
-    // --- UTILS ---
-    const formatCurrency = (num) => new Intl.NumberFormat('vi-VN').format(Math.round(num));
+    const formatCurrency = (num) => new Intl.NumberFormat('vi-VN').format(Math.round(num || 0));
     
     const parseCurrency = (str) => {
-        const parsed = parseInt(str.replace(/\./g, ''));
+        const parsed = parseInt((str || '').replace(/\D/g, ''), 10);
         return isNaN(parsed) ? 0 : parsed;
     };
 
     const formatInputCurrency = (el) => {
-        let val = el.value.replace(/[^0-9]/g, '');
+        let val = el.value.replace(/\D/g, '');
         if (val) {
-            el.value = new Intl.NumberFormat('vi-VN').format(parseInt(val));
+            el.value = new Intl.NumberFormat('vi-VN').format(parseInt(val, 10));
         } else {
             el.value = '';
         }
     };
 
-    // --- UI TOGGLES LOGIC ---
+    // Segmented Tabs Styling Classes
+    const activeMethodClass = 'lc-method-btn active py-2 rounded-[10px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all flex flex-col items-center gap-0.5';
+    const inactiveMethodClass = 'lc-method-btn py-2 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all flex flex-col items-center gap-0.5';
+
+    const activePillClass = 'py-1 rounded-[10px] text-[11px] font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all text-center';
+    const inactivePillClass = 'py-1 rounded-[10px] text-[11px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all text-center';
+
     btnsMethod.forEach(btn => {
         btn.addEventListener('click', () => {
-            btnsMethod.forEach(b => {
-                b.classList.remove('active', 'text-zinc-900', 'dark:text-white', 'bg-white', 'dark:bg-zinc-700', 'shadow-sm');
-                b.classList.add('text-zinc-500');
-            });
-            btn.classList.remove('text-zinc-500');
-            btn.classList.add('active', 'text-zinc-900', 'dark:text-white', 'bg-white', 'dark:bg-zinc-700', 'shadow-sm');
+            btnsMethod.forEach(b => b.className = inactiveMethodClass);
+            btn.className = activeMethodClass;
             state.method = btn.dataset.method;
             calculateLoan();
         });
@@ -208,13 +321,8 @@ export function init() {
 
     btnsTermUnit.forEach(btn => {
         btn.addEventListener('click', () => {
-            btnsTermUnit.forEach(b => {
-                b.classList.remove('active', 'text-zinc-900', 'dark:text-white', 'bg-white', 'dark:bg-zinc-700', 'shadow-sm');
-                b.classList.add('text-zinc-500');
-                b.classList.remove('font-bold'); b.classList.add('font-medium');
-            });
-            btn.classList.remove('text-zinc-500', 'font-medium');
-            btn.classList.add('active', 'text-zinc-900', 'dark:text-white', 'bg-white', 'dark:bg-zinc-700', 'shadow-sm', 'font-bold');
+            btnsTermUnit.forEach(b => b.className = `lc-term-unit ${inactivePillClass}`);
+            btn.className = `lc-term-unit active ${activePillClass}`;
             state.termUnit = btn.dataset.unit;
             calculateLoan();
         });
@@ -222,29 +330,30 @@ export function init() {
 
     btnsRateUnit.forEach(btn => {
         btn.addEventListener('click', () => {
-            btnsRateUnit.forEach(b => {
-                b.classList.remove('active', 'text-zinc-900', 'dark:text-white', 'bg-white', 'dark:bg-zinc-700', 'shadow-sm');
-                b.classList.add('text-zinc-500');
-                b.classList.remove('font-bold'); b.classList.add('font-medium');
-            });
-            btn.classList.remove('text-zinc-500', 'font-medium');
-            btn.classList.add('active', 'text-zinc-900', 'dark:text-white', 'bg-white', 'dark:bg-zinc-700', 'shadow-sm', 'font-bold');
+            btnsRateUnit.forEach(b => b.className = `lc-rate-unit ${inactivePillClass}`);
+            btn.className = `lc-rate-unit active ${activePillClass}`;
             state.rateUnit = btn.dataset.unit;
             calculateLoan();
         });
     });
 
-    inputAmount.addEventListener('input', (e) => {
+    inputAmount?.addEventListener('input', (e) => {
         formatInputCurrency(e.target);
         state.amount = parseCurrency(e.target.value);
+        calculateLoan();
     });
 
-    inputTerm.addEventListener('input', (e) => state.term = parseFloat(e.target.value) || 0);
-    inputRate.addEventListener('input', (e) => state.rate = parseFloat(e.target.value) || 0);
+    inputTerm?.addEventListener('input', (e) => {
+        state.term = parseFloat(e.target.value) || 0;
+        calculateLoan();
+    });
 
-    // --- CALCULATION LOGIC ---
+    inputRate?.addEventListener('input', (e) => {
+        state.rate = parseFloat(e.target.value) || 0;
+        calculateLoan();
+    });
+
     const calculateLoan = () => {
-        // Prepare variables
         const P = state.amount;
         if (P <= 0 || state.term <= 0 || state.rate <= 0) return;
 
@@ -262,38 +371,36 @@ export function init() {
             const monthlyPayment = monthlyPrincipal + monthlyInterest;
             totalInterest = monthlyInterest * totalMonths;
 
-            res.heroTitle.textContent = "Số tiền trả mỗi tháng (Cố định)";
-            res.monthlyPay.textContent = formatCurrency(monthlyPayment);
-            res.monthlyPrincipal.textContent = formatCurrency(monthlyPrincipal);
-            res.monthlyInterest.textContent = formatCurrency(monthlyInterest);
-            res.monthlyDesc.classList.remove('hidden');
+            if (res.heroTitle) res.heroTitle.textContent = "Số tiền trả mỗi tháng (Cố định)";
+            if (res.monthlyPay) res.monthlyPay.textContent = formatCurrency(monthlyPayment);
+            if (res.monthlyPrincipal) res.monthlyPrincipal.textContent = formatCurrency(monthlyPrincipal);
+            if (res.monthlyInterest) res.monthlyInterest.textContent = formatCurrency(monthlyInterest);
 
             for (let i = 1; i <= totalMonths; i++) {
                 remainingBalance -= monthlyPrincipal;
                 if (remainingBalance < 0) remainingBalance = 0;
                 
                 scheduleHTML += `
-                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                        <td class="py-3 px-4">${i}</td>
-                        <td class="py-3 px-4 text-right">${formatCurrency(monthlyPrincipal)}</td>
-                        <td class="py-3 px-4 text-right text-rose-500 dark:text-rose-400">${formatCurrency(monthlyInterest)}</td>
-                        <td class="py-3 px-4 text-right font-bold text-blue-600 dark:text-blue-400">${formatCurrency(monthlyPayment)}</td>
-                        <td class="py-3 px-4 text-right hidden sm:table-cell">${formatCurrency(remainingBalance)}</td>
+                    <tr class="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
+                        <td class="py-2.5 px-3.5">${i}</td>
+                        <td class="py-2.5 px-3.5 text-right">${formatCurrency(monthlyPrincipal)}</td>
+                        <td class="py-2.5 px-3.5 text-right text-rose-500 font-semibold">${formatCurrency(monthlyInterest)}</td>
+                        <td class="py-2.5 px-3.5 text-right font-bold text-accent-theme">${formatCurrency(monthlyPayment)}</td>
+                        <td class="py-2.5 px-3.5 text-right hidden sm:table-cell text-zinc-500">${formatCurrency(remainingBalance)}</td>
                     </tr>
                 `;
             }
         } 
-        // DƯ NỢ GIẢM DẦN (Gốc chia đều, Lãi giảm dần - Phổ biến ở VN)
+        // DƯ NỢ GIẢM DẦN
         else {
             const monthlyPrincipal = P / totalMonths;
             const firstMonthInterest = P * monthlyRate;
             const firstMonthPayment = monthlyPrincipal + firstMonthInterest;
 
-            res.heroTitle.textContent = "Số tiền trả tháng đầu (Giảm dần)";
-            res.monthlyPay.textContent = formatCurrency(firstMonthPayment);
-            res.monthlyPrincipal.textContent = formatCurrency(monthlyPrincipal);
-            res.monthlyInterest.textContent = formatCurrency(firstMonthInterest);
-            res.monthlyDesc.classList.remove('hidden');
+            if (res.heroTitle) res.heroTitle.textContent = "Số tiền trả tháng đầu (Giảm dần)";
+            if (res.monthlyPay) res.monthlyPay.textContent = formatCurrency(firstMonthPayment);
+            if (res.monthlyPrincipal) res.monthlyPrincipal.textContent = formatCurrency(monthlyPrincipal);
+            if (res.monthlyInterest) res.monthlyInterest.textContent = formatCurrency(firstMonthInterest);
 
             for (let i = 1; i <= totalMonths; i++) {
                 const currentInterest = remainingBalance * monthlyRate;
@@ -304,42 +411,38 @@ export function init() {
                 if (remainingBalance < 0) remainingBalance = 0;
 
                 scheduleHTML += `
-                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                        <td class="py-3 px-4">${i}</td>
-                        <td class="py-3 px-4 text-right">${formatCurrency(monthlyPrincipal)}</td>
-                        <td class="py-3 px-4 text-right text-rose-500 dark:text-rose-400">${formatCurrency(currentInterest)}</td>
-                        <td class="py-3 px-4 text-right font-bold text-blue-600 dark:text-blue-400">${formatCurrency(currentPayment)}</td>
-                        <td class="py-3 px-4 text-right hidden sm:table-cell">${formatCurrency(remainingBalance)}</td>
+                    <tr class="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
+                        <td class="py-2.5 px-3.5">${i}</td>
+                        <td class="py-2.5 px-3.5 text-right">${formatCurrency(monthlyPrincipal)}</td>
+                        <td class="py-2.5 px-3.5 text-right text-rose-500 font-semibold">${formatCurrency(currentInterest)}</td>
+                        <td class="py-2.5 px-3.5 text-right font-bold text-accent-theme">${formatCurrency(currentPayment)}</td>
+                        <td class="py-2.5 px-3.5 text-right hidden sm:table-cell text-zinc-500">${formatCurrency(remainingBalance)}</td>
                     </tr>
                 `;
             }
         }
 
-        // Cập nhật Tổng kết
         const totalPayment = P + totalInterest;
-        res.totalPrincipal.textContent = formatCurrency(P) + ' VNĐ';
-        res.totalInterest.textContent = formatCurrency(totalInterest) + ' VNĐ';
-        res.totalPay.textContent = formatCurrency(totalPayment) + ' VNĐ';
+        if (res.totalPrincipal) res.totalPrincipal.textContent = formatCurrency(P) + ' VNĐ';
+        if (res.totalInterest) res.totalInterest.textContent = formatCurrency(totalInterest) + ' VNĐ';
+        if (res.totalPay) res.totalPay.textContent = formatCurrency(totalPayment) + ' VNĐ';
 
-        // Cập nhật Thanh Tỉ lệ
-        const pctPrincipal = (P / totalPayment) * 100;
-        const pctInterest = (totalInterest / totalPayment) * 100;
-        res.barPrincipal.style.width = `${pctPrincipal}%`;
-        res.barInterest.style.width = `${pctInterest}%`;
+        const pctPrincipal = totalPayment > 0 ? (P / totalPayment) * 100 : 70;
+        const pctInterest = totalPayment > 0 ? (totalInterest / totalPayment) * 100 : 30;
+        if (res.barPrincipal) res.barPrincipal.style.width = `${pctPrincipal}%`;
+        if (res.barInterest) res.barInterest.style.width = `${pctInterest}%`;
 
-        // Render Bảng
-        res.tbody.innerHTML = scheduleHTML;
+        if (res.tbody) res.tbody.innerHTML = scheduleHTML;
     };
 
-    // --- EVENTS ---
-    btnCalc.addEventListener('click', () => {
+    btnCalc?.addEventListener('click', () => {
         calculateLoan();
-        UI.showAlert('Hoàn tất', 'Kết quả đã được cập nhật.', 'success');
-        if (window.innerWidth <= 1024) {
-            document.querySelector('.lg\\:col-span-7').scrollIntoView({ behavior: 'smooth' });
+        IslandKit.notify('Hoàn tất', 'Kết quả khoản vay đã được cập nhật.', 'success');
+        const resultsCol = _('#lc-results-col');
+        if (window.innerWidth <= 1024 && resultsCol) {
+            resultsCol.scrollIntoView({ behavior: 'smooth' });
         }
     });
 
-    // Run on init
     calculateLoan();
 }

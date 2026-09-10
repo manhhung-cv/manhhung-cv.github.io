@@ -1,8 +1,45 @@
 import { UI } from '../../js/ui.js';
 
-// =====================================================================
-// 1. NGÔN NGỮ HỌC (LINGUISTIC ENGINE)
-// =====================================================================
+// =============================================================================
+// 0. DYNAMIC THEME ACCENT CONTROLLER
+// =============================================================================
+const DEFAULT_EMERALD = '#10b981';
+
+export const ThemeKit = {
+    getAccentColor: () => {
+        return localStorage.getItem('hunqos_accent_color') || 
+               localStorage.getItem('hunqos_icon_custom_bg') || 
+               DEFAULT_EMERALD;
+    },
+    applyAccent: (container) => {
+        if (!container) return;
+        const accent = ThemeKit.getAccentColor();
+        container.style.setProperty('--kit-accent', accent);
+    }
+};
+
+// =============================================================================
+// 1. ADAPTIVE ISLAND & TOAST FALLBACK CONTROLLER (TIẾT CHẾ THÔNG BÁO)
+// =============================================================================
+export const IslandKit = {
+    isIslandActive: () => {
+        const isEnabled = localStorage.getItem('hunqos_dynamic_island') !== 'false';
+        const wrapper = document.getElementById('dynamic-island-wrapper');
+        return Boolean(isEnabled && wrapper);
+    },
+
+    notify: (title, desc, type = 'info', duration = 2800) => {
+        if (IslandKit.isIslandActive() && typeof window.triggerIslandNotification === 'function') {
+            window.triggerIslandNotification(title, desc, type, duration);
+        } else if (typeof UI !== 'undefined' && typeof UI.showAlert === 'function') {
+            UI.showAlert(title, desc, type, duration);
+        }
+    }
+};
+
+// =============================================================================
+// 2. NGÔN NGỮ HỌC (LINGUISTIC ENGINE)
+// =============================================================================
 const PRODUCTIVE_CONS = ['h', 'v', 'm', 'l', 'b', 't', 'ch', 'ng', 'n', 'ph', 'r', 's', 'th', 'tr', 'đ', 'd', 'x', 'k', 'c', 'g', 'nh', 'kh'];
 
 const TONE_MAP = [
@@ -128,92 +165,140 @@ function generateAccuratePairs(p1, p2) {
     return [...results].slice(0, 16);
 }
 
-// =====================================================================
-// 2. TEMPLATE GIAO DIỆN CHUẨN UI.JS
-// =====================================================================
+// =============================================================================
+// 3. TEMPLATE RENDERER (HUNQOS MINIMAL FLAT - TOUCH & WORKSPACE STANDARD)
+// =============================================================================
 export function template() {
     return `
+    <div id="tnt-root-container" class="w-full h-full bg-[#f4f4f6] dark:bg-[#000000] text-[#18181b] dark:text-[#f4f4f6] select-none overflow-hidden font-sans transition-colors duration-200">
+        
         <style>
-            /* Kế thừa UI Kit Scrollbar & Animations */
+            #tnt-root-container {
+                --kit-accent: #10b981;
+            }
+            .bg-accent-theme {
+                background-color: var(--kit-accent) !important;
+            }
+            .text-accent-theme {
+                color: var(--kit-accent) !important;
+            }
+            .border-accent-theme {
+                border-color: var(--kit-accent) !important;
+            }
+            .accent-theme-tint {
+                accent-color: var(--kit-accent) !important;
+            }
+            .bg-accent-theme-alpha {
+                background-color: color-mix(in srgb, var(--kit-accent) 14%, transparent) !important;
+            }
+            .hover-bg-accent-theme-alpha:hover {
+                background-color: color-mix(in srgb, var(--kit-accent) 20%, transparent) !important;
+            }
+
             .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
             .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
-            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; }
-            
-            .hide-scrollbar::-webkit-scrollbar { display: none; }
-            .hide-scrollbar { scrollbar-width: none; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.12); border-radius: 9999px; }
+            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
 
-            .btn-premium { transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s; user-select: none; cursor: pointer; }
-            .btn-premium:active { transform: scale(0.96); opacity: 0.8; }
-            .btn-premium:disabled { opacity: 0.4; pointer-events: none; transform: scale(1); }
+            .no-scrollbar::-webkit-scrollbar { display: none; }
+            .no-scrollbar { scrollbar-width: none; }
 
-            .ui-fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-            @keyframes fadeIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
-            
-            .ui-block { position: relative; }
+            .tnt-input-zen {
+                font-variant-numeric: tabular-nums;
+                -webkit-user-select: text !important;
+                user-select: text !important;
+            }
         </style>
 
-        <div class="relative flex flex-col w-full max-w-[1000px] mx-auto min-h-[600px] pb-10">
+        <!-- MAIN SCROLLER -->
+        <main class="w-full h-full overflow-y-auto no-scrollbar px-3.5 sm:px-6 pt-6 pb-24 max-w-4xl mx-auto space-y-5">
             
-            <!-- Header Chuẩn -->
-            <div class="mb-8 px-2 ui-fade-in">
-                <h2 class="text-[28px] font-black text-zinc-900 dark:text-white tracking-tight leading-none mb-2">Trạm Ngôn Từ</h2>
-                <p class="text-[13px] text-zinc-500 font-medium">Thuật toán xử lý ngôn ngữ tinh gọn. Nhanh và chuẩn xác.</p>
-            </div>
-
-            <!-- Block Điều khiển -->
-            <div class="ui-block bg-white dark:bg-[#0c0c0e] rounded-[32px] ring-1 ring-inset ring-zinc-200 dark:ring-zinc-800/80 p-6 mb-6 ui-fade-in" style="animation-delay: 100ms;">
-                <h3 class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-4">Thiết lập thuật toán</h3>
-                
-                <!-- Tabs Chuẩn ui.js -->
-                <div class="flex overflow-x-auto hide-scrollbar gap-2 mb-5" id="tnt-tabs">
-                    <button class="tnt-tab-btn active btn-premium px-5 py-2.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[11px] font-bold whitespace-nowrap shrink-0" data-tab="van-xuoi">
-                        <i class="fas fa-microphone mr-1.5"></i> Gieo Vần
-                    </button>
-                    <button class="tnt-tab-btn btn-premium px-5 py-2.5 rounded-full bg-transparent text-zinc-500 text-[11px] font-bold whitespace-nowrap shrink-0 border border-zinc-200 dark:border-zinc-800" data-tab="van-dao">
-                        <i class="fas fa-sync-alt mr-1.5"></i> Vần Đảo
-                    </button>
-                    <button class="tnt-tab-btn btn-premium px-5 py-2.5 rounded-full bg-transparent text-zinc-500 text-[11px] font-bold whitespace-nowrap shrink-0 border border-zinc-200 dark:border-zinc-800" data-tab="noi-lai">
-                        <i class="fas fa-exchange-alt mr-1.5"></i> Nói Lái
-                    </button>
+            <!-- SEAMLESS HERO TITLE -->
+            <div class="px-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-accent-theme shadow-sm transition-colors"></span>
+                        <span class="text-[11px] font-mono tracking-wider font-semibold uppercase text-accent-theme">HunqOS Linguistics</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">Trạm Ngôn Từ</h1>
+                    <p class="text-[12px] text-zinc-500 dark:text-zinc-400 font-normal">Thuật toán xử lý ngôn ngữ tiếng Việt: Gieo vần, vần đảo và nói lái tự động.</p>
                 </div>
 
-                <!-- Group Input Chuẩn ui.js -->
-                <div class="flex items-center bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl p-1.5 focus-within:ring-1 ring-zinc-900 dark:ring-white transition-shadow">
-                    <i class="fas fa-keyboard text-zinc-400 ml-4 text-sm"></i>
-                    <input type="text" id="tnt-wordInput" class="w-full bg-transparent border-none outline-none px-3 py-3 text-sm font-bold text-zinc-900 dark:text-white placeholder-zinc-400" placeholder="Nhập từ để gieo vần (VD: cun cút...)">
-                    <button id="tnt-clearBtn" class="btn-premium w-10 h-10 rounded-xl text-zinc-400 hover:text-zinc-900 dark:hover:text-white flex items-center justify-center opacity-0 transition-opacity"><i class="fas fa-times"></i></button>
+                <div class="flex items-center gap-2">
+                    <button id="tnt-clearBtn" class="h-10 px-4 rounded-[14px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 text-xs font-semibold flex items-center gap-2 active:scale-95 transition-all shadow-sm opacity-0 pointer-events-none">
+                        <i class="fas fa-trash-can text-xs"></i> <span>Xóa trắng</span>
+                    </button>
                 </div>
             </div>
 
-            <!-- Block Kết quả -->
-            <div class="ui-block bg-white dark:bg-[#0c0c0e] rounded-[32px] ring-1 ring-inset ring-zinc-200 dark:ring-zinc-800/80 p-6 ui-fade-in flex-1" style="animation-delay: 200ms;">
-                <h3 class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-4">Kết quả xuất ra</h3>
+            <!-- TAB CONTROLLER -->
+            <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-2.5 shadow-sm">
+                <div class="flex overflow-x-auto no-scrollbar gap-1 p-1" id="tnt-tabs">
+                    <button class="tnt-tab-btn active h-9 px-4 rounded-[12px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all flex items-center gap-1.5 shrink-0" data-tab="van-xuoi">
+                        <i class="fas fa-microphone text-[11px]"></i> Gieo vần
+                    </button>
+                    <button class="tnt-tab-btn h-9 px-4 rounded-[12px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all flex items-center gap-1.5 shrink-0" data-tab="van-dao">
+                        <i class="fas fa-arrows-rotate text-[11px]"></i> Vần đảo
+                    </button>
+                    <button class="tnt-tab-btn h-9 px-4 rounded-[12px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all flex items-center gap-1.5 shrink-0" data-tab="noi-lai">
+                        <i class="fas fa-shuffle text-[11px]"></i> Nói lái
+                    </button>
+                </div>
+            </div>
+
+            <!-- WORKSPACE CONTAINER -->
+            <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-5 sm:p-6 shadow-sm space-y-5">
                 
-                <div id="tnt-resultsContainer" class="min-h-[200px] flex flex-col justify-center">
-                    <!-- Trạng thái trống chuẩn ui.js -->
-                    <div id="tnt-emptyState" class="flex flex-col items-center justify-center py-10 opacity-50">
-                        <i class="fas fa-terminal text-3xl text-zinc-400 dark:text-zinc-600 mb-3"></i>
-                        <span class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Đang đợi dữ liệu đầu vào...</span>
+                <!-- INPUT BAR -->
+                <div class="bg-[#f2f2f7] dark:bg-black/40 rounded-[18px] p-3.5 border border-black/[0.04] dark:border-white/[0.06] focus-within:border-accent-theme transition-all flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-[12px] bg-white dark:bg-[#27272a] border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-center text-accent-theme shrink-0 shadow-sm">
+                        <i class="fas fa-keyboard text-xs"></i>
+                    </div>
+                    <input type="text" id="tnt-wordInput" class="tnt-input-zen w-full bg-transparent border-none outline-none text-sm sm:text-base font-bold text-zinc-900 dark:text-white placeholder-zinc-400" placeholder="Nhập từ để gieo vần (VD: cun cút...)">
+                </div>
+
+                <!-- RESULTS CONTAINER -->
+                <div id="tnt-resultsContainer" class="min-h-[220px] flex flex-col justify-center">
+                    <!-- EMPTY STATE -->
+                    <div id="tnt-emptyState" class="flex flex-col items-center justify-center py-14 text-center space-y-2.5">
+                        <div class="w-12 h-12 rounded-[16px] bg-accent-theme-alpha text-accent-theme flex items-center justify-center text-xl shadow-sm">
+                            <i class="fas fa-terminal"></i>
+                        </div>
+                        <span class="text-xs font-bold text-zinc-700 dark:text-zinc-300">Đang đợi dữ liệu đầu vào</span>
+                        <span class="text-[11px] text-zinc-400">Nhập từ khóa vào ô phía trên để bắt đầu phân tích vần điệu.</span>
                     </div>
                     
                     <div id="tnt-dynamicContent" class="hidden w-full"></div>
                 </div>
+
             </div>
 
-        </div>
+        </main>
+    </div>
     `;
 }
 
-// =====================================================================
-// 3. LOGIC KHỞI TẠO ĐỒNG BỘ UI.JS
-// =====================================================================
-export function init() {
+// =============================================================================
+// 3. LOGIC HOOKS & EVENT DISPATCHING (TIẾT CHẾ THÔNG BÁO)
+// =============================================================================
+export function init(hostElement) {
+    const rootContainer = hostElement.querySelector('#tnt-root-container') || hostElement;
+
+    // Theme integration
+    const updateAccent = () => ThemeKit.applyAccent(rootContainer);
+    updateAccent();
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'hunqos_accent_color' || e.key === 'hunqos_icon_custom_bg') {
+            updateAccent();
+        }
+    });
+
     let currentTab = 'van-xuoi';
-    const inputEl = document.getElementById('tnt-wordInput');
-    const clearBtn = document.getElementById('tnt-clearBtn');
-    const emptyStateEl = document.getElementById('tnt-emptyState');
-    const contentEl = document.getElementById('tnt-dynamicContent');
+    const inputEl = hostElement.querySelector('#tnt-wordInput');
+    const clearBtn = hostElement.querySelector('#tnt-clearBtn');
+    const emptyStateEl = hostElement.querySelector('#tnt-emptyState');
+    const contentEl = hostElement.querySelector('#tnt-dynamicContent');
 
     if (!inputEl || !emptyStateEl || !contentEl) return;
 
@@ -223,8 +308,11 @@ export function init() {
         'noi-lai': 'Nhập câu hoặc 2 từ để nói lái (VD: bí mật)'
     };
 
-    // --- Xử lý Tabs theo logic ui.js ---
-    const tabBtns = document.querySelectorAll('.tnt-tab-btn');
+    // Tab Classes Standard
+    const activeClass = 'tnt-tab-btn active h-9 px-4 rounded-[12px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all flex items-center gap-1.5 shrink-0';
+    const inactiveClass = 'tnt-tab-btn h-9 px-4 rounded-[12px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all flex items-center gap-1.5 shrink-0';
+
+    const tabBtns = hostElement.querySelectorAll('#tnt-tabs .tnt-tab-btn');
     tabBtns.forEach(tab => {
         tab.addEventListener('click', (e) => {
             const target = e.currentTarget;
@@ -233,31 +321,26 @@ export function init() {
             inputEl.placeholder = placeholders[currentTab];
             inputEl.value = ''; 
             clearBtn.style.opacity = '0';
+            clearBtn.classList.add('pointer-events-none');
             
-            // Xóa class active ở tất cả các tab
-            tabBtns.forEach(t => {
-                t.classList.remove('active', 'bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900');
-                t.classList.add('bg-transparent', 'text-zinc-500', 'border', 'border-zinc-200', 'dark:border-zinc-800');
-            });
-            
-            // Thêm class active cho tab được chọn
-            target.classList.add('active', 'bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900');
-            target.classList.remove('bg-transparent', 'text-zinc-500', 'border', 'border-zinc-200', 'dark:border-zinc-800');
+            tabBtns.forEach(t => { t.className = inactiveClass; });
+            target.className = activeClass;
             
             renderResults();
             inputEl.focus();
         });
     });
 
-    // --- Clear Button ---
+    // Clear Button
     clearBtn.addEventListener('click', () => {
         inputEl.value = '';
         clearBtn.style.opacity = '0';
+        clearBtn.classList.add('pointer-events-none');
         renderResults();
         inputEl.focus();
     });
 
-    // --- Lắng nghe sự kiện Copy ---
+    // Copy Action Delegation
     contentEl.addEventListener('click', async (e) => {
         const copyBtn = e.target.closest('.tnt-copy-action');
         if (!copyBtn) return;
@@ -265,22 +348,22 @@ export function init() {
         const textToCopy = copyBtn.getAttribute('data-text');
         try {
             await navigator.clipboard.writeText(textToCopy);
-            
-            // Sử dụng UI.showAlert chuẩn
-            if (typeof UI !== 'undefined' && typeof UI.showAlert === 'function') {
-                UI.showAlert('Đã sao chép', `Đã lưu "${textToCopy}" vào khay nhớ tạm.`, 'success');
-            }
+            IslandKit.notify('Đã sao chép', `Đã lưu "${textToCopy}" vào bộ nhớ tạm.`, 'success', 1000);
         } catch (err) {
-            if (typeof UI !== 'undefined' && typeof UI.showAlert === 'function') {
-                UI.showAlert('Lỗi', 'Trình duyệt không hỗ trợ sao chép.', 'error');
-            }
+            IslandKit.notify('Lỗi', 'Không thể truy cập clipboard.', 'error');
         }
     });
 
-    // --- Logic Render Kết Quả ---
+    // Render Kết Quả
     function renderResults() {
         const text = inputEl.value.trim();
-        clearBtn.style.opacity = text ? '1' : '0';
+        if (text) {
+            clearBtn.style.opacity = '1';
+            clearBtn.classList.remove('pointer-events-none');
+        } else {
+            clearBtn.style.opacity = '0';
+            clearBtn.classList.add('pointer-events-none');
+        }
 
         if (!text) {
             emptyStateEl.classList.remove('hidden');
@@ -314,10 +397,10 @@ export function init() {
                     const uniqueRes = [...results].slice(0, 16);
                     
                     html = `
-                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
                             ${uniqueRes.map(word => `
-                                <button data-text="${word}" class="tnt-copy-action btn-premium py-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white font-bold text-sm bg-zinc-50 dark:bg-zinc-800/30 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2">
-                                    ${word} <i class="far fa-copy text-zinc-400 opacity-50 text-[10px]"></i>
+                                <button data-text="${word}" class="tnt-copy-action h-11 rounded-[14px] bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] hover:border-accent-theme text-zinc-900 dark:text-white font-bold text-xs active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm">
+                                    <span>${word}</span> <i class="far fa-copy text-zinc-400 text-[10px]"></i>
                                 </button>
                             `).join('')}
                         </div>
@@ -329,28 +412,28 @@ export function init() {
                 let uniqueRes = generateAccuratePairs(p1, p2).filter(phrase => phrase !== text.toLowerCase());
                 
                 html = `
-                    <div class="mb-4">
-                        <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                            <i class="fas fa-link"></i> Cấu trúc: ${p1.baseRhyme} · ${p2.baseRhyme}
-                        </span>
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        ${uniqueRes.map(phrase => `
-                            <button data-text="${phrase}" class="tnt-copy-action btn-premium py-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white font-bold text-sm bg-zinc-50 dark:bg-zinc-800/30 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors capitalize flex items-center justify-center gap-2">
-                                ${phrase}
-                            </button>
-                        `).join('')}
+                    <div class="space-y-3">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-[10px] bg-accent-theme-alpha text-[10px] font-mono font-bold text-accent-theme">
+                            <i class="fas fa-link text-[9px]"></i> Cấu trúc vần: ${p1.baseRhyme} · ${p2.baseRhyme}
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                            ${uniqueRes.map(phrase => `
+                                <button data-text="${phrase}" class="tnt-copy-action h-11 rounded-[14px] bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] hover:border-accent-theme text-zinc-900 dark:text-white font-bold text-xs capitalize active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm">
+                                    <span class="truncate">${phrase}</span>
+                                </button>
+                            `).join('')}
+                        </div>
                     </div>
                 `;
             } else {
-                html = `<div class="text-[13px] font-medium text-zinc-500 text-center py-6">Vui lòng nhập tối đa 2 từ để gieo vần chính xác nhất.</div>`;
+                html = `<div class="text-xs font-medium text-zinc-400 text-center py-10">Vui lòng nhập tối đa 2 từ để gieo vần chính xác nhất.</div>`;
             }
         } 
         
         // TAB 2: VẦN ĐẢO
         else if (currentTab === 'van-dao') {
             if (words.length !== 2) {
-                html = `<div class="text-[13px] font-medium text-zinc-500 text-center py-6">Tính năng này cần nhập chính xác 2 từ (VD: Bảo đảm)</div>`;
+                html = `<div class="text-xs font-medium text-zinc-400 text-center py-10">Tính năng này cần nhập chính xác 2 từ (VD: Bảo đảm)</div>`;
             } else {
                 const p1 = parsedWords[0];
                 const p2 = parsedWords[1];
@@ -360,15 +443,15 @@ export function init() {
                 let r1_w2 = constructWord(p2.initial, p1.baseRhyme, p1.toneIndex);
                 if (r1_w1 && r1_w2) results.add(`${r1_w1} ${r1_w2}`);
 
-                results.add(words.reverse().join(' '));
+                results.add(words.slice().reverse().join(' '));
                 let uniqueRes = [...results].filter(phrase => phrase.toLowerCase() !== text.toLowerCase());
                 
                 html = `
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         ${uniqueRes.map(phrase => `
-                            <button data-text="${phrase}" class="tnt-copy-action btn-premium p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 flex flex-col items-center justify-center gap-2 transition-colors">
-                                <span class="text-2xl font-black capitalize tracking-tight">${phrase}</span>
-                                <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest"><i class="far fa-copy"></i> Copy</span>
+                            <button data-text="${phrase}" class="tnt-copy-action p-4 rounded-[18px] bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] hover:border-accent-theme text-zinc-900 dark:text-white active:scale-[0.99] transition-all flex flex-col items-center justify-center gap-1.5 shadow-sm">
+                                <span class="text-lg font-black capitalize tracking-tight">${phrase}</span>
+                                <span class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest"><i class="far fa-copy mr-1"></i> Sao chép</span>
                             </button>
                         `).join('')}
                     </div>
@@ -379,41 +462,42 @@ export function init() {
         // TAB 3: NÓI LÁI
         else if (currentTab === 'noi-lai') {
             if (words.length < 2) {
-                html = `<div class="text-[13px] font-medium text-zinc-500 text-center py-6">Cần nhập ít nhất 2 từ.</div>`;
+                html = `<div class="text-xs font-medium text-zinc-400 text-center py-10">Cần nhập ít nhất 2 từ để nói lái.</div>`;
             } else {
-                const generateForPair = (idx1, idx2, labelStr) => {
+                const generateForPair = (idx1, idx2) => {
                     const w1 = parseSyllable(words[idx1]);
                     const w2 = parseSyllable(words[idx2]);
                     if (!w1 || !w2) return [];
 
                     const getPhrase = (newW1, newW2) => {
                         const newWords = [...words];
-                        newWords[idx1] = newW1; newWords[idx2] = newW2;
+                        newWords[idx1] = newW1; 
+                        newWords[idx2] = newW2;
                         return newWords.join(' ');
                     };
 
                     const res = [];
                     const t1_1 = constructWord(w2.initial, w1.baseRhyme, w1.toneIndex);
                     const t1_2 = constructWord(w1.initial, w2.baseRhyme, w2.toneIndex);
-                    if(t1_1 && t1_2) res.push({ type: `Đổi Âm Đầu`, text: getPhrase(t1_1, t1_2) });
+                    if (t1_1 && t1_2) res.push({ type: `Đổi Âm Đầu`, text: getPhrase(t1_1, t1_2) });
 
                     const t2_1 = constructWord(w1.initial, w2.baseRhyme, w2.toneIndex);
                     const t2_2 = constructWord(w2.initial, w1.baseRhyme, w1.toneIndex);
-                    if(t2_1 && t2_2) res.push({ type: `Đổi Vần & Dấu`, text: getPhrase(t2_1, t2_2) });
+                    if (t2_1 && t2_2) res.push({ type: `Đổi Vần & Dấu`, text: getPhrase(t2_1, t2_2) });
 
                     const t3_1 = constructWord(w1.initial, w1.baseRhyme, w2.toneIndex);
                     const t3_2 = constructWord(w2.initial, w2.baseRhyme, w1.toneIndex);
-                    if(t3_1 && t3_2) res.push({ type: `Chỉ đổi Dấu`, text: getPhrase(t3_1, t3_2) });
+                    if (t3_1 && t3_2) res.push({ type: `Chỉ đổi Dấu`, text: getPhrase(t3_1, t3_2) });
 
                     const t4_1 = constructWord(w1.initial, w2.baseRhyme, w1.toneIndex);
                     const t4_2 = constructWord(w2.initial, w1.baseRhyme, w2.toneIndex);
-                    if(t4_1 && t4_2) res.push({ type: `Chỉ đổi Vần`, text: getPhrase(t4_1, t4_2) });
+                    if (t4_1 && t4_2) res.push({ type: `Chỉ đổi Vần`, text: getPhrase(t4_1, t4_2) });
                     return res;
                 };
 
-                let results = words.length === 2 ? generateForPair(0, 1, "") : [
-                    ...generateForPair(0, words.length - 1, ""),
-                    ...generateForPair(words.length - 2, words.length - 1, "")
+                let results = words.length === 2 ? generateForPair(0, 1) : [
+                    ...generateForPair(0, words.length - 1),
+                    ...generateForPair(words.length - 2, words.length - 1)
                 ];
 
                 const unique = [];
@@ -421,22 +505,23 @@ export function init() {
                 results.forEach(r => {
                     const lower = r.text.toLowerCase();
                     if (!seen.has(lower) && lower !== text.toLowerCase()) {
-                        seen.add(lower); unique.push(r);
+                        seen.add(lower); 
+                        unique.push(r);
                     }
                 });
 
                 html = unique.length === 0 
-                    ? `<div class="text-[13px] font-medium text-zinc-500 text-center py-6">Không tìm thấy kết quả phù hợp.</div>`
+                    ? `<div class="text-xs font-medium text-zinc-400 text-center py-10">Không tìm thấy kết quả nói lái phù hợp.</div>`
                     : `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                         ${unique.map(item => `
-                            <div class="flex items-center justify-between p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-800">
-                                <div class="flex flex-col">
-                                    <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">${item.type}</span>
-                                    <span class="text-base font-bold text-zinc-900 dark:text-white capitalize">${item.text}</span>
+                            <div class="flex items-center justify-between p-3.5 rounded-[16px] bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06]">
+                                <div class="flex flex-col min-w-0 pr-2">
+                                    <span class="text-[9px] font-bold text-accent-theme uppercase tracking-wider mb-0.5">${item.type}</span>
+                                    <span class="text-sm font-bold text-zinc-900 dark:text-white capitalize truncate">${item.text}</span>
                                 </div>
-                                <button data-text="${item.text}" class="tnt-copy-action btn-premium bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-700 px-4 py-2 rounded-xl text-xs font-bold text-zinc-900 dark:text-white whitespace-nowrap hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                                    Copy
+                                <button data-text="${item.text}" class="tnt-copy-action h-8 px-3 rounded-[10px] bg-white dark:bg-[#27272a] border border-black/[0.04] dark:border-white/[0.06] text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-accent-theme active:scale-95 transition-all shadow-sm shrink-0">
+                                    Sao chép
                                 </button>
                             </div>
                         `).join('')}

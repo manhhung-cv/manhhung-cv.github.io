@@ -2,20 +2,26 @@
 
 export const UI = {
     /**
-     * Hiển thị thông báo (Dynamic Island morphing hoặc iOS Push Banner)
+     * Kiểm tra trạng thái hoạt động thực tế của Dynamic Island trên DOM và cấu hình
      */
-    showAlert: (title, desc, type = 'info', duration = 3200) => {
-        const isIslandEnabled = localStorage.getItem('hunqos_dynamic_island') !== 'false';
-        const islandWrapper = document.getElementById('dynamic-island-wrapper');
-        const isIslandVisible = islandWrapper && !islandWrapper.classList.contains('hidden');
+    isIslandAvailable: () => {
+        const isEnabled = localStorage.getItem('hunqos_dynamic_island') !== 'false';
+        const wrapper = document.getElementById('dynamic-island-wrapper');
+        const isVisible = wrapper && !wrapper.classList.contains('hidden') && window.getComputedStyle(wrapper).display !== 'none';
+        return Boolean(isEnabled && isVisible && typeof window.triggerIslandNotification === 'function');
+    },
 
-        // NẾU BẬT DYNAMIC ISLAND -> Biến hình thanh Dynamic Island thành thông báo
-        if (isIslandEnabled && isIslandVisible && window.triggerIslandNotification) {
+    /**
+     * Hiển thị thông báo: Tự nhận biết bật/tắt Island để điều hướng
+     */
+    showAlert: (title, desc, type = 'info', duration = 2800) => {
+        // NẾU BẬT DYNAMIC ISLAND -> Biến hình thanh Dynamic Island
+        if (UI.isIslandAvailable()) {
             window.triggerIslandNotification(title, desc, type, duration);
             return;
         }
 
-        // NẾU TẮT DYNAMIC ISLAND -> Hiện Banner iOS trượt từ trên đỉnh xuống
+        // NẾU TẮT DYNAMIC ISLAND -> Banner trượt mượt mà từ đỉnh màn hình
         let container = document.getElementById('toast-container');
         if (!container) return;
 
@@ -23,15 +29,15 @@ export const UI = {
         const iconConfig = {
             info: { icon: 'fa-info-circle', color: 'text-blue-400' },
             success: { icon: 'fa-check-circle', color: 'text-emerald-400' },
-            error: { icon: 'fa-exclamation-triangle', color: 'text-rose-400' },
-            warning: { icon: 'fa-exclamation-circle', color: 'text-amber-400' }
+            error: { icon: 'fa-exclamation-circle', color: 'text-rose-400' },
+            warning: { icon: 'fa-exclamation-triangle', color: 'text-amber-400' }
         };
         const cfg = iconConfig[type] || iconConfig.info;
 
-        bannerEl.className = "pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-[24px] shadow-2xl border border-white/20 bg-black/85 backdrop-blur-2xl text-white transition-all duration-400 transform -translate-y-10 opacity-0 scale-95 max-w-sm w-full cursor-pointer select-none";
+        bannerEl.className = "pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-[20px] shadow-2xl border border-white/15 bg-black/85 backdrop-blur-2xl text-white transition-all duration-300 transform -translate-y-6 opacity-0 scale-95 max-w-sm w-full cursor-pointer select-none";
         bannerEl.innerHTML = `
-            <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                <i class="fas ${cfg.icon} ${cfg.color} text-sm"></i>
+            <div class="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                <i class="fas ${cfg.icon} ${cfg.color} text-xs"></i>
             </div>
             <div class="flex-1 min-w-0">
                 <div class="font-semibold text-xs text-white leading-tight truncate">${title}</div>
@@ -42,20 +48,23 @@ export const UI = {
         container.appendChild(bannerEl);
 
         requestAnimationFrame(() => {
-            bannerEl.classList.remove('-translate-y-10', 'opacity-0', 'scale-95');
+            bannerEl.classList.remove('-translate-y-6', 'opacity-0', 'scale-95');
             bannerEl.classList.add('translate-y-0', 'opacity-100', 'scale-100');
         });
 
         const removeBanner = () => {
             bannerEl.classList.remove('translate-y-0', 'opacity-100', 'scale-100');
-            bannerEl.classList.add('-translate-y-10', 'opacity-0', 'scale-95');
-            setTimeout(() => bannerEl.remove(), 300);
+            bannerEl.classList.add('-translate-y-6', 'opacity-0', 'scale-95');
+            setTimeout(() => bannerEl.remove(), 250);
         };
 
         bannerEl.onclick = removeBanner;
         if (duration > 0) setTimeout(removeBanner, duration);
     },
 
+    /**
+     * Hộp thoại xác nhận dạng Sheet kính mờ
+     */
     showConfirm: (title, message, onConfirm, onCancel = null) => {
         const oldModal = document.getElementById('dynamic-modal');
         if (oldModal) oldModal.remove();
@@ -97,18 +106,21 @@ export const UI = {
         backdrop.onclick = closeModal;
     },
 
+    /**
+     * Trình xem đa phương tiện Fullframe không viền
+     */
     showMediaFullscreen: (src, type = 'image') => {
         const oldModal = document.getElementById('media-fs-modal');
         if (oldModal) oldModal.remove();
 
         const contentHtml = type === 'video' 
-            ? `<video src="${src}" class="max-w-[95vw] max-h-[90vh] rounded-3xl outline-none shadow-2xl scale-95 opacity-0 transition-all duration-300" id="media-content" controls autoplay></video>`
-            : `<img src="${src}" class="max-w-[95vw] max-h-[90vh] rounded-3xl shadow-2xl scale-95 opacity-0 transition-all duration-300 bg-black/80 p-2" id="media-content">`;
+            ? `<video src="${src}" class="max-w-[100vw] max-h-[100vh] w-full h-full object-contain outline-none scale-95 opacity-0 transition-all duration-300" id="media-content" controls autoplay></video>`
+            : `<img src="${src}" class="max-w-[100vw] max-h-[100vh] w-full h-full object-contain scale-95 opacity-0 transition-all duration-300" id="media-content">`;
 
         const modalHtml = `
-            <div class="fixed inset-0 z-[350] bg-black/90 backdrop-blur-md flex items-center justify-center opacity-0 transition-opacity duration-300" id="media-fs-modal">
-                <button id="btn-media-fs-close" class="absolute top-6 right-6 w-9 h-9 bg-white/10 hover:bg-white/20 rounded-full text-white flex items-center justify-center transition-colors z-10">
-                    <i class="fas fa-times"></i>
+            <div class="fixed inset-0 z-[350] bg-black/95 backdrop-blur-2xl flex items-center justify-center opacity-0 transition-opacity duration-300" id="media-fs-modal">
+                <button id="btn-media-fs-close" class="absolute top-6 right-6 w-10 h-10 bg-white/15 hover:bg-white/25 active:scale-95 rounded-full text-white flex items-center justify-center transition-all z-20 shadow-xl border border-white/20">
+                    <i class="fas fa-times text-sm"></i>
                 </button>
                 ${contentHtml}
             </div>

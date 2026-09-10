@@ -1,546 +1,798 @@
 import { UI } from '../../js/ui.js';
 
+// =============================================================================
+// 0. DYNAMIC THEME ACCENT CONTROLLER
+// =============================================================================
+const DEFAULT_EMERALD = '#10b981';
+
+export const ThemeKit = {
+    getAccentColor: () => {
+        return localStorage.getItem('hunqos_accent_color') || 
+               localStorage.getItem('hunqos_icon_custom_bg') || 
+               DEFAULT_EMERALD;
+    },
+    applyAccent: (container) => {
+        if (!container) return;
+        const accent = ThemeKit.getAccentColor();
+        container.style.setProperty('--kit-accent', accent);
+    }
+};
+
+// =============================================================================
+// 1. ADAPTIVE ISLAND & TOAST FALLBACK CONTROLLER
+// =============================================================================
+export const IslandKit = {
+    isIslandActive: () => {
+        const isEnabled = localStorage.getItem('hunqos_dynamic_island') !== 'false';
+        const wrapper = document.getElementById('dynamic-island-wrapper');
+        const isDOMVisible = wrapper && !wrapper.classList.contains('hidden') && window.getComputedStyle(wrapper).display !== 'none';
+        return Boolean(isEnabled && isDOMVisible && typeof window.triggerIslandNotification === 'function');
+    },
+
+    notify: (title, desc, type = 'info', duration = 2800) => {
+        if (IslandKit.isIslandActive()) {
+            window.triggerIslandNotification(title, desc, type, duration);
+        } else {
+            UI.showAlert(title, desc, type, duration);
+        }
+    }
+};
+
+// =============================================================================
+// 2. TEMPLATE RENDERER
+// =============================================================================
 export function template() {
     return `
+    <div id="notepro-root-container" class="w-full h-full bg-[#f4f4f6] dark:bg-[#000000] text-[#18181b] dark:text-[#f4f4f6] select-none overflow-hidden font-sans transition-colors duration-200">
+        
         <style>
-            /* Scrollbar Minimal */
+            #notepro-root-container {
+                --kit-accent: #10b981;
+            }
+            .bg-accent-theme {
+                background-color: var(--kit-accent) !important;
+            }
+            .text-accent-theme {
+                color: var(--kit-accent) !important;
+            }
+            .border-accent-theme {
+                border-color: var(--kit-accent) !important;
+            }
+            .accent-theme-tint {
+                accent-color: var(--kit-accent) !important;
+            }
+            .bg-accent-theme-alpha {
+                background-color: color-mix(in srgb, var(--kit-accent) 14%, transparent) !important;
+            }
+            .hover-bg-accent-theme-alpha:hover {
+                background-color: color-mix(in srgb, var(--kit-accent) 20%, transparent) !important;
+            }
+
+            .switch-pill {
+                width: 44px;
+                height: 24px;
+                background-color: rgba(0, 0, 0, 0.12) !important;
+                border-radius: 9999px;
+                position: relative;
+                cursor: pointer;
+                transition: background-color 0.2s ease, border-color 0.2s ease;
+                padding: 2px;
+                border: 1px solid rgba(0, 0, 0, 0.08);
+                display: inline-flex;
+                align-items: center;
+                flex-shrink: 0;
+            }
+            .dark .switch-pill {
+                background-color: rgba(255, 255, 255, 0.16) !important;
+                border-color: rgba(255, 255, 255, 0.12);
+            }
+            .switch-pill .switch-thumb {
+                width: 18px;
+                height: 18px;
+                background-color: #ffffff;
+                border-radius: 9999px;
+                transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+            }
+            .switch-pill.active {
+                background-color: var(--kit-accent) !important;
+                border-color: transparent !important;
+            }
+            .switch-pill.active .switch-thumb {
+                transform: translateX(20px);
+            }
+
             .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
             .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
-            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; }
-            .hide-scrollbar::-webkit-scrollbar { display: none; }
-            .hide-scrollbar { scrollbar-width: none; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.12); border-radius: 9999px; }
+            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
 
-            /* Animations & Transitions */
-            .btn-premium { transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s, background-color 0.2s; user-select: none; cursor: pointer; }
-            .btn-premium:active { transform: scale(0.96); opacity: 0.8; }
-            
-            .ui-fade-in { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-            @keyframes fadeIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
-            
-            /* Slide & Mobile Styles */
-            .slide-pane { transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
-            
-            .folder-chip { flex-shrink: 0; transition: all 0.2s; }
-            .folder-chip.active { background: #18181b; color: white; font-weight: bold; border-color: #18181b; }
-            .dark .folder-chip.active { background: white; color: #18181b; border-color: white; }
+            .folder-chip { flex-shrink: 0; transition: all 0.2s ease; }
+            .folder-chip.active {
+                background-color: var(--kit-accent) !important;
+                color: #ffffff !important;
+                border-color: transparent !important;
+            }
 
-            .note-item.active { background: #e4e4e7; }
-            .dark .note-item.active { background: #27272a; }
+            .note-card.active {
+                border-color: var(--kit-accent) !important;
+                background-color: color-mix(in srgb, var(--kit-accent) 8%, transparent) !important;
+            }
 
             [contenteditable]:empty:before { content: attr(placeholder); color: #a1a1aa; pointer-events: none; display: block; }
-            .dark [contenteditable]:empty:before { color: #71717a; }
-            
-            /* Disabled Input Styles */
-            input:disabled { opacity: 0.5; cursor: not-allowed; }
+            .dark [contenteditable]:empty:before { color: #52525b; }
         </style>
 
-        <div class="relative flex flex-col md:flex-row w-[calc(100%+3rem)] md:w-[calc(100%+5rem)] -mx-6 -my-6 md:-mx-10 md:-my-10 h-[85vh] min-h-[600px] rounded-[32px] overflow-hidden bg-zinc-50 dark:bg-[#121214] ui-fade-in shadow-inner">
+        <!-- MAIN SCROLLER -->
+        <main class="w-full h-full overflow-y-auto no-scrollbar px-3.5 sm:px-6 pt-6 pb-24 max-w-4xl mx-auto space-y-5">
             
-            <div id="np-sidebar" class="w-full md:w-[320px] lg:w-[360px] flex flex-col h-full border-r border-zinc-200 dark:border-zinc-800 shrink-0 z-10 bg-zinc-50 dark:bg-[#121214]">
-                <div class="px-6 pt-6 md:px-8 md:pt-8 pb-3">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-[26px] font-black text-zinc-900 dark:text-white tracking-tight">NotePRO</h2>
-                        <div class="flex items-center gap-1.5">
-                            <button id="btn-add-folder" class="btn-premium w-9 h-9 rounded-full bg-white dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white shadow-sm"><i class="fas fa-folder-plus"></i></button>
-                            <button id="btn-new-note" class="btn-premium w-9 h-9 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center text-white dark:text-zinc-900 shadow-sm"><i class="fas fa-edit"></i></button>
-                        </div>
+            <!-- SEAMLESS HERO TITLE -->
+            <div class="px-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-accent-theme shadow-sm transition-colors"></span>
+                        <span class="text-[11px] font-mono tracking-wider font-semibold uppercase text-accent-theme">HunqOS Security</span>
                     </div>
-                    
-                    <div class="flex items-center bg-white dark:bg-[#0c0c0e] rounded-xl p-2.5 px-4 border border-zinc-200 dark:border-zinc-800 focus-within:ring-2 ring-zinc-900 dark:ring-white transition-all shadow-sm">
-                        <i class="fas fa-search text-zinc-400 text-sm mr-3"></i>
-                        <input type="text" id="np-search" class="w-full bg-transparent border-none outline-none text-sm font-bold text-zinc-900 dark:text-white placeholder-zinc-400" placeholder="Tìm kiếm tài liệu...">
-                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">NotePRO Vault</h1>
+                    <p class="text-[12px] text-zinc-500 dark:text-zinc-400 font-normal">Sổ ghi chép an toàn, mã hóa đầu cuối (E2E) và quản lý phân vùng độc lập.</p>
                 </div>
 
-                <div class="px-6 py-2 border-b border-zinc-200 dark:border-zinc-800">
-                    <div class="flex items-center justify-between mb-2.5">
-                        <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Không gian lưu trữ</span>
-                    </div>
-                    <div id="np-folder-chips" class="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-                        </div>
-                </div>
-
-                <div id="np-list" class="flex-1 overflow-y-auto custom-scrollbar p-3 px-4">
-                    </div>
-                
-                <div class="px-6 py-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-white/50 dark:bg-[#0c0c0e]/50 backdrop-blur-md">
-                    <label class="flex items-center gap-2.5 cursor-pointer group">
-                        <input type="checkbox" id="np-auto-lock" class="appearance-none w-9 h-5 rounded-full bg-zinc-300 dark:bg-zinc-700 checked:bg-zinc-900 dark:checked:bg-white relative transition-colors before:content-[''] before:absolute before:w-4 before:h-4 before:bg-white dark:before:bg-[#121214] before:rounded-full before:top-0.5 before:left-0.5 checked:before:translate-x-4 before:transition-transform shadow-inner" checked>
-                        <span class="text-xs font-bold text-zinc-500 group-hover:text-zinc-800 transition-colors"><i class="fas fa-shield-alt mr-1"></i> Auto-Lock</span>
-                    </label>
-                    <div class="flex gap-2">
-                        <button id="btn-import-json" class="btn-premium w-8 h-8 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-white"><i class="fas fa-file-import text-[10px]"></i></button>
-                        <button id="btn-export-json" class="btn-premium w-8 h-8 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-white"><i class="fas fa-file-export text-[10px]"></i></button>
-                        <input type="file" id="np-import-file" class="hidden" accept=".json">
-                    </div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-add-folder" class="h-11 px-3.5 rounded-[14px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm">
+                        <i class="fas fa-folder-plus text-accent-theme text-xs"></i> Thư mục
+                    </button>
+                    <button id="btn-new-note" class="h-11 px-4 rounded-[14px] bg-accent-theme text-white text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm">
+                        <i class="fas fa-pen-to-square text-xs"></i> Bản ghi mới
+                    </button>
                 </div>
             </div>
 
-            <div id="np-editor-pane" class="absolute md:relative inset-0 md:inset-auto z-20 flex-1 flex flex-col bg-white dark:bg-[#0c0c0e] slide-pane translate-x-full md:translate-x-0 w-full h-full shadow-[-10px_0_30px_rgba(0,0,0,0.05)] dark:shadow-none">
-                
-                <div class="md:hidden flex items-center justify-between px-4 pt-6 pb-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-[#0c0c0e]/90 backdrop-blur-xl z-10">
-                    <button id="btn-back-to-list" class="btn-premium text-blue-500 font-bold flex items-center gap-1.5 text-[15px]"><i class="fas fa-chevron-left"></i> Trở về</button>
-                    <span id="np-status-badge-mobile" class="text-[10px] font-bold uppercase hidden"></span>
-                    <button id="btn-save-note-mobile" class="btn-premium text-blue-500 font-bold text-[15px]">Lưu</button>
-                </div>
-
-                <div class="hidden md:flex justify-between items-center px-8 pt-8 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-                    <div class="flex items-center gap-3">
-                        <i class="fas fa-user-shield text-zinc-400"></i>
-                        <span id="np-status-badge" class="px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg hidden"></span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <button id="btn-delete-note" class="btn-premium w-9 h-9 rounded-full border border-red-200 dark:border-red-900/50 text-red-500 flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/20"><i class="fas fa-trash-alt text-xs"></i></button>
-                        <button id="btn-save-note" class="btn-premium px-5 py-2.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-bold shadow-md">Đồng bộ lưu trữ</button>
-                    </div>
-                </div>
-
-                <div id="np-empty-state" class="absolute inset-0 bg-white dark:bg-[#0c0c0e] z-10 flex flex-col items-center justify-center transition-opacity">
-                    <i class="fas fa-fingerprint text-5xl text-zinc-200 dark:text-zinc-800 mb-5"></i>
-                    <p class="text-sm font-bold text-zinc-400">Chọn một bản ghi để bắt đầu làm việc</p>
-                </div>
-
-                <div class="flex-1 flex flex-col p-6 md:p-10 overflow-hidden relative">
-                    <input type="text" id="np-title" class="w-full bg-transparent border-none outline-none text-3xl font-black text-zinc-900 dark:text-white placeholder-zinc-300 dark:placeholder-zinc-700 p-0 mb-6" placeholder="Tiêu đề tài liệu...">
+            <!-- CONTROLS & OPTIONS CARD -->
+            <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-3.5 sm:p-4 shadow-sm space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     
-                    <div id="np-editor-toolbar" class="flex flex-wrap gap-1 bg-zinc-50 dark:bg-zinc-800/50 p-1.5 rounded-xl mb-6 border border-zinc-200 dark:border-zinc-800 shrink-0 shadow-sm transition-opacity">
-                        <button class="editor-cmd btn-premium w-8 h-8 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg text-xs" data-cmd="bold"><i class="fas fa-bold"></i></button>
-                        <button class="editor-cmd btn-premium w-8 h-8 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg text-xs" data-cmd="italic"><i class="fas fa-italic"></i></button>
-                        <button class="editor-cmd btn-premium w-8 h-8 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg text-xs" data-cmd="underline"><i class="fas fa-underline"></i></button>
-                        <div class="w-px h-5 bg-zinc-300 dark:bg-zinc-700 mx-1 self-center"></div>
-                        <button class="editor-cmd btn-premium w-8 h-8 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg text-xs" data-cmd="insertUnorderedList"><i class="fas fa-list-ul"></i></button>
-                        <button class="editor-cmd btn-premium w-8 h-8 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg text-xs" data-cmd="insertOrderedList"><i class="fas fa-list-ol"></i></button>
-                    </div>
+                    <!-- FOLDER HORIZONTAL CHIPS -->
+                    <div id="np-folder-chips" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 w-full sm:max-w-[65%]"></div>
 
-                    <div id="np-content" contenteditable="true" class="w-full flex-1 bg-transparent border-none outline-none text-[16px] text-zinc-800 dark:text-zinc-200 custom-scrollbar overflow-y-auto mb-4 leading-relaxed whitespace-pre-wrap" placeholder="Nhập nội dung mã hóa đầu cuối..."></div>
-                    
-                    <div class="shrink-0 pt-5 border-t border-zinc-200 dark:border-zinc-800">
-                        <div id="crypto-action-bar" class="flex items-center bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl p-1.5 focus-within:ring-1 ring-zinc-900 dark:ring-white transition-shadow shadow-sm">
-                            <i class="fas fa-key text-zinc-400 ml-4 text-sm"></i>
-                            <input type="password" id="np-password" class="w-full bg-transparent border-none outline-none px-3 py-2.5 text-sm font-bold text-zinc-900 dark:text-white placeholder-zinc-400" placeholder="Thiết lập mật mã bảo vệ E2E...">
-                            <button id="btn-toggle-crypto" class="btn-premium bg-zinc-900 dark:bg-white px-5 py-2.5 text-xs font-bold text-white dark:text-zinc-900 rounded-xl whitespace-nowrap"><i class="fas fa-lock mr-1"></i> Thực thi</button>
+                    <!-- AUTO-LOCK TOGGLE SWITCH & ACTIONS -->
+                    <div class="flex items-center justify-between sm:justify-end gap-3">
+                        <div class="flex items-center gap-2.5 bg-[#f2f2f7] dark:bg-black/40 px-3.5 py-1.5 rounded-[14px] border border-black/[0.04] dark:border-white/[0.06]">
+                            <span class="text-xs font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                                <i class="fas fa-shield-halved text-accent-theme text-xs"></i> Auto-Lock
+                            </span>
+                            <button id="auto-lock-switch" class="switch-pill active" type="button" aria-label="Toggle Auto-Lock">
+                                <div class="switch-thumb"></div>
+                            </button>
                         </div>
 
-                        <div id="unlocked-action-bar" class="hidden flex-wrap items-center justify-between gap-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-900/50 p-2 pl-4 rounded-2xl">
-                            <span class="text-xs font-bold text-amber-600 dark:text-amber-500"><i class="fas fa-unlock-alt mr-1"></i> Đang giải mã cục bộ</span>
-                            <div class="flex gap-2">
-                                <button id="btn-remove-crypto" class="btn-premium bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white px-4 py-2 text-xs font-bold rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-sm">Hủy mã hóa</button>
-                                <button id="btn-lock-now" class="btn-premium bg-amber-500 hover:bg-amber-600 text-white px-5 py-2 text-xs font-bold rounded-xl shadow-sm"><i class="fas fa-lock mr-1"></i> Khóa lại</button>
+                        <div class="flex items-center gap-1.5">
+                            <button id="btn-import-json" class="h-9 w-9 rounded-[12px] bg-black/5 dark:bg-white/10 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white flex items-center justify-center text-xs active:scale-95 transition-all" title="Nhập dữ liệu">
+                                <i class="fas fa-file-import text-[11px]"></i>
+                            </button>
+                            <button id="btn-export-json" class="h-9 w-9 rounded-[12px] bg-black/5 dark:bg-white/10 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white flex items-center justify-center text-xs active:scale-95 transition-all" title="Xuất dữ liệu">
+                                <i class="fas fa-file-export text-[11px]"></i>
+                            </button>
+                            <input type="file" id="np-import-file" class="hidden" accept=".json">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEARCH BAR -->
+                <div class="flex items-center bg-[#f2f2f7] dark:bg-black/40 rounded-[16px] px-3.5 h-11 border border-black/[0.04] dark:border-white/[0.06] focus-within:border-accent-theme transition-all">
+                    <i class="fas fa-search text-zinc-400 text-xs mr-2.5"></i>
+                    <input type="text" id="np-search" class="w-full bg-transparent border-none outline-none text-xs font-semibold text-zinc-900 dark:text-white placeholder-zinc-400" placeholder="Tìm kiếm tiêu đề hoặc nội dung...">
+                </div>
+            </div>
+
+            <!-- WORKSPACE GRID -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 items-stretch">
+                
+                <!-- REPOSITORY / LIST CARD -->
+                <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-5 shadow-sm flex flex-col justify-between space-y-4">
+                    <div class="space-y-3 flex-1 flex flex-col">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Danh mục bản ghi</h3>
+                            <span id="notes-count" class="text-[10px] text-zinc-400 font-mono">0 mục</span>
+                        </div>
+
+                        <!-- Notes List Scroller -->
+                        <div id="np-list" class="flex-1 custom-scrollbar overflow-y-auto space-y-2 min-h-[300px] max-h-[520px] pr-1"></div>
+                    </div>
+
+                    <!-- Bottom Status Indicator -->
+                    <div class="pt-2 border-t border-black/[0.05] dark:border-white/[0.08] flex items-center justify-between text-[11px] text-zinc-400">
+                        <span class="flex items-center gap-1.5 font-medium">
+                            <i class="fas fa-lock text-accent-theme text-[10px]"></i> Bộ nhớ cục bộ
+                        </span>
+                        <span class="font-mono text-[10px]">AES/XOR Safe</span>
+                    </div>
+                </div>
+
+                <!-- EDITOR & CRYPTO CARD -->
+                <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-5 shadow-sm flex flex-col justify-between space-y-4 relative">
+                    
+                    <!-- EMPTY STATE OVERLAY -->
+                    <div id="np-empty-state" class="absolute inset-0 bg-white/95 dark:bg-[#161618]/95 backdrop-blur-md rounded-[24px] z-20 flex flex-col items-center justify-center p-6 text-center transition-opacity">
+                        <div class="w-14 h-14 rounded-[18px] bg-accent-theme-alpha flex items-center justify-center mb-3 text-accent-theme">
+                            <i class="fas fa-fingerprint text-2xl"></i>
+                        </div>
+                        <p class="text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">Chọn hoặc tạo một bản ghi</p>
+                        <p class="text-[11px] text-zinc-400">Dữ liệu được bảo vệ an toàn trên thiết bị của bạn.</p>
+                    </div>
+
+                    <div class="space-y-3 flex-1 flex flex-col z-10">
+                        <!-- Card Header Actions -->
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span id="np-status-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase bg-black/5 dark:bg-white/10 text-zinc-600 dark:text-zinc-300">
+                                    Ready
+                                </span>
+                            </div>
+
+                            <div class="flex items-center gap-1">
+                                <button id="btn-delete-note" class="px-2.5 py-1 rounded-[8px] hover:bg-rose-500/10 text-rose-500 text-[11px] font-medium transition-colors flex items-center gap-1" title="Xóa bản ghi">
+                                    <i class="far fa-trash-can"></i> Xóa
+                                </button>
+                                <button id="btn-save-note" class="px-3 py-1 rounded-[8px] bg-accent-theme text-white text-[11px] font-semibold active:scale-95 transition-all flex items-center gap-1">
+                                    <i class="fas fa-cloud-arrow-up text-[10px]"></i> Lưu
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Note Title -->
+                        <input type="text" id="np-title" class="w-full bg-transparent border-none outline-none text-base sm:text-lg font-black text-zinc-900 dark:text-white placeholder-zinc-400 p-0" placeholder="Tiêu đề tài liệu...">
+
+                        <!-- Rich Toolbar -->
+                        <div id="np-editor-toolbar" class="flex items-center gap-1 bg-[#f2f2f7] dark:bg-black/40 p-1 rounded-[14px] border border-black/[0.04] dark:border-white/[0.06] shrink-0 overflow-x-auto no-scrollbar">
+                            <button class="editor-cmd h-8 w-8 shrink-0 rounded-[10px] text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#27272a] text-xs flex items-center justify-center active:scale-95 transition-all" data-cmd="bold"><i class="fas fa-bold"></i></button>
+                            <button class="editor-cmd h-8 w-8 shrink-0 rounded-[10px] text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#27272a] text-xs flex items-center justify-center active:scale-95 transition-all" data-cmd="italic"><i class="fas fa-italic"></i></button>
+                            <button class="editor-cmd h-8 w-8 shrink-0 rounded-[10px] text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#27272a] text-xs flex items-center justify-center active:scale-95 transition-all" data-cmd="underline"><i class="fas fa-underline"></i></button>
+                            <div class="w-px h-4 bg-black/[0.08] dark:bg-white/[0.1] mx-1 self-center shrink-0"></div>
+                            <button class="editor-cmd h-8 w-8 shrink-0 rounded-[10px] text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#27272a] text-xs flex items-center justify-center active:scale-95 transition-all" data-cmd="insertUnorderedList"><i class="fas fa-list-ul"></i></button>
+                            <button class="editor-cmd h-8 w-8 shrink-0 rounded-[10px] text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#27272a] text-xs flex items-center justify-center active:scale-95 transition-all" data-cmd="insertOrderedList"><i class="fas fa-list-ol"></i></button>
+                        </div>
+
+                        <!-- Content Area -->
+                        <div id="np-content" contenteditable="true" class="flex-1 w-full bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[16px] p-3.5 outline-none text-xs leading-relaxed text-zinc-800 dark:text-zinc-200 custom-scrollbar overflow-y-auto min-h-[170px] max-h-[320px] focus:border-accent-theme transition-all whitespace-pre-wrap" placeholder="Nhập nội dung ghi chú..."></div>
+                    </div>
+
+                    <!-- Bottom Crypto Control Strip -->
+                    <div class="pt-3 border-t border-black/[0.05] dark:border-white/[0.08] z-10 space-y-2">
+                        <!-- Locked / Unlocked Form Controller -->
+                        <div id="crypto-action-bar" class="flex items-center bg-[#f2f2f7] dark:bg-black/40 rounded-[16px] p-1 border border-black/[0.04] dark:border-white/[0.06] focus-within:border-accent-theme transition-all">
+                            <i class="fas fa-key text-zinc-400 ml-3 text-xs"></i>
+                            <input type="password" id="np-password" class="w-full bg-transparent border-none outline-none px-2.5 py-1.5 text-xs font-semibold text-zinc-900 dark:text-white placeholder-zinc-400" placeholder="Nhập mật mã để khóa/mở...">
+                            <button id="btn-toggle-crypto" class="h-9 px-4 rounded-[12px] bg-accent-theme text-white text-xs font-bold active:scale-95 transition-all shadow-sm whitespace-nowrap flex items-center gap-1.5">
+                                <i class="fas fa-lock text-[11px]"></i> Khóa mã
+                            </button>
+                        </div>
+
+                        <div id="unlocked-action-bar" class="hidden items-center justify-between gap-2 bg-accent-theme-alpha border border-accent-theme/20 p-2 rounded-[16px]">
+                            <span class="text-xs font-bold text-accent-theme flex items-center gap-1.5 pl-1.5">
+                                <i class="fas fa-lock-open text-xs"></i> Đang mở khóa bộ nhớ tạm
+                            </span>
+                            <div class="flex items-center gap-1.5">
+                                <button id="btn-remove-crypto" class="h-8 px-3 rounded-[10px] bg-white dark:bg-[#27272a] border border-black/[0.05] dark:border-white/[0.08] text-[11px] font-semibold text-zinc-800 dark:text-zinc-200 active:scale-95 transition-all">
+                                    Hủy mã hóa
+                                </button>
+                                <button id="btn-lock-now" class="h-8 px-3.5 rounded-[10px] bg-accent-theme text-white text-[11px] font-bold active:scale-95 transition-all shadow-sm">
+                                    Khóa ngay
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
             </div>
-        </div>
+
+        </main>
+    </div>
     `;
 }
 
-export function init() {
+// =============================================================================
+// 3. LOGIC HOOKS & EVENT DISPATCHING
+// =============================================================================
+export function init(hostElement) {
+    const rootContainer = hostElement.querySelector('#notepro-root-container') || hostElement;
+
+    // Theme hook
+    const updateAccent = () => ThemeKit.applyAccent(rootContainer);
+    updateAccent();
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'hunqos_accent_color' || e.key === 'hunqos_icon_custom_bg') {
+            updateAccent();
+        }
+    });
+
+    // Storage Models
     let folders = JSON.parse(localStorage.getItem('notepro_folders')) || [
-        { id: 'all', name: 'Tất cả', color: '#71717a' },
-        { id: 'uncategorized', name: 'Nháp Cục Bộ', color: '#71717a' }
+        { id: 'all', name: 'Tất cả' },
+        { id: 'uncategorized', name: 'Nháp Cục Bộ' }
     ];
     let notes = JSON.parse(localStorage.getItem('notepro_notes')) || [];
     let activeFolderId = 'all';
     let activeNoteId = null;
-    
-    // Quản lý trạng thái giải mã trên RAM (Mất khi chuyển Tab)
-    let isCurrentlyUnlocked = false; 
-    let sessionPwd = null; 
+
+    let isCurrentlyUnlocked = false;
+    let sessionPwd = null;
     let idleTime = 0;
+    let autoLockEnabled = true;
 
-    const folderChipsContainer = document.getElementById('np-folder-chips');
-    const listContainer = document.getElementById('np-list');
-    const searchInput = document.getElementById('np-search');
-    const emptyState = document.getElementById('np-empty-state');
-    
-    // Inputs & UI
-    const inputTitle = document.getElementById('np-title');
-    const inputContent = document.getElementById('np-content');
-    const inputPassword = document.getElementById('np-password');
-    const statusBadge = document.getElementById('np-status-badge');
-    const statusBadgeMobile = document.getElementById('np-status-badge-mobile');
-    const btnToggleCrypto = document.getElementById('btn-toggle-crypto');
-    const editorToolbar = document.getElementById('np-editor-toolbar');
-    const autoLockToggle = document.getElementById('np-auto-lock');
-    const editorPane = document.getElementById('np-editor-pane');
+    // DOM Elements
+    const folderChipsContainer = hostElement.querySelector('#np-folder-chips');
+    const listContainer = hostElement.querySelector('#np-list');
+    const notesCount = hostElement.querySelector('#notes-count');
+    const searchInput = hostElement.querySelector('#np-search');
+    const emptyState = hostElement.querySelector('#np-empty-state');
 
-    // ---------------- ENGINE MÃ HÓA E2E CHUẨN XÁC 100% ----------------
-    // Đảm bảo UTF-8/Unicode Tiếng Việt được đóng gói an toàn và không crash btoa()
-    function encryptPayload(titleText, contentHtml, password) {
+    const inputTitle = hostElement.querySelector('#np-title');
+    const inputContent = hostElement.querySelector('#np-content');
+    const inputPassword = hostElement.querySelector('#np-password');
+    const statusBadge = hostElement.querySelector('#np-status-badge');
+
+    const btnToggleCrypto = hostElement.querySelector('#btn-toggle-crypto');
+    const cryptoActionBar = hostElement.querySelector('#crypto-action-bar');
+    const unlockedActionBar = hostElement.querySelector('#unlocked-action-bar');
+    const btnLockNow = hostElement.querySelector('#btn-lock-now');
+    const btnRemoveCrypto = hostElement.querySelector('#btn-remove-crypto');
+
+    const btnSaveNote = hostElement.querySelector('#btn-save-note');
+    const btnDeleteNote = hostElement.querySelector('#btn-delete-note');
+    const btnNewNote = hostElement.querySelector('#btn-new-note');
+    const btnAddFolder = hostElement.querySelector('#btn-add-folder');
+
+    const switchAutoLock = hostElement.querySelector('#auto-lock-switch');
+    const editorToolbar = hostElement.querySelector('#np-editor-toolbar');
+
+    // Switch Auto-Lock
+    switchAutoLock?.addEventListener('click', () => {
+        switchAutoLock.classList.toggle('active');
+        autoLockEnabled = switchAutoLock.classList.contains('active');
+        IslandKit.notify('Auto-Lock', autoLockEnabled ? 'Đã bật tự động khóa.' : 'Đã tắt bảo vệ tự động.', 'info');
+    });
+
+    // Cipher Engine
+    const encryptPayload = (titleText, contentHtml, password) => {
         try {
-            // 1. Đóng gói cả Tiêu đề và Nội dung thành 1 chuỗi JSON
             const dataObj = JSON.stringify({ title: titleText, content: contentHtml });
-            
-            // 2. Chuyển đổi Unicode thành chuẩn 8-bit an toàn
-            const bytesStr = unescape(encodeURIComponent(dataObj)); 
-            
-            // 3. XOR Cipher với mật khẩu (Đảm bảo Byte & 255)
+            const bytesStr = unescape(encodeURIComponent(dataObj));
             let xored = '';
             for (let i = 0; i < bytesStr.length; i++) {
                 xored += String.fromCharCode(bytesStr.charCodeAt(i) ^ (password.charCodeAt(i % password.length) & 255));
             }
-            
-            // 4. Mã hóa Base64
             return btoa(xored);
-        } catch(e) { console.error("Lỗi mã hóa:", e); return null; }
-    }
+        } catch (e) {
+            return null;
+        }
+    };
 
-    function decryptPayload(b64Str, password) {
+    const decryptPayload = (b64Str, password) => {
         try {
-            // 1. Giải mã Base64
             const xored = atob(b64Str);
-            
-            // 2. Dịch ngược XOR
             let bytesStr = '';
             for (let i = 0; i < xored.length; i++) {
                 bytesStr += String.fromCharCode(xored.charCodeAt(i) ^ (password.charCodeAt(i % password.length) & 255));
             }
-            
-            // 3. Dịch ngược UTF-8 về Unicode String
             const dataStr = decodeURIComponent(escape(bytesStr));
-            
-            // 4. Giải nén JSON lấy Title và Content
             return JSON.parse(dataStr);
-        } catch(e) { console.error("Lỗi giải mã:", e); return null; }
-    }
+        } catch (e) {
+            return null;
+        }
+    };
 
-    function saveToStorage() { 
-        localStorage.setItem('notepro_folders', JSON.stringify(folders)); 
-        localStorage.setItem('notepro_notes', JSON.stringify(notes)); 
-    }
+    const sanitizeText = (str) => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(str, 'text/html');
+        return doc.body.textContent || '';
+    };
 
-    // ---------------- MOBILE SLIDE UI ----------------
-    function openEditorMobile() { editorPane.classList.remove('translate-x-full'); }
-    function closeEditorMobile() { 
-        editorPane.classList.add('translate-x-full'); 
-        if(activeNoteId) saveCurrentNote(); 
-    }
-    
-    document.getElementById('btn-back-to-list').addEventListener('click', closeEditorMobile);
-    document.getElementById('btn-save-note-mobile').addEventListener('click', () => { 
-        saveCurrentNote(); 
-        closeEditorMobile(); 
-        UI.showAlert('Đã lưu', 'Bản ghi được đồng bộ.', 'success');
-    });
+    const saveToStorage = () => {
+        localStorage.setItem('notepro_folders', JSON.stringify(folders));
+        localStorage.setItem('notepro_notes', JSON.stringify(notes));
+    };
 
-    // ---------------- THƯ MỤC ----------------
-    function renderFolders() {
+    // Render Folders (Segmented Chips)
+    const renderFolders = () => {
+        if (!folderChipsContainer) return;
         folderChipsContainer.innerHTML = '';
+
         folders.forEach(folder => {
             const isActive = folder.id === activeFolderId;
-            const color = folder.color || '#71717a';
-            
             const chip = document.createElement('button');
-            chip.className = `folder-chip px-4 py-2 rounded-full border text-xs flex items-center gap-2 ${isActive ? 'active shadow-md' : 'bg-white dark:bg-[#0c0c0e] border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`;
-            chip.innerHTML = `<i class="fas ${folder.id === 'all' ? 'fa-layer-group' : 'fa-folder'}"></i> ${folder.name}`;
-            
-            if(isActive) { chip.style.backgroundColor = color; chip.style.borderColor = color; chip.style.color = '#fff'; }
-            else { chip.style.color = color; chip.style.borderColor = color; }
+            chip.className = `folder-chip h-8 px-3 rounded-[10px] text-xs font-semibold border transition-all flex items-center gap-1.5 whitespace-nowrap active:scale-95 ${
+                isActive 
+                    ? 'active shadow-sm' 
+                    : 'bg-[#f2f2f7] dark:bg-black/40 border-black/[0.04] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+            }`;
+            chip.innerHTML = `<i class="fas ${folder.id === 'all' ? 'fa-layer-group' : 'fa-folder'} text-[10px]"></i> ${folder.name}`;
 
             chip.addEventListener('click', () => {
                 activeFolderId = folder.id;
-                renderFolders(); renderNotesList(searchInput.value);
+                renderFolders();
+                renderNotesList(searchInput.value);
             });
+
             folderChipsContainer.appendChild(chip);
         });
-    }
+    };
 
-    // ---------------- DANH SÁCH GHI CHÚ ----------------
-    function renderNotesList(filterText = '') {
+    // Render Notes List
+    const renderNotesList = (filterText = '') => {
+        if (!listContainer) return;
         listContainer.innerHTML = '';
+
         let filtered = notes;
-        
         if (activeFolderId !== 'all') {
             if (activeFolderId === 'uncategorized') filtered = filtered.filter(n => !n.folderId || n.folderId === 'uncategorized');
             else filtered = filtered.filter(n => n.folderId === activeFolderId);
         }
-        
-        // Chỉ tìm kiếm theo Title (nếu bị mã hóa thì ko search đc content)
-        if (filterText.trim()) filtered = filtered.filter(n => n.title.toLowerCase().includes(filterText.toLowerCase()));
 
-        if (filtered.length === 0) { listContainer.innerHTML = `<div class="text-center p-8 text-xs font-bold text-zinc-400/70">Không có bản ghi hợp lệ.</div>`; return; }
+        if (filterText.trim()) {
+            filtered = filtered.filter(n => n.title.toLowerCase().includes(filterText.toLowerCase()));
+        }
+
+        notesCount.textContent = `${filtered.length} mục`;
+
+        if (filtered.length === 0) {
+            listContainer.innerHTML = `
+                <div class="h-44 flex flex-col items-center justify-center text-center p-4 border border-dashed border-black/[0.06] dark:border-white/[0.08] rounded-[16px]">
+                    <i class="fas fa-folder-open text-2xl text-zinc-300 dark:text-zinc-700 mb-2"></i>
+                    <span class="text-xs text-zinc-400 font-medium">Không có bản ghi phù hợp</span>
+                </div>`;
+            return;
+        }
 
         filtered.forEach(note => {
             const date = new Date(note.timestamp);
-            const timeStr = date.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
-            const dateStr = date.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit'});
+            const timeStr = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            const dateStr = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
             const isLocked = note.isEncrypted;
             const isActive = note.id === activeNoteId;
-            
-            // Xử lý hiển thị Preview an toàn
-            let previewText = 'Dữ liệu trống...';
-            if (isLocked) {
-                previewText = '<i class="fas fa-lock text-rose-500 mr-1"></i> Nội dung đã mã hóa E2E';
-            } else if (note.content) {
-                previewText = note.content.replace(/<[^>]*>?/gm, '').substring(0, 40) + '...';
-            }
-            
-            const noteEl = document.createElement('div');
-            noteEl.className = `note-item cursor-pointer p-4 rounded-2xl mb-1.5 flex items-start gap-3 transition-colors ${isActive ? 'active ring-1 ring-zinc-300 dark:ring-zinc-700 shadow-sm' : 'hover:bg-white dark:hover:bg-[#18181b]'}`;
-            noteEl.innerHTML = `
+
+            let preview = 'Bản ghi trống...';
+            if (isLocked) preview = 'Tài liệu đã được khóa mã hóa E2E';
+            else if (note.content) preview = sanitizeText(note.content).substring(0, 45) + '...';
+
+            const card = document.createElement('div');
+            card.className = `note-card p-3 rounded-[16px] border border-black/[0.05] dark:border-white/[0.08] bg-[#f2f2f7]/60 dark:bg-black/30 hover:bg-[#f2f2f7] dark:hover:bg-black/50 cursor-pointer transition-all active:scale-[0.99] flex items-start justify-between gap-2.5 ${isActive ? 'active shadow-sm' : ''}`;
+
+            card.innerHTML = `
                 <div class="flex-1 min-w-0">
-                    <h4 class="text-[15px] font-bold truncate text-zinc-900 dark:text-white mb-1">${note.title}</h4>
-                    <p class="text-xs truncate text-zinc-500 font-medium">${previewText}</p>
+                    <div class="flex items-center gap-1.5 mb-1">
+                        ${isLocked ? '<i class="fas fa-lock text-[10px] text-rose-500 shrink-0"></i>' : ''}
+                        <h4 class="text-xs font-bold truncate text-zinc-900 dark:text-white">${note.title}</h4>
+                    </div>
+                    <p class="text-[11px] truncate text-zinc-500 dark:text-zinc-400 font-normal">${preview}</p>
                 </div>
-                <div class="shrink-0 text-[10px] text-zinc-400 font-bold text-right pt-0.5 opacity-80">
-                    <div>${timeStr}</div><div class="mt-0.5">${dateStr}</div>
+                <div class="shrink-0 text-[9px] text-zinc-400 font-mono text-right pt-0.5">
+                    <div>${timeStr}</div>
+                    <div>${dateStr}</div>
                 </div>
             `;
-            noteEl.onclick = () => { loadNoteData(note.id); openEditorMobile(); };
-            listContainer.appendChild(noteEl);
-        });
-    }
 
-    // ---------------- ENGINE GIAO DIỆN EDITOR ----------------
-    function updateBadge(styleClass, icon, text) {
-        [statusBadge, statusBadgeMobile].forEach(el => {
-            el.className = `px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg hidden ${styleClass}`;
-            el.innerHTML = `<i class="fas ${icon} mr-1"></i> ${text}`;
-            el.classList.remove('hidden');
+            card.onclick = () => loadNoteData(note.id);
+            listContainer.appendChild(card);
         });
-    }
+    };
 
-    function loadNoteData(id) {
-        if (activeNoteId && activeNoteId !== id && isCurrentlyUnlocked) lockActiveNote(false);
-        activeNoteId = id; const note = notes.find(n => n.id === id); if (!note) return;
-        
-        // Reset khóa tạm thời nếu là note bị khóa
-        if (note.isEncrypted && !isCurrentlyUnlocked) { isCurrentlyUnlocked = false; sessionPwd = null; }
+    // Load Note
+    const loadNoteData = (id) => {
+        if (activeNoteId && activeNoteId !== id && isCurrentlyUnlocked) {
+            lockActiveNote(false);
+        }
+
+        activeNoteId = id;
+        const note = notes.find(n => n.id === id);
+        if (!note) return;
+
+        if (note.isEncrypted && !isCurrentlyUnlocked) {
+            isCurrentlyUnlocked = false;
+            sessionPwd = null;
+        }
 
         renderNotesList(searchInput.value);
-        emptyState.style.opacity = '0'; setTimeout(() => emptyState.classList.add('hidden'), 200);
+        if (emptyState) emptyState.classList.add('hidden');
 
         inputPassword.value = '';
-        
+
         if (note.isEncrypted && !isCurrentlyUnlocked) {
-            // GIAO DIỆN BỊ KHÓA
             inputTitle.value = '';
             inputTitle.disabled = true;
-            inputTitle.placeholder = 'Tiêu đề đã được bảo mật...';
-            
-            inputContent.innerHTML = '<div class="text-rose-500 font-bold flex flex-col items-center justify-center h-full opacity-60 select-none"><i class="fas fa-lock text-5xl mb-4"></i><p>Tài liệu mã hóa đầu cuối (E2E).</p></div>';
-            inputContent.contentEditable = "false"; 
-            editorToolbar.style.opacity = "0.2"; editorToolbar.style.pointerEvents = "none";
-            
-            updateBadge('bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400', 'fa-lock', 'E2E Locked');
-            document.getElementById('crypto-action-bar').classList.replace('hidden', 'flex'); 
-            document.getElementById('unlocked-action-bar').classList.replace('flex', 'hidden');
-            inputPassword.placeholder = 'Nhập mật mã để giải mã...'; 
-            btnToggleCrypto.innerHTML = '<i class="fas fa-unlock mr-1"></i> Giải mã';
-            
+            inputTitle.placeholder = 'Tài liệu đang bị khóa...';
+
+            inputContent.innerHTML = '<div class="text-rose-500 font-semibold flex flex-col items-center justify-center h-32 opacity-75 select-none"><i class="fas fa-shield-halved text-3xl mb-2"></i><p class="text-xs">Bản ghi mã hóa an toàn. Vui lòng nhập khóa bảo vệ.</p></div>';
+            inputContent.contentEditable = 'false';
+            editorToolbar.style.opacity = '0.3';
+            editorToolbar.style.pointerEvents = 'none';
+
+            statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20';
+            statusBadge.innerHTML = '<i class="fas fa-lock mr-1"></i> E2E Locked';
+
+            cryptoActionBar.classList.remove('hidden');
+            cryptoActionBar.classList.add('flex');
+            unlockedActionBar.classList.add('hidden');
+            unlockedActionBar.classList.remove('flex');
+
+            inputPassword.placeholder = 'Nhập mật mã để mở khóa...';
+            btnToggleCrypto.innerHTML = '<i class="fas fa-lock-open text-[11px]"></i> Mở khóa';
         } else {
-            // GIAO DIỆN MỞ KHÓA / PUBLIC
             inputTitle.disabled = false;
             inputTitle.placeholder = 'Tiêu đề tài liệu...';
-            inputContent.contentEditable = "true"; 
-            editorToolbar.style.opacity = "1"; editorToolbar.style.pointerEvents = "auto";
-            
+            inputContent.contentEditable = 'true';
+            editorToolbar.style.opacity = '1';
+            editorToolbar.style.pointerEvents = 'auto';
+
             if (note.isEncrypted && isCurrentlyUnlocked) {
-                // Đã giải mã thành công trong session
-                updateBadge('bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400', 'fa-unlock-alt', 'E2E Unlocked');
-                document.getElementById('crypto-action-bar').classList.replace('flex', 'hidden'); 
-                document.getElementById('unlocked-action-bar').classList.replace('hidden', 'flex');
+                statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase bg-accent-theme-alpha text-accent-theme border border-accent-theme/30';
+                statusBadge.innerHTML = '<i class="fas fa-lock-open mr-1"></i> E2E Unlocked';
+
+                cryptoActionBar.classList.add('hidden');
+                cryptoActionBar.classList.remove('flex');
+                unlockedActionBar.classList.remove('hidden');
+                unlockedActionBar.classList.add('flex');
             } else {
-                // Public (Local E2E)
                 inputTitle.value = note.title === '*** Bản ghi bảo mật ***' ? '' : note.title;
                 inputContent.innerHTML = note.content;
-                updateBadge('bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700', 'fa-shield-alt', 'Local E2E');
-                document.getElementById('crypto-action-bar').classList.replace('hidden', 'flex'); 
-                document.getElementById('unlocked-action-bar').classList.replace('flex', 'hidden');
-                inputPassword.placeholder = 'Tạo mật mã khóa tài liệu...'; 
-                btnToggleCrypto.innerHTML = '<i class="fas fa-lock mr-1"></i> Khóa mã';
+
+                statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase bg-black/5 dark:bg-white/10 text-zinc-600 dark:text-zinc-300';
+                statusBadge.innerHTML = '<i class="fas fa-file-lines mr-1"></i> Plain Draft';
+
+                cryptoActionBar.classList.remove('hidden');
+                cryptoActionBar.classList.add('flex');
+                unlockedActionBar.classList.add('hidden');
+                unlockedActionBar.classList.remove('flex');
+
+                inputPassword.placeholder = 'Nhập mật mã để mã hóa bản ghi...';
+                btnToggleCrypto.innerHTML = '<i class="fas fa-lock text-[11px]"></i> Khóa mã';
             }
         }
-    }
+    };
 
-    function clearEditor() {
-        activeNoteId = null; isCurrentlyUnlocked = false; sessionPwd = null;
-        inputTitle.value = ''; inputContent.innerHTML = ''; inputPassword.value = ''; 
-        inputTitle.disabled = false; inputContent.contentEditable = "true";
-        emptyState.classList.remove('hidden'); setTimeout(() => emptyState.style.opacity = '1', 10);
-        statusBadge.classList.add('hidden'); statusBadgeMobile.classList.add('hidden');
-        renderFolders(); renderNotesList();
-    }
+    const clearEditor = () => {
+        activeNoteId = null;
+        isCurrentlyUnlocked = false;
+        sessionPwd = null;
 
-    // ---------------- LƯU ĐỒNG BỘ ----------------
-    function saveCurrentNote() {
-        if (!activeNoteId) return; 
+        inputTitle.value = '';
+        inputContent.innerHTML = '';
+        inputPassword.value = '';
+        inputTitle.disabled = false;
+        inputContent.contentEditable = 'true';
+
+        if (emptyState) emptyState.classList.remove('hidden');
+        renderFolders();
+        renderNotesList();
+    };
+
+    // Save
+    const saveCurrentNote = () => {
+        if (!activeNoteId) return;
         const note = notes.find(n => n.id === activeNoteId);
         if (!note) return;
 
         note.timestamp = Date.now();
 
         if (note.isEncrypted) {
-            // Chốt chặn: Chỉ lưu và ghi đè nếu đang ở trạng thái Unlock bằng Password
             if (isCurrentlyUnlocked && sessionPwd) {
                 const titleText = inputTitle.value.trim() || 'Không tiêu đề';
                 const contentHtml = inputContent.innerHTML;
                 const encryptedPayload = encryptPayload(titleText, contentHtml, sessionPwd);
-                
+
                 if (encryptedPayload) {
                     note.content = encryptedPayload;
-                    note.title = '*** Bản ghi bảo mật ***'; // Ẩn Title ngoài list
+                    note.title = '*** Bản ghi bảo mật ***';
                 }
             }
-            // Nếu note bị khóa, bỏ qua để không ghi đè mất chuỗi mã hóa trong DB
         } else {
             note.title = inputTitle.value.trim() || 'Bản ghi không tên';
             note.content = inputContent.innerHTML;
         }
 
-        saveToStorage(); 
+        saveToStorage();
         renderNotesList(searchInput.value);
-    }
+    };
 
-    document.getElementById('btn-save-note').addEventListener('click', () => {
-        saveCurrentNote(); 
-        UI.showAlert('Đã lưu cục bộ', 'Dữ liệu Sandbox E2E đã đồng bộ hoàn tất.', 'success');
+    btnSaveNote?.addEventListener('click', () => {
+        saveCurrentNote();
+        IslandKit.notify('Thành công', 'Đã lưu và đồng bộ bản ghi.', 'success');
     });
 
-    document.getElementById('btn-new-note').addEventListener('click', () => {
+    btnNewNote?.addEventListener('click', () => {
         const defaultFolder = (activeFolderId === 'all') ? 'uncategorized' : activeFolderId;
-        const newNote = { id: 'note_' + Date.now(), title: 'Bản ghi không tên', content: '', folderId: defaultFolder, isEncrypted: false, timestamp: Date.now() };
-        notes.unshift(newNote); saveToStorage(); loadNoteData(newNote.id); openEditorMobile(); inputTitle.focus();
+        const newNote = {
+            id: 'note_' + Date.now(),
+            title: 'Bản ghi mới',
+            content: '',
+            folderId: defaultFolder,
+            isEncrypted: false,
+            timestamp: Date.now()
+        };
+        notes.unshift(newNote);
+        saveToStorage();
+        loadNoteData(newNote.id);
+        inputTitle.focus();
+        IslandKit.notify('Tạo mới', 'Đã khởi tạo bản ghi mới.', 'info');
     });
 
-    document.getElementById('btn-delete-note').addEventListener('click', () => {
+    btnDeleteNote?.addEventListener('click', () => {
         if (!activeNoteId) return;
-        UI.showConfirm('Hủy tài liệu?', 'Xóa vĩnh viễn bản ghi này khỏi máy?', () => { 
-            notes = notes.filter(n => n.id !== activeNoteId); saveToStorage(); clearEditor(); 
-            if (window.innerWidth < 768) closeEditorMobile();
+        UI.showConfirm('Xác nhận xóa?', 'Bản ghi này sẽ bị xóa hoàn toàn khỏi bộ nhớ thiết bị.', () => {
+            notes = notes.filter(n => n.id !== activeNoteId);
+            saveToStorage();
+            clearEditor();
+            IslandKit.notify('Đã xóa', 'Bản ghi đã được loại bỏ.', 'info');
         });
     });
 
-    // ---------------- HÀNH ĐỘNG MÃ HÓA / GIẢI MÃ (FLOW CHÍNH) ----------------
-    btnToggleCrypto.addEventListener('click', () => {
-        if (!activeNoteId) return; const note = notes.find(n => n.id === activeNoteId);
-        const pwd = inputPassword.value; if (!pwd) { UI.showAlert('Cảnh báo', 'Vui lòng điền mật khẩu.', 'warning'); return; }
+    // Crypto Dispatch
+    btnToggleCrypto?.addEventListener('click', () => {
+        if (!activeNoteId) return;
+        const note = notes.find(n => n.id === activeNoteId);
+        const pwd = inputPassword.value;
+
+        if (!pwd) {
+            return IslandKit.notify('Thiếu mật mã', 'Vui lòng nhập mật mã bảo vệ.', 'warning');
+        }
 
         if (note.isEncrypted && !isCurrentlyUnlocked) {
-            // THỰC THI GIẢI MÃ
             const decryptedObj = decryptPayload(note.content, pwd);
-            
             if (!decryptedObj) {
-                UI.showAlert('Sai mật mã', 'Không thể giải mã dữ liệu.', 'error');
-            } else { 
-                isCurrentlyUnlocked = true; 
-                sessionPwd = pwd; 
-                
-                // Đổ data chuẩn ra UI Editor
+                IslandKit.notify('Mật khẩu sai', 'Không thể giải mã dữ liệu bản ghi.', 'error');
+            } else {
+                isCurrentlyUnlocked = true;
+                sessionPwd = pwd;
                 inputTitle.value = decryptedObj.title;
                 inputTitle.disabled = false;
-                inputContent.innerHTML = decryptedObj.content; 
-                
-                loadNoteData(note.id); // Trigger UI Update trạng thái Unlock
-                resetIdle(); 
+                inputContent.innerHTML = decryptedObj.content;
+                loadNoteData(note.id);
+                idleTime = 0;
+                IslandKit.notify('Mở khóa', 'Nội dung bản ghi đã sẵn sàng chỉnh sửa.', 'success');
             }
         } else if (!note.isEncrypted) {
-            // THỰC THI MÃ HÓA LẦN ĐẦU
             const titleText = inputTitle.value.trim() || 'Không tiêu đề';
             const contentHtml = inputContent.innerHTML;
             const encryptedPayload = encryptPayload(titleText, contentHtml, pwd);
-            
-            if(encryptedPayload) {
-                note.content = encryptedPayload; 
-                note.title = '*** Bản ghi bảo mật ***'; 
-                note.isEncrypted = true; 
-                
-                isCurrentlyUnlocked = true; // Giữ mở để người dùng gõ tiếp
-                sessionPwd = pwd; 
-                
-                saveToStorage(); 
-                loadNoteData(note.id); 
-                UI.showAlert('Đã Khóa', 'Đã bọc mã hóa toàn bộ dữ liệu.', 'success');
+
+            if (encryptedPayload) {
+                note.content = encryptedPayload;
+                note.title = '*** Bản ghi bảo mật ***';
+                note.isEncrypted = true;
+                isCurrentlyUnlocked = true;
+                sessionPwd = pwd;
+                saveToStorage();
+                loadNoteData(note.id);
+                IslandKit.notify('Đã bảo vệ', 'Bản ghi đã được mã hóa an toàn.', 'success');
             } else {
-                UI.showAlert('Lỗi', 'Không thể biên dịch mã hóa.', 'error');
+                IslandKit.notify('Lỗi mã hóa', 'Không thể mã hóa dữ liệu lúc này.', 'error');
             }
         }
     });
 
-    document.getElementById('btn-lock-now').addEventListener('click', () => { 
-        lockActiveNote(false); 
-        UI.showAlert('Đã khóa lại', 'Tài liệu đã được niêm phong.', 'success'); 
+    const lockActiveNote = (isAuto = false) => {
+        if (!activeNoteId || !isCurrentlyUnlocked || !sessionPwd) return;
+        saveCurrentNote();
+        isCurrentlyUnlocked = false;
+        sessionPwd = null;
+        loadNoteData(activeNoteId);
+        if (isAuto) {
+            IslandKit.notify('Auto-Lock', 'Đã tự động niêm phong bản ghi do không hoạt động.', 'warning');
+        }
+    };
+
+    btnLockNow?.addEventListener('click', () => {
+        lockActiveNote(false);
+        IslandKit.notify('Đã khóa', 'Bản ghi đã được niêm phong an toàn.', 'info');
     });
-    
-    document.getElementById('btn-remove-crypto').addEventListener('click', () => {
-        UI.showConfirm('Gỡ lớp bảo vệ?', 'Chuyển đổi văn bản về định dạng Public?', () => {
+
+    btnRemoveCrypto?.addEventListener('click', () => {
+        UI.showConfirm('Gỡ mã hóa?', 'Chuyển văn bản này về dạng thô thông thường không cần mật mã?', () => {
             const note = notes.find(n => n.id === activeNoteId);
-            // Gán chết Text đang có trên màn hình thành Public Content
+            if (!note) return;
             note.title = inputTitle.value.trim() || 'Bản ghi không tên';
-            note.content = inputContent.innerHTML; 
-            note.isEncrypted = false; 
-            isCurrentlyUnlocked = false; 
+            note.content = inputContent.innerHTML;
+            note.isEncrypted = false;
+            isCurrentlyUnlocked = false;
             sessionPwd = null;
-            saveToStorage(); 
+            saveToStorage();
             loadNoteData(note.id);
+            IslandKit.notify('Gỡ bảo vệ', 'Đã chuyển thành bản nháp thông thường.', 'info');
         });
     });
 
-    function lockActiveNote(isAuto = false) {
-        if (!activeNoteId || !isCurrentlyUnlocked || !sessionPwd) return;
-        saveCurrentNote(); // Lấy bản nháp mới nhất đem mã hóa
-        isCurrentlyUnlocked = false; 
-        sessionPwd = null; // Xóa key trên RAM
-        loadNoteData(activeNoteId); // Chuyển View về màn hình Khóa
-        if (isAuto && typeof UI !== 'undefined') UI.showAlert('Smart Auto-Lock', 'Đã tự động khóa để bảo vệ.', 'info');
-    }
-
-    // ---------------- TIMERS & PANIC LOCK (Tab Switch) ----------------
+    // Idle & Security Hooks
     const resetIdle = () => { idleTime = 0; };
-    ['mousemove', 'keydown', 'scroll', 'click', 'touchstart'].forEach(evt => document.addEventListener(evt, resetIdle, true));
-    
-    setInterval(() => {
-        if (autoLockToggle && autoLockToggle.checked) {
-            idleTime++; if (idleTime >= 60 && activeNoteId && isCurrentlyUnlocked) lockActiveNote(true);
+    const userEvents = ['mousemove', 'keydown', 'scroll', 'click', 'touchstart'];
+    userEvents.forEach(evt => document.addEventListener(evt, resetIdle, { passive: true }));
+
+    const idleTimer = setInterval(() => {
+        if (autoLockEnabled && activeNoteId && isCurrentlyUnlocked) {
+            idleTime++;
+            if (idleTime >= 60) lockActiveNote(true);
         }
     }, 1000);
 
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden && autoLockToggle && autoLockToggle.checked) {
+    const handleVisibility = () => {
+        if (document.hidden && autoLockEnabled) {
             if (activeNoteId && isCurrentlyUnlocked) lockActiveNote(false);
-            clearEditor(); 
-            if (window.innerWidth < 768) closeEditorMobile();
+            clearEditor();
         }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Folders & Actions
+    btnAddFolder?.addEventListener('click', () => {
+        const name = prompt('Tên thư mục mới:');
+        if (!name || !name.trim()) return;
+        folders.push({ id: 'folder_' + Date.now(), name: name.trim() });
+        saveToStorage();
+        renderFolders();
+        IslandKit.notify('Thư mục', `Đã thêm thư mục "${name.trim()}".`, 'success');
     });
 
-    // ---------------- TIỆN ÍCH KHÁC ----------------
-    document.getElementById('btn-add-folder').addEventListener('click', () => {
-        const name = prompt("Tạo thư mục mới:"); if (!name) return;
-        folders.push({ id: 'folder_' + Date.now(), name: name, color: '#3b82f6' });
-        saveToStorage(); renderFolders();
+    hostElement.querySelectorAll('.editor-cmd').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.execCommand(btn.dataset.cmd, false, null);
+            inputContent.focus();
+        });
     });
 
-    document.querySelectorAll('.editor-cmd').forEach(btn => {
-        btn.addEventListener('click', (e) => { e.preventDefault(); document.execCommand(btn.dataset.cmd, false, null); inputContent.focus(); });
-    });
-    searchInput.addEventListener('input', (e) => renderNotesList(e.target.value));
+    searchInput?.addEventListener('input', (e) => renderNotesList(e.target.value));
 
     // Backup & Restore
-    document.getElementById('btn-export-json').addEventListener('click', () => {
-        const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ folders, notes }, null, 2));
-        a.download = `NotePRO_E2E_${Date.now()}.json`; document.body.appendChild(a); a.click(); a.remove();
-        UI.showAlert('Backup JSON', 'Đã tải xuống an toàn.', 'success');
+    hostElement.querySelector('#btn-export-json')?.addEventListener('click', () => {
+        const payload = JSON.stringify({ folders, notes }, null, 2);
+        const anchor = document.createElement('a');
+        anchor.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(payload);
+        anchor.download = `NotePRO_Vault_${Date.now()}.json`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        IslandKit.notify('Sao lưu', 'Đã xuất dữ liệu JSON an toàn.', 'success');
     });
-    
-    document.getElementById('btn-import-json').addEventListener('click', () => document.getElementById('np-import-file').click());
-    document.getElementById('np-import-file').addEventListener('change', (e) => {
-        const file = e.target.files[0]; if (!file) return;
+
+    const fileInput = hostElement.querySelector('#np-import-file');
+    hostElement.querySelector('#btn-import-json')?.addEventListener('click', () => fileInput?.click());
+
+    fileInput?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
                 const data = JSON.parse(event.target.result);
                 if (data.folders && data.notes) {
-                    data.folders.forEach(fd => { if (!folders.some(f => f.id === fd.id)) folders.push(fd); });
-                    data.notes.forEach(nt => { if (!notes.some(n => n.id === nt.id)) notes.push(nt); });
-                    saveToStorage(); clearEditor(); UI.showAlert('Khôi phục', 'Dữ liệu được nạp thành công.', 'success');
-                } else throw new Error();
-            } catch (err) { UI.showAlert('Tệp rác', 'Định dạng lỗi.', 'error'); } e.target.value = '';
-        }; reader.readAsText(file);
+                    data.folders.forEach(fd => {
+                        if (!folders.some(f => f.id === fd.id)) folders.push(fd);
+                    });
+                    data.notes.forEach(nt => {
+                        if (!notes.some(n => n.id === nt.id)) notes.push(nt);
+                    });
+                    saveToStorage();
+                    clearEditor();
+                    IslandKit.notify('Khôi phục', 'Đã nạp dữ liệu ghi chú thành công.', 'success');
+                } else {
+                    throw new Error();
+                }
+            } catch (err) {
+                IslandKit.notify('Lỗi tệp', 'Tệp tin JSON không hợp lệ.', 'error');
+            }
+            e.target.value = '';
+        };
+        reader.readAsText(file);
     });
 
-    // Init App
-    renderFolders(); renderNotesList();
+    // Initial Render
+    renderFolders();
+    renderNotesList();
+
+    // Cleanup Hook
+    return () => {
+        clearInterval(idleTimer);
+        document.removeEventListener('visibilitychange', handleVisibility);
+        userEvents.forEach(evt => document.removeEventListener(evt, resetIdle));
+    };
 }

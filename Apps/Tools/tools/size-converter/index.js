@@ -1,137 +1,265 @@
 import { UI } from '../../js/ui.js';
 
+// =============================================================================
+// 0. DYNAMIC THEME ACCENT CONTROLLER
+// =============================================================================
+const DEFAULT_EMERALD = '#10b981';
+
+export const ThemeKit = {
+    getAccentColor: () => {
+        return localStorage.getItem('hunqos_accent_color') || 
+               localStorage.getItem('hunqos_icon_custom_bg') || 
+               DEFAULT_EMERALD;
+    },
+    applyAccent: (container) => {
+        if (!container) return;
+        const accent = ThemeKit.getAccentColor();
+        container.style.setProperty('--kit-accent', accent);
+    }
+};
+
+// =============================================================================
+// 1. ADAPTIVE ISLAND & TOAST FALLBACK CONTROLLER
+// =============================================================================
+export const IslandKit = {
+    isIslandActive: () => {
+        const isEnabled = localStorage.getItem('hunqos_dynamic_island') !== 'false';
+        const wrapper = document.getElementById('dynamic-island-wrapper');
+        const isDOMVisible = wrapper && !wrapper.classList.contains('hidden') && window.getComputedStyle(wrapper).display !== 'none';
+        return Boolean(isEnabled && isDOMVisible && typeof window.triggerIslandNotification === 'function');
+    },
+
+    notify: (title, desc, type = 'info', duration = 2800) => {
+        if (IslandKit.isIslandActive()) {
+            window.triggerIslandNotification(title, desc, type, duration);
+        } else {
+            UI.showAlert(title, desc, type, duration);
+        }
+    }
+};
+
+// =============================================================================
+// 2. TEMPLATE RENDERER (HUNQOS MINIMAL FLAT - TOUCH & WORKSPACE STANDARD)
+// =============================================================================
 export function template() {
     return `
+    <div id="size-root-container" class="w-full h-full bg-[#f4f4f6] dark:bg-[#000000] text-[#18181b] dark:text-[#f4f4f6] select-none overflow-hidden font-sans transition-colors duration-200">
+        
         <style>
-            .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
-            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; }
-            
-            .hide-scrollbar::-webkit-scrollbar { display: none; }
-            .hide-scrollbar { scrollbar-width: none; }
+            #size-root-container {
+                --kit-accent: #10b981;
+            }
+            .bg-accent-theme {
+                background-color: var(--kit-accent) !important;
+            }
+            .text-accent-theme {
+                color: var(--kit-accent) !important;
+            }
+            .border-accent-theme {
+                border-color: var(--kit-accent) !important;
+            }
+            .accent-theme-tint {
+                accent-color: var(--kit-accent) !important;
+            }
+            .bg-accent-theme-alpha {
+                background-color: color-mix(in srgb, var(--kit-accent) 14%, transparent) !important;
+            }
+            .hover-bg-accent-theme-alpha:hover {
+                background-color: color-mix(in srgb, var(--kit-accent) 20%, transparent) !important;
+            }
 
-            .flat-btn { transition: transform 0.1s, background-color 0.1s, color 0.1s; user-select: none; }
-            .flat-btn:active { transform: scale(0.95); }
+            .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.12); border-radius: 9999px; }
+            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
+
+            .no-scrollbar::-webkit-scrollbar { display: none; }
+            .no-scrollbar { scrollbar-width: none; }
+
+            .size-input-zen {
+                -webkit-user-select: text !important;
+                user-select: text !important;
+            }
         </style>
 
-        <div class="relative flex flex-col w-full max-w-[1000px] mx-auto min-h-[500px]">
+        <!-- MAIN SCROLLER -->
+        <main class="w-full h-full overflow-y-auto no-scrollbar px-3.5 sm:px-6 pt-6 pb-24 max-w-4xl mx-auto space-y-5">
             
-            <div class="flex justify-between items-center mb-5 px-1">
-                <div>
-                    <h2 class="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight leading-none">Đổi Cỡ Quần Áo & Giày</h2>
-                    <p class="text-xs text-zinc-500 mt-1 font-medium">Quy đổi chuẩn quốc tế và gợi ý size theo chiều cao, cân nặng.</p>
+            <!-- SEAMLESS HERO TITLE -->
+            <div class="px-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-accent-theme shadow-sm transition-colors"></span>
+                        <span class="text-[11px] font-mono tracking-wider font-semibold uppercase text-accent-theme">HunqOS Utility</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">Đổi Cỡ Quần Áo & Giày</h1>
+                    <p class="text-[12px] text-zinc-500 dark:text-zinc-400 font-normal">Quy đổi chuẩn quốc tế đa hệ và trợ lý gợi ý số đo thông minh theo thể trạng.</p>
                 </div>
-                <button class="flat-btn h-9 px-4 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-500 font-bold text-[12px] flex items-center justify-center gap-1.5" id="btn-clear-all">
-                    <i class="fas fa-redo-alt"></i> Làm lại
-                </button>
+
+                <div class="flex items-center gap-2">
+                    <button id="btn-clear-all" class="h-10 px-4 rounded-[14px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white text-xs font-semibold flex items-center gap-2 active:scale-95 transition-all shadow-sm">
+                        <i class="fas fa-arrows-rotate text-accent-theme text-xs"></i> Đặt lại
+                    </button>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            <!-- TAB LỰA CHỌN PHÂN LOẠI SẢN PHẨM -->
+            <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-2.5 shadow-sm">
+                <div class="flex overflow-x-auto no-scrollbar gap-1.5 p-1" id="product-tabs"></div>
+            </div>
+
+            <!-- WORKSPACE GRID -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start">
                 
+                <!-- BẢNG ĐIỀU KHIỂN & NHẬP LIỆU -->
                 <div class="lg:col-span-7 flex flex-col gap-4">
-                    <div class="bg-white dark:bg-[#09090b] rounded-[24px] border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden p-5 space-y-6">
+                    <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-5 shadow-sm space-y-5">
                         
-                        <div>
-                            <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block mb-3"><span class="text-zinc-900 dark:text-white mr-1">1.</span> Chọn công cụ</label>
-                            <div class="flex overflow-x-auto hide-scrollbar gap-2" id="product-tabs">
+                        <!-- 1. MANUAL CONVERT PIPELINE -->
+                        <div id="manual-steps" class="space-y-5 block">
+                            <!-- CHỌN CHUẨN KÍCH CỠ -->
+                            <div id="step-system" class="opacity-50 pointer-events-none transition-opacity duration-200 space-y-2.5">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">1. Chuẩn kích cỡ ban đầu</span>
+                                    <span class="text-[10px] text-zinc-400 font-mono">Standard Type</span>
                                 </div>
+                                <div class="flex flex-wrap gap-1.5" id="system-container">
+                                    <div class="text-xs font-medium text-zinc-400 py-1">Vui lòng chọn danh mục phía trên.</div>
+                                </div>
+                            </div>
+
+                            <div class="h-px bg-black/[0.05] dark:border-white/[0.08] w-full"></div>
+
+                            <!-- CHỌN HOẶC NHẬP SIZE -->
+                            <div id="step-size" class="opacity-50 pointer-events-none transition-opacity duration-200 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">2. Chọn hoặc gõ size cụ thể</span>
+                                    <span class="text-[10px] text-zinc-400 font-mono">Size Matrix</span>
+                                </div>
+                                <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2" id="size-container"></div>
+                                <div class="flex items-center bg-[#f2f2f7] dark:bg-black/40 rounded-[14px] px-3.5 h-11 border border-black/[0.04] dark:border-white/[0.06] focus-within:border-accent-theme transition-all">
+                                    <i class="fas fa-keyboard text-zinc-400 text-xs mr-2.5"></i>
+                                    <input type="text" id="custom-size-input" class="size-input-zen w-full bg-transparent border-none outline-none text-xs font-bold text-zinc-900 dark:text-white placeholder-zinc-400" placeholder="Hoặc nhập size lẻ (VD: 39.5, 41 1/3)...">
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="h-px bg-zinc-100 dark:bg-zinc-800/80 w-full"></div>
-
-                        <div id="manual-steps" class="space-y-6 block">
-                            <div id="step-system" class="opacity-50 pointer-events-none transition-opacity duration-300">
-                                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block mb-3"><span class="text-zinc-900 dark:text-white mr-1">2.</span> Chọn chuẩn kích cỡ ban đầu</label>
-                                <div class="flex flex-wrap gap-2" id="system-container">
-                                    <div class="text-[12px] font-medium text-zinc-400">Vui lòng chọn công cụ trước.</div>
+                        <!-- 2. AUTO SUGGEST PIPELINE -->
+                        <div id="auto-suggest-steps" class="hidden space-y-4">
+                            <div class="space-y-1.5">
+                                <span class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Giới tính</span>
+                                <div class="grid grid-cols-2 gap-2" id="sg-gender">
+                                    <button class="sg-gender-btn active h-11 rounded-[14px] bg-accent-theme text-white text-xs font-bold transition-all shadow-sm" data-val="nam">Nam giới</button>
+                                    <button class="sg-gender-btn h-11 rounded-[14px] bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 text-xs font-semibold transition-all" data-val="nu">Nữ giới</button>
                                 </div>
                             </div>
 
-                            <div class="h-px bg-zinc-100 dark:bg-zinc-800/80 w-full"></div>
-
-                            <div id="step-size" class="opacity-50 pointer-events-none transition-opacity duration-300">
-                                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block mb-3"><span class="text-zinc-900 dark:text-white mr-1">3.</span> Chọn hoặc nhập size</label>
-                                <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 mb-3" id="size-container">
-                                    </div>
-                                <input type="text" id="custom-size-input" class="w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-bold text-zinc-900 dark:text-white transition-colors" placeholder="Hoặc nhập size lẻ (VD: 39.5, 41 1/3)...">
-                            </div>
-                        </div>
-
-                        <div id="auto-suggest-steps" class="hidden space-y-6 animate-in fade-in">
-                            <div>
-                                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block mb-3"><span class="text-zinc-900 dark:text-white mr-1">2.</span> Giới tính</label>
-                                <div class="flex gap-2" id="sg-gender">
-                                    <button class="sg-gender-btn active flat-btn flex-1 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-sm font-bold border border-transparent transition-colors" data-val="nam">Nam</button>
-                                    <button class="sg-gender-btn flat-btn flex-1 py-3 bg-zinc-50 dark:bg-[#121214] text-zinc-600 dark:text-zinc-400 rounded-xl text-sm font-bold border border-zinc-200 dark:border-zinc-800 transition-colors" data-val="nu">Nữ</button>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Chiều cao (cm)</label>
+                                    <input type="number" id="sg-height" class="size-input-zen w-full h-11 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3.5 outline-none focus:border-accent-theme text-sm font-bold text-zinc-900 dark:text-white placeholder-zinc-400" placeholder="VD: 172">
                                 </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block mb-3">Chiều cao (cm)</label>
-                                    <input type="number" id="sg-height" class="sg-input w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-bold text-zinc-900 dark:text-white transition-colors" placeholder="VD: 170">
-                                </div>
-                                <div>
-                                    <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block mb-3">Cân nặng (kg)</label>
-                                    <input type="number" id="sg-weight" class="sg-input w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-bold text-zinc-900 dark:text-white transition-colors" placeholder="VD: 60">
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Cân nặng (kg)</label>
+                                    <input type="number" id="sg-weight" class="size-input-zen w-full h-11 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3.5 outline-none focus:border-accent-theme text-sm font-bold text-zinc-900 dark:text-white placeholder-zinc-400" placeholder="VD: 65">
                                 </div>
                             </div>
 
-                            <div class="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-xl p-4">
-                                <div class="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1"><i class="fas fa-info-circle"></i> Trợ lý AI</div>
-                                <div class="text-[12px] text-blue-700 dark:text-blue-300 font-medium leading-relaxed">Hệ thống tính toán kích cỡ dựa trên BMI và thể trạng trung bình của người Việt Nam. Tự động cộng thêm size giày nếu tỉ lệ mập/rộng chân lớn.</div>
+                            <div class="rounded-[18px] bg-accent-theme-alpha border border-accent-theme/20 p-4 space-y-1">
+                                <span class="text-xs font-bold text-accent-theme flex items-center gap-1.5">
+                                    <i class="fas fa-wand-magic-sparkles text-xs"></i> Cơ chế gợi ý thông minh
+                                </span>
+                                <p class="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed font-normal">
+                                    Hệ thống tự động tính chỉ số thể trọng BMI kết hợp phom dáng người Á Đông để dự đoán chuẩn xác kích cỡ áo, quần và size giày tương ứng.
+                                </p>
                             </div>
                         </div>
 
                     </div>
                 </div>
 
-                <div class="lg:col-span-5 flex flex-col h-full min-h-[400px] sticky top-6">
-                    <div class="bg-white dark:bg-[#09090b] rounded-[24px] border border-zinc-200 dark:border-zinc-800 flex flex-col h-full overflow-hidden">
+                <!-- BẢNG KẾT QUẢ VÀ DANH MỤC ĐÃ LƯU -->
+                <div class="lg:col-span-5 flex flex-col h-full lg:sticky lg:top-6">
+                    <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-5 shadow-sm flex flex-col h-[520px] justify-between space-y-3">
                         
-                        <div class="flex border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#121214]">
-                            <button class="right-tab-btn active flex-1 py-3 px-4 text-[12px] font-bold text-zinc-900 dark:text-white border-b-2 border-zinc-900 dark:border-white transition-colors whitespace-nowrap" data-target="pane-results"><i class="fas fa-list-ol mr-1"></i> Kết quả</button>
-                            <button class="right-tab-btn flex-1 py-3 px-4 text-[12px] font-bold text-zinc-400 border-b-2 border-transparent transition-colors whitespace-nowrap" data-target="pane-saved"><i class="fas fa-bookmark mr-1"></i> Đã lưu</button>
-                        </div>
-
-                        <div id="pane-results" class="right-pane block flex-1 flex flex-col p-5">
-                            <div id="results-content" class="flex-1 overflow-y-auto custom-scrollbar pr-1">
-                                <div class="text-zinc-400 flex flex-col items-center gap-3 opacity-30 mt-10" id="empty-result">
-                                    <i class="fas fa-ruler-combined text-5xl"></i>
-                                    <span class="text-xs font-bold uppercase tracking-wider text-center">Nhập dữ liệu<br>để xem kết quả</span>
-                                </div>
-                            </div>
-                            
-                            <div id="results-actions" class="hidden gap-2 mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800/80">
-                                <button id="btn-copy-res" class="flat-btn flex-1 py-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-xl font-bold text-[12px] flex items-center justify-center gap-1.5 border border-zinc-200 dark:border-zinc-700">
-                                    <i class="far fa-copy"></i> Chép
+                        <!-- TOP SEGMENTED RESULT TABS -->
+                        <div class="flex items-center justify-between border-b border-black/[0.05] dark:border-white/[0.08] pb-3">
+                            <div class="grid grid-cols-2 gap-1 p-1 rounded-[12px] bg-black/[0.05] dark:bg-black/50 border border-black/[0.04] dark:border-white/[0.08] w-56" id="right-tabs">
+                                <button class="right-tab-btn active py-1.5 rounded-[9px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm transition-all flex items-center justify-center gap-1.5" data-target="pane-results">
+                                    <i class="fas fa-list-ol text-[11px]"></i> Kết quả
                                 </button>
-                                <button id="btn-save-res" class="flat-btn flex-1 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-[12px] flex items-center justify-center gap-1.5">
-                                    <i class="fas fa-save"></i> Lưu
+                                <button class="right-tab-btn py-1.5 rounded-[9px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all flex items-center justify-center gap-1.5" data-target="pane-saved">
+                                    <i class="fas fa-bookmark text-[11px]"></i> Đã lưu
                                 </button>
                             </div>
+                            <span class="text-[10px] text-zinc-400 font-mono" id="right-badge">Real-time</span>
                         </div>
 
-                        <div id="pane-saved" class="right-pane hidden flex-1 flex flex-col p-5">
-                            <div id="saved-content" class="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-3">
+                        <!-- 1. PANE RESULTS -->
+                        <div id="pane-results" class="right-pane block flex-1 overflow-hidden flex flex-col">
+                            <div id="results-content" class="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-2">
+                                <div class="text-zinc-400 flex flex-col items-center justify-center text-center opacity-50 py-16" id="empty-result">
+                                    <div class="w-14 h-14 rounded-[20px] bg-accent-theme-alpha text-accent-theme flex items-center justify-center text-2xl mb-3 shadow-sm">
+                                        <i class="fas fa-ruler-combined"></i>
+                                    </div>
+                                    <span class="text-xs font-semibold">Chưa có thông số quy đổi</span>
+                                    <span class="text-[10px] text-zinc-400 mt-0.5">Chọn danh mục hoặc nhập số đo để xem</span>
                                 </div>
+                            </div>
+
+                            <div id="results-actions" class="hidden gap-2 pt-3 border-t border-black/[0.05] dark:border-white/[0.08]">
+                                <button id="btn-copy-res" class="flex-1 h-10 rounded-[12px] bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] text-zinc-800 dark:text-zinc-200 font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                                    <i class="far fa-copy text-xs"></i> <span>Sao chép</span>
+                                </button>
+                                <button id="btn-save-res" class="flex-1 h-10 rounded-[12px] bg-accent-theme text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm">
+                                    <i class="fas fa-floppy-disk text-xs"></i> <span>Lưu kích cỡ</span>
+                                </button>
+                            </div>
                         </div>
 
+                        <!-- 2. PANE SAVED -->
+                        <div id="pane-saved" class="right-pane hidden flex-1 overflow-hidden flex flex-col">
+                            <div id="saved-content" class="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-2.5"></div>
+                        </div>
+
+                        <div class="pt-2 border-t border-black/[0.05] dark:border-white/[0.08] flex items-center justify-between text-[11px] text-zinc-400">
+                            <span>Bảng quy đổi tiêu chuẩn quốc tế</span>
+                            <span class="font-mono text-[10px]">Matrix Ready</span>
+                        </div>
                     </div>
                 </div>
 
             </div>
-        </div>
+
+        </main>
+    </div>
     `;
 }
 
-export function init() {
-    // --- DỮ LIỆU CỐ ĐỊNH ---
+// =============================================================================
+// 3. LOGIC HOOKS & EVENT DISPATCHING
+// =============================================================================
+export function init(hostElement) {
+    const rootContainer = hostElement.querySelector('#size-root-container') || hostElement;
+
+    // Theme integration
+    const updateAccent = () => ThemeKit.applyAccent(rootContainer);
+    updateAccent();
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'hunqos_accent_color' || e.key === 'hunqos_icon_custom_bg') {
+            updateAccent();
+        }
+    });
+
+    // Dữ liệu bảng quy đổi chuẩn quốc tế
     const sysDesc = { 
-        "EU": "Châu Âu", "US (Nam)": "Mỹ (Nam)", "US (Nữ)": "Mỹ (Nữ)", "US (Trẻ em)": "Mỹ (Trẻ em)", "UK": "Anh", "cm": "Chiều dài (cm)", "VN": "Việt Nam", "JP": "Nhật Bản", "KR (mm)": "Hàn Quốc", 
-        "Quốc tế": "Size Chữ (S, M, L)", "US (Nam/Waist)": "Quần Nam US (inch eo)", "US (Nữ/Jean)": "Jean Nữ US", "Nike (US)": "Nike US", "Adidas (US)": "Adidas US", "Converse (US)": "Converse US", "MLB (KR)": "MLB Hàn", "EU (Nam)": "Âu (Nam)", "EU (Nữ)": "Âu (Nữ)",
-        "Đường kính (mm)": "Đường kính lòng trong", "Chu vi (mm)": "Chu vi ngón tay", "VN/China/Japan": "Châu Á", "US/Canada": "Mỹ/Canada", "UK/Australia": "Anh/Úc"
+        "EU": "Châu Âu", "US (Nam)": "Mỹ (Nam)", "US (Nữ)": "Mỹ (Nữ)", "US (Trẻ em)": "Mỹ (Trẻ em)", 
+        "UK": "Anh Quốc", "cm": "Chiều dài (cm)", "VN": "Việt Nam", "JP": "Nhật Bản", "KR (mm)": "Hàn Quốc", 
+        "Quốc tế": "Size Chữ (S, M, L)", "US (Nam/Waist)": "Quần Nam US (inch)", "US (Nữ/Jean)": "Jean Nữ US", 
+        "Nike (US)": "Nike US", "Adidas (US)": "Adidas US", "Converse (US)": "Converse US", "MLB (KR)": "MLB Hàn", 
+        "EU (Nam)": "Âu (Nam)", "EU (Nữ)": "Âu (Nữ)", "Đường kính (mm)": "Đường kính lòng trong", 
+        "Chu vi (mm)": "Chu vi ngón tay", "VN/China/Japan": "Châu Á", "US/Canada": "Mỹ/Canada", "UK/Australia": "Anh/Úc"
     };
 
     const sizeData = {
@@ -159,7 +287,7 @@ export function init() {
             } 
         },
         "Áo": { 
-            icon: "fa-tshirt",
+            icon: "fa-shirt",
             default: { 
                 standards: ["Quốc tế", "EU (Nam)", "EU (Nữ)", "US (Nam)", "US (Nữ)", "VN"], 
                 data: [
@@ -216,28 +344,29 @@ export function init() {
         }
     };
 
-    // --- DOM Elements ---
-    const productTabs = document.getElementById('product-tabs');
-    const systemContainer = document.getElementById('system-container');
-    const sizeContainer = document.getElementById('size-container');
-    const customSizeInput = document.getElementById('custom-size-input');
+    // Query Elements
+    const productTabs = hostElement.querySelector('#product-tabs');
+    const systemContainer = hostElement.querySelector('#system-container');
+    const sizeContainer = hostElement.querySelector('#size-container');
+    const customSizeInput = hostElement.querySelector('#custom-size-input');
     
-    const manualSteps = document.getElementById('manual-steps');
-    const autoSuggestSteps = document.getElementById('auto-suggest-steps');
-    const stepSystem = document.getElementById('step-system');
-    const stepSize = document.getElementById('step-size');
+    const manualSteps = hostElement.querySelector('#manual-steps');
+    const autoSuggestSteps = hostElement.querySelector('#auto-suggest-steps');
+    const stepSystem = hostElement.querySelector('#step-system');
+    const stepSize = hostElement.querySelector('#step-size');
     
-    const sgGenderBtns = document.querySelectorAll('.sg-gender-btn');
-    const sgHeight = document.getElementById('sg-height');
-    const sgWeight = document.getElementById('sg-weight');
+    const sgGenderBtns = hostElement.querySelectorAll('.sg-gender-btn');
+    const sgHeight = hostElement.querySelector('#sg-height');
+    const sgWeight = hostElement.querySelector('#sg-weight');
 
-    const resultsContent = document.getElementById('results-content');
-    const resultsActions = document.getElementById('results-actions');
-    const savedContent = document.getElementById('saved-content');
+    const resultsContent = hostElement.querySelector('#results-content');
+    const resultsActions = hostElement.querySelector('#results-actions');
+    const savedContent = hostElement.querySelector('#saved-content');
     
-    const rightTabs = document.querySelectorAll('.right-tab-btn');
-    const paneResults = document.getElementById('pane-results');
-    const paneSaved = document.getElementById('pane-saved');
+    const rightTabs = hostElement.querySelectorAll('#right-tabs .right-tab-btn');
+    const paneResults = hostElement.querySelector('#pane-results');
+    const paneSaved = hostElement.querySelector('#pane-saved');
+    const btnClearAll = hostElement.querySelector('#btn-clear-all');
 
     let selectedType = null;
     let selectedSystem = null;
@@ -245,76 +374,27 @@ export function init() {
     
     let isSuggestMode = false;
     let suggestGender = 'nam';
-    let currentResultData = null; // Dùng chung cho cả 2 mode để copy/save
+    let currentResultData = null;
     let currentResultText = '';
 
     const STORAGE_KEY = 'aio_size_converter_v3';
 
-    // --- DIALOG ---
+    // Helper Escape
     const escapeHTML = (str) => String(str).replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
 
-    const showDialog = ({ type, title, message, defaultValue = '', okText = 'Đồng ý', cancelText = 'Hủy', onConfirm }) => {
-        const overlay = document.createElement('div');
-        overlay.className = 'fixed inset-0 z-[10000] flex items-center justify-center bg-zinc-900/60 backdrop-blur-sm transition-opacity duration-200 px-4';
-        
-        const box = document.createElement('div');
-        box.className = 'bg-white dark:bg-[#09090b] w-full max-w-sm rounded-[24px] p-6 animate-in zoom-in-95 duration-200 border border-zinc-200 dark:border-zinc-800';
-        
-        let inputHTML = type === 'prompt' ? `<input type="text" id="sc-dialog-input" value="${escapeHTML(defaultValue)}" class="w-full mt-4 mb-6 px-4 py-3 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl outline-none focus:border-zinc-900 dark:focus:border-white transition-colors text-sm font-bold text-zinc-900 dark:text-white" autocomplete="off">` : `<div class="mb-6"></div>`;
-
-        box.innerHTML = `
-            <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-2">${title}</h3>
-            <p class="text-[13px] text-zinc-500 leading-relaxed">${message}</p>
-            ${inputHTML}
-            <div class="flex justify-end gap-2">
-                <button id="sc-dialog-cancel" class="flat-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">${cancelText}</button>
-                <button id="sc-dialog-ok" class="flat-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-zinc-900 dark:bg-white text-white dark:text-zinc-900">${okText}</button>
-            </div>
-        `;
-        overlay.appendChild(box);
-        document.body.appendChild(overlay);
-
-        const btnCancel = box.querySelector('#sc-dialog-cancel');
-        const btnOk = box.querySelector('#sc-dialog-ok');
-        const inputEl = box.querySelector('#sc-dialog-input');
-
-        const closeDialog = () => {
-            overlay.classList.add('opacity-0');
-            setTimeout(() => document.body.removeChild(overlay), 200);
-        };
-
-        btnCancel.onclick = closeDialog;
-        overlay.onmousedown = (e) => { if(e.target === overlay) closeDialog(); };
-
-        const confirmAction = () => {
-            const val = type === 'prompt' ? inputEl.value : null;
-            closeDialog();
-            if (onConfirm) onConfirm(val);
-        };
-
-        btnOk.onclick = confirmAction;
-
-        if (inputEl) {
-            setTimeout(() => { inputEl.focus(); inputEl.select(); }, 50);
-            inputEl.onkeydown = (e) => { if (e.key === 'Enter') confirmAction(); };
-        }
-    };
-
-
-    // --- RENDER TABS ---
+    // Render Product Tabs
     const renderProductTabs = () => {
         productTabs.innerHTML = '';
 
-        // Nút Gợi ý (Nổi bật)
+        // Nút AI Gợi ý
         const btnSuggest = document.createElement('button');
-        btnSuggest.className = 'flat-btn flex items-center gap-2 px-4 py-2.5 rounded-xl border border-transparent text-[12px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 transition-colors whitespace-nowrap';
-        btnSuggest.innerHTML = `<i class="fas fa-magic"></i> Gợi ý (AI)`;
+        btnSuggest.className = 'h-9 px-3.5 rounded-[12px] text-xs font-bold text-accent-theme bg-accent-theme-alpha flex items-center gap-1.5 shrink-0 active:scale-95 transition-all shadow-sm';
+        btnSuggest.innerHTML = `<i class="fas fa-wand-magic-sparkles text-xs"></i> <span>Trợ lý AI</span>`;
         btnSuggest.onclick = () => {
-            document.querySelectorAll('#product-tabs button').forEach(b => {
-                b.classList.remove('bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900', 'bg-blue-600', 'text-white');
-                if (b !== btnSuggest) b.className = 'flat-btn flex items-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-[12px] font-bold text-zinc-600 dark:text-zinc-400 bg-white dark:bg-[#09090b] transition-colors whitespace-nowrap';
+            productTabs.querySelectorAll('button').forEach(b => {
+                b.className = 'h-9 px-3.5 rounded-[12px] text-xs font-semibold text-zinc-600 dark:text-zinc-400 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] flex items-center gap-1.5 shrink-0 active:scale-95 transition-all';
             });
-            btnSuggest.className = 'flat-btn flex items-center gap-2 px-4 py-2.5 rounded-xl border border-transparent text-[12px] font-bold text-white bg-blue-600 dark:bg-blue-500 transition-colors whitespace-nowrap';
+            btnSuggest.className = 'h-9 px-3.5 rounded-[12px] text-xs font-bold text-white bg-accent-theme flex items-center gap-1.5 shrink-0 active:scale-95 transition-all shadow-sm';
 
             isSuggestMode = true;
             manualSteps.classList.add('hidden');
@@ -327,39 +407,42 @@ export function init() {
         // Các nút thủ công
         Object.keys(sizeData).forEach((type) => {
             const btn = document.createElement('button');
-            btn.className = 'flat-btn flex items-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-[12px] font-bold text-zinc-600 dark:text-zinc-400 bg-white dark:bg-[#09090b] transition-colors whitespace-nowrap';
-            btn.innerHTML = `<i class="fas ${sizeData[type].icon}"></i> ${type}`;
+            btn.className = 'h-9 px-3.5 rounded-[12px] text-xs font-semibold text-zinc-600 dark:text-zinc-400 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] flex items-center gap-1.5 shrink-0 active:scale-95 transition-all';
+            btn.innerHTML = `<i class="fas ${sizeData[type].icon} text-xs"></i> <span>${type}</span>`;
             
             btn.onclick = () => {
-                document.querySelectorAll('#product-tabs button').forEach(b => {
-                    b.className = 'flat-btn flex items-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-[12px] font-bold text-zinc-600 dark:text-zinc-400 bg-white dark:bg-[#09090b] transition-colors whitespace-nowrap';
+                productTabs.querySelectorAll('button').forEach(b => {
+                    b.className = 'h-9 px-3.5 rounded-[12px] text-xs font-semibold text-zinc-600 dark:text-zinc-400 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] flex items-center gap-1.5 shrink-0 active:scale-95 transition-all';
                 });
-                btnSuggest.className = 'flat-btn flex items-center gap-2 px-4 py-2.5 rounded-xl border border-transparent text-[12px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 transition-colors whitespace-nowrap';
-                btn.className = 'flat-btn flex items-center gap-2 px-4 py-2.5 rounded-xl border border-transparent text-[12px] font-bold text-white dark:text-zinc-900 bg-zinc-900 dark:bg-white transition-colors whitespace-nowrap';
+                btnSuggest.className = 'h-9 px-3.5 rounded-[12px] text-xs font-bold text-accent-theme bg-accent-theme-alpha flex items-center gap-1.5 shrink-0 active:scale-95 transition-all';
+                btn.className = 'h-9 px-3.5 rounded-[12px] text-xs font-bold text-white bg-accent-theme flex items-center gap-1.5 shrink-0 active:scale-95 transition-all shadow-sm';
 
                 isSuggestMode = false;
                 manualSteps.classList.remove('hidden');
                 autoSuggestSteps.classList.add('hidden');
 
                 selectedType = type;
-                selectedSystem = null; selectedSize = null;
+                selectedSystem = null; 
+                selectedSize = null;
                 
                 stepSystem.classList.remove('opacity-50', 'pointer-events-none');
                 stepSize.classList.add('opacity-50', 'pointer-events-none');
                 customSizeInput.value = '';
                 
-                renderSystems(); resetResults();
+                renderSystems(); 
+                resetResults();
             };
             productTabs.appendChild(btn);
         });
     };
 
-    // --- LOGIC MANUAL ---
+    // Manual Pipeline Handlers
     const renderSystems = () => {
         systemContainer.innerHTML = '';
         if (!selectedType) return;
         const dataSet = sizeData[selectedType].default;
-        const grouped = {}; const valueMap = {};
+        const grouped = {}; 
+        const valueMap = {};
         
         dataSet.standards.forEach((std, i) => {
             const colData = dataSet.data.map(row => row[i]).join('|');
@@ -372,20 +455,21 @@ export function init() {
             valueMap[displayName] = group[0]; 
             
             const chip = document.createElement('button');
-            chip.className = 'flat-btn px-4 py-2 border border-zinc-200 dark:border-zinc-800 rounded-full text-[12px] font-bold text-zinc-600 dark:text-zinc-400 bg-white dark:bg-[#09090b] transition-colors';
+            chip.className = 'h-8 px-3 rounded-[10px] text-xs font-semibold text-zinc-600 dark:text-zinc-400 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] active:scale-95 transition-all';
             chip.textContent = displayName;
             chip.title = group.map(s => sysDesc[s] || s).join(' | ');
             
             chip.onclick = () => {
-                document.querySelectorAll('#system-container button').forEach(c => {
-                    c.className = 'flat-btn px-4 py-2 border border-zinc-200 dark:border-zinc-800 rounded-full text-[12px] font-bold text-zinc-600 dark:text-zinc-400 bg-white dark:bg-[#09090b] transition-colors';
+                systemContainer.querySelectorAll('button').forEach(c => {
+                    c.className = 'h-8 px-3 rounded-[10px] text-xs font-semibold text-zinc-600 dark:text-zinc-400 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] active:scale-95 transition-all';
                 });
-                chip.className = 'flat-btn px-4 py-2 border border-transparent rounded-full text-[12px] font-bold text-white dark:text-zinc-900 bg-zinc-900 dark:bg-white transition-colors';
+                chip.className = 'h-8 px-3 rounded-[10px] text-xs font-bold text-white bg-accent-theme shadow-sm active:scale-95 transition-all';
                 
                 selectedSystem = valueMap[displayName];
                 stepSize.classList.remove('opacity-50', 'pointer-events-none');
                 customSizeInput.value = '';
-                renderSizes(); resetResults();
+                renderSizes(); 
+                resetResults();
             };
             systemContainer.appendChild(chip);
         });
@@ -400,14 +484,14 @@ export function init() {
         
         sizes.forEach(sizeVal => {
             const btn = document.createElement('button');
-            btn.className = 'flat-btn py-2.5 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm font-bold text-zinc-900 dark:text-white bg-zinc-50 dark:bg-[#121214] transition-colors';
+            btn.className = 'h-10 rounded-[12px] text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] active:scale-95 transition-all';
             btn.textContent = sizeVal;
             
             btn.onclick = () => {
-                document.querySelectorAll('#size-container button').forEach(b => {
-                    b.className = 'flat-btn py-2.5 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm font-bold text-zinc-900 dark:text-white bg-zinc-50 dark:bg-[#121214] transition-colors';
+                sizeContainer.querySelectorAll('button').forEach(b => {
+                    b.className = 'h-10 rounded-[12px] text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] active:scale-95 transition-all';
                 });
-                btn.className = 'flat-btn py-2.5 border border-transparent rounded-xl text-sm font-bold text-white bg-blue-600 transition-colors';
+                btn.className = 'h-10 rounded-[12px] text-xs font-mono font-bold text-white bg-accent-theme shadow-sm active:scale-95 transition-all';
                 
                 customSizeInput.value = ''; 
                 selectedSize = sizeVal;
@@ -417,9 +501,9 @@ export function init() {
         });
     };
 
-    customSizeInput.addEventListener('input', (e) => {
-        document.querySelectorAll('#size-container button').forEach(b => {
-            b.className = 'flat-btn py-2.5 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm font-bold text-zinc-900 dark:text-white bg-zinc-50 dark:bg-[#121214] transition-colors';
+    customSizeInput?.addEventListener('input', (e) => {
+        sizeContainer.querySelectorAll('button').forEach(b => {
+            b.className = 'h-10 rounded-[12px] text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] active:scale-95 transition-all';
         });
         selectedSize = e.target.value.trim();
         processConversion(selectedSize);
@@ -428,7 +512,10 @@ export function init() {
     const parseNum = (str) => {
         if (!str) return NaN;
         const s = String(str).trim();
-        if (s.includes('-')) { const p = s.split('-').map(x => parseFloat(x)); return (p[0] + p[1]) / 2; }
+        if (s.includes('-')) { 
+            const p = s.split('-').map(x => parseFloat(x)); 
+            return (p[0] + p[1]) / 2; 
+        }
         return parseFloat(s);
     };
 
@@ -445,17 +532,27 @@ export function init() {
         const inputNum = parseNum(sizeStr);
         if (isNaN(inputNum)) return showNotFound(sizeStr);
 
-        const numData = dataSet.data.map(row => ({ original: row, parsed: row.map(val => parseNum(val)) })).filter(item => !isNaN(item.parsed[sysIndex]));
+        const numData = dataSet.data.map(row => ({ 
+            original: row, 
+            parsed: row.map(val => parseNum(val)) 
+        })).filter(item => !isNaN(item.parsed[sysIndex]));
+        
         if (numData.length < 2) return showNotFound(sizeStr);
 
         numData.sort((a, b) => a.parsed[sysIndex] - b.parsed[sysIndex]);
 
         let p1, p2;
-        if (inputNum <= numData[0].parsed[sysIndex]) { p1 = numData[0]; p2 = numData[1]; } 
-        else if (inputNum >= numData[numData.length - 1].parsed[sysIndex]) { p1 = numData[numData.length - 2]; p2 = numData[numData.length - 1]; } 
+        if (inputNum <= numData[0].parsed[sysIndex]) { 
+            p1 = numData[0]; p2 = numData[1]; 
+        } 
+        else if (inputNum >= numData[numData.length - 1].parsed[sysIndex]) { 
+            p1 = numData[numData.length - 2]; p2 = numData[numData.length - 1]; 
+        } 
         else {
             for (let i = 0; i < numData.length - 1; i++) {
-                if (inputNum >= numData[i].parsed[sysIndex] && inputNum <= numData[i + 1].parsed[sysIndex]) { p1 = numData[i]; p2 = numData[i + 1]; break; }
+                if (inputNum >= numData[i].parsed[sysIndex] && inputNum <= numData[i + 1].parsed[sysIndex]) { 
+                    p1 = numData[i]; p2 = numData[i + 1]; break; 
+                }
             }
         }
 
@@ -476,20 +573,20 @@ export function init() {
         displayResults(calcRow, dataSet.standards, true);
     };
 
-    // --- LOGIC AUTO SUGGEST ---
+    // Auto Suggest Handlers
     sgGenderBtns.forEach(btn => {
         btn.onclick = () => {
             sgGenderBtns.forEach(b => {
-                b.className = 'sg-gender-btn flat-btn flex-1 py-3 bg-zinc-50 dark:bg-[#121214] text-zinc-600 dark:text-zinc-400 rounded-xl text-sm font-bold border border-zinc-200 dark:border-zinc-800 transition-colors';
+                b.className = 'sg-gender-btn h-11 rounded-[14px] bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 text-xs font-semibold transition-all';
             });
-            btn.className = 'sg-gender-btn active flat-btn flex-1 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-sm font-bold border border-transparent transition-colors';
+            btn.className = 'sg-gender-btn active h-11 rounded-[14px] bg-accent-theme text-white text-xs font-bold transition-all shadow-sm';
             suggestGender = btn.dataset.val;
             calculateSuggest();
         };
     });
 
     [sgHeight, sgWeight].forEach(input => {
-        input.addEventListener('input', calculateSuggest);
+        input?.addEventListener('input', calculateSuggest);
     });
 
     function calculateSuggest() {
@@ -510,7 +607,6 @@ export function init() {
         const bmi = w / ((h/100) * (h/100));
 
         if (suggestGender === 'nam') {
-            // Giày Nam
             if (h < 160) shoe = 38;
             else if (h < 165) shoe = 39;
             else if (h < 170) shoe = 40;
@@ -520,14 +616,12 @@ export function init() {
             else shoe = 44;
             if (bmi > 24.5) shoe += 1;
 
-            // Áo Nam
             let shirtH = 0, shirtW = 0;
             if (h < 160) shirtH = 0; else if (h < 167) shirtH = 1; else if (h < 174) shirtH = 2; else if (h < 180) shirtH = 3; else shirtH = 4;
             if (w < 55) shirtW = 0; else if (w < 62) shirtW = 1; else if (w < 70) shirtW = 2; else if (w < 79) shirtW = 3; else shirtW = 4;
             const shirtSizes = ['S', 'M', 'L', 'XL', 'XXL'];
             shirt = shirtSizes[Math.max(shirtH, shirtW)];
 
-            // Quần Nam
             if (w < 55) pants = 'Size 28 (S)';
             else if (w < 60) pants = 'Size 29 (M)';
             else if (w < 65) pants = 'Size 30 (L)';
@@ -536,7 +630,6 @@ export function init() {
             else if (w < 80) pants = 'Size 33 (XL)';
             else pants = 'Size 34 (XXL)';
         } else {
-            // Giày Nữ
             if (h < 150) shoe = 35;
             else if (h < 155) shoe = 36;
             else if (h < 160) shoe = 37;
@@ -545,14 +638,12 @@ export function init() {
             else shoe = 40;
             if (bmi > 24) shoe += 1;
 
-            // Áo Nữ
             let shirtH = 0, shirtW = 0;
             if (h < 150) shirtH = 0; else if (h < 155) shirtH = 1; else if (h < 160) shirtH = 2; else if (h < 165) shirtH = 3; else shirtH = 4;
             if (w < 45) shirtW = 0; else if (w < 49) shirtW = 1; else if (w < 54) shirtW = 2; else if (w < 60) shirtW = 3; else shirtW = 4;
             const shirtSizes = ['S', 'M', 'L', 'XL', 'XXL'];
             shirt = shirtSizes[Math.max(shirtH, shirtW)];
 
-            // Quần Nữ
             if (w < 45) pants = 'Size S (Jean 26)';
             else if (w < 50) pants = 'Size M (Jean 27)';
             else if (w < 55) pants = 'Size L (Jean 28)';
@@ -560,76 +651,76 @@ export function init() {
             else pants = 'Size XXL (Jean 30)';
         }
 
-        // Cập nhật Result
         currentResultData = { suggest: true, shoe, shirt, pants, height: h, weight: w, gender: suggestGender };
         currentResultText = `Gợi ý Size (H:${h}cm, W:${w}kg, ${suggestGender.toUpperCase()}):\n- Giày: ${shoe} (EU)\n- Áo: ${shirt}\n- Quần: ${pants}`;
         
-        let html = '<div class="space-y-3">';
-        
-        // Khối giới thiệu
-        html += `
-            <div class="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-xl p-3 mb-2 flex items-center justify-between">
-                <div>
-                    <div class="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Thể trạng: ${suggestGender.toUpperCase()}</div>
-                    <div class="text-[12px] text-blue-700 dark:text-blue-300 font-medium">${h} cm - ${w} kg</div>
+        let html = `
+            <div class="space-y-2.5">
+                <div class="bg-accent-theme-alpha border border-accent-theme/20 rounded-[16px] p-3 flex items-center justify-between">
+                    <div>
+                        <span class="text-[9px] font-bold text-accent-theme uppercase tracking-wider block">Thể trạng: ${suggestGender.toUpperCase()}</span>
+                        <span class="text-xs font-bold text-zinc-900 dark:text-white">${h} cm - ${w} kg</span>
+                    </div>
+                    <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-[8px] bg-white dark:bg-[#27272a] text-accent-theme shadow-sm border border-black/[0.04] dark:border-white/[0.06]">
+                        BMI: ${bmi.toFixed(1)}
+                    </span>
                 </div>
-                <div class="bg-white dark:bg-[#09090b] text-[10px] font-bold px-2 py-1 rounded text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30">BMI: ${bmi.toFixed(1)}</div>
+
+                <div class="flex justify-between items-center p-3.5 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[16px]">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                            <i class="fas fa-shoe-prints text-accent-theme text-xs"></i> Size Giày
+                        </span>
+                        <span class="text-[10px] text-zinc-400 font-medium">Tiêu chuẩn Châu Âu (EU)</span>
+                    </div>
+                    <span class="text-2xl font-black text-accent-theme font-mono">${shoe}</span>
+                </div>
+
+                <div class="flex justify-between items-center p-3.5 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[16px]">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                            <i class="fas fa-shirt text-accent-theme text-xs"></i> Size Áo
+                        </span>
+                        <span class="text-[10px] text-zinc-400 font-medium">Chuẩn Quốc tế (Thun, Sơ mi)</span>
+                    </div>
+                    <span class="text-2xl font-black text-accent-theme font-mono">${shirt}</span>
+                </div>
+
+                <div class="flex justify-between items-center p-3.5 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[16px]">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                            <i class="fas fa-user-tie text-accent-theme text-xs"></i> Size Quần
+                        </span>
+                        <span class="text-[10px] text-zinc-400 font-medium">Tham khảo Jean & Quần âu</span>
+                    </div>
+                    <span class="text-sm sm:text-base font-black text-accent-theme font-mono">${pants}</span>
+                </div>
             </div>
         `;
-
-        // Card Giày
-        html += `
-            <div class="flex justify-between items-center p-4 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl">
-                <div class="flex flex-col">
-                    <span class="text-sm font-bold text-zinc-900 dark:text-white"><i class="fas fa-shoe-prints text-zinc-400 mr-1.5"></i> Size Giày</span>
-                    <span class="text-[10px] text-zinc-500 font-medium mt-0.5">Tiêu chuẩn Châu Âu (EU)</span>
-                </div>
-                <div class="text-2xl font-black text-blue-500 font-mono tracking-tighter">${shoe}</div>
-            </div>
-        `;
-
-        // Card Áo
-        html += `
-            <div class="flex justify-between items-center p-4 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl">
-                <div class="flex flex-col">
-                    <span class="text-sm font-bold text-zinc-900 dark:text-white"><i class="fas fa-tshirt text-zinc-400 mr-1.5"></i> Size Áo</span>
-                    <span class="text-[10px] text-zinc-500 font-medium mt-0.5">Size Quốc tế (Thun, Sơ mi)</span>
-                </div>
-                <div class="text-2xl font-black text-blue-500 font-mono tracking-tighter">${shirt}</div>
-            </div>
-        `;
-
-        // Card Quần
-        html += `
-            <div class="flex justify-between items-center p-4 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl">
-                <div class="flex flex-col">
-                    <span class="text-sm font-bold text-zinc-900 dark:text-white"><i class="fas fa-user-tie text-zinc-400 mr-1.5"></i> Size Quần</span>
-                    <span class="text-[10px] text-zinc-500 font-medium mt-0.5">Tham khảo Jean & Quần âu</span>
-                </div>
-                <div class="text-[16px] font-black text-blue-500 font-mono tracking-tighter text-right">${pants}</div>
-            </div>
-        `;
-
-        html += `</div>`;
         resultsContent.innerHTML = html;
-        resultsActions.classList.remove('hidden'); resultsActions.classList.add('flex');
+        resultsActions.classList.remove('hidden'); 
+        resultsActions.classList.add('flex');
     }
 
-    // --- HIỂN THỊ LỖI / RESET ---
     const showNotFound = (size) => {
-        resultsContent.innerHTML = `<div class="text-zinc-500 text-center py-10 text-[13px] font-medium">Không thể tính toán dữ liệu quy đổi cho size <b class="text-red-500">${size}</b>.</div>`;
-        resultsActions.classList.add('hidden'); resultsActions.classList.remove('flex');
+        resultsContent.innerHTML = `<div class="text-zinc-400 text-center py-16 text-xs font-medium">Không thể tính toán dữ liệu quy đổi cho kích cỡ <b class="text-rose-500">${size}</b>.</div>`;
+        resultsActions.classList.add('hidden'); 
+        resultsActions.classList.remove('flex');
         currentResultData = null;
     };
 
     const resetResults = () => {
         resultsContent.innerHTML = `
-            <div class="text-zinc-400 flex flex-col items-center gap-3 opacity-30 mt-10">
-                <i class="fas fa-ruler-combined text-5xl"></i>
-                <span class="text-xs font-bold uppercase tracking-wider text-center">Nhập dữ liệu<br>để xem kết quả</span>
+            <div class="text-zinc-400 flex flex-col items-center justify-center text-center opacity-50 py-16" id="empty-result">
+                <div class="w-14 h-14 rounded-[20px] bg-accent-theme-alpha text-accent-theme flex items-center justify-center text-2xl mb-3 shadow-sm">
+                    <i class="fas fa-ruler-combined"></i>
+                </div>
+                <span class="text-xs font-semibold">Chưa có thông số quy đổi</span>
+                <span class="text-[10px] text-zinc-400 mt-0.5">Chọn danh mục hoặc nhập số đo để xem</span>
             </div>
         `;
-        resultsActions.classList.add('hidden'); resultsActions.classList.remove('flex');
+        resultsActions.classList.add('hidden'); 
+        resultsActions.classList.remove('flex');
         currentResultData = null;
     };
 
@@ -641,9 +732,9 @@ export function init() {
         
         if (isApproximate) {
             html += `
-            <div class="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/30 rounded-xl p-3 mb-4">
-                <div class="text-[11px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider mb-1"><i class="fas fa-magic"></i> Size tương đối</div>
-                <div class="text-[12px] text-orange-700 dark:text-orange-300 font-medium leading-relaxed">Size bạn nhập không có trong bảng chuẩn cứng. Đã tự động nội suy số liệu gần đúng.</div>
+            <div class="bg-amber-500/10 border border-amber-500/20 rounded-[14px] p-2.5 mb-2">
+                <span class="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Kích cỡ gần đúng</span>
+                <span class="text-[11px] text-zinc-700 dark:text-zinc-300 font-normal">Size nhập vào không có trong mốc cố định. Hệ thống đã nội suy xấp xỉ.</span>
             </div>`;
         }
 
@@ -661,34 +752,38 @@ export function init() {
             const stdNames = stds.join(' / ');
             const stdSub = stds.map(s => sysDesc[s] || s).join(', ');
             html += `
-                <div class="flex justify-between items-center p-4 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl">
-                    <div class="flex flex-col">
-                        <span class="text-sm font-bold text-zinc-900 dark:text-white">${stdNames}</span>
-                        <span class="text-[10px] text-zinc-500 font-medium mt-0.5">${stdSub}</span>
+                <div class="flex justify-between items-center p-3.5 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[16px]">
+                    <div class="flex flex-col min-w-0 pr-2">
+                        <span class="text-xs font-bold text-zinc-900 dark:text-white truncate">${stdNames}</span>
+                        <span class="text-[10px] text-zinc-400 font-medium truncate mt-0.5">${stdSub}</span>
                     </div>
-                    <div class="text-2xl font-black text-blue-500 font-mono tracking-tighter">${val}</div>
+                    <span class="text-xl font-black text-accent-theme font-mono shrink-0">${val}</span>
                 </div>
             `;
         });
         html += `</div>`;
 
         resultsContent.innerHTML = html;
-        resultsActions.classList.remove('hidden'); resultsActions.classList.add('flex');
+        resultsActions.classList.remove('hidden'); 
+        resultsActions.classList.add('flex');
     };
 
-    // --- LOGIC RIGHT TABS & SAVE ---
+    // Right Tabs (Result vs Saved)
+    const activeRightTab = 'right-tab-btn active py-1.5 rounded-[9px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm transition-all flex items-center justify-center gap-1.5';
+    const inactiveRightTab = 'right-tab-btn py-1.5 rounded-[9px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all flex items-center justify-center gap-1.5';
+
     rightTabs.forEach(tab => {
         tab.onclick = () => {
-            rightTabs.forEach(t => {
-                t.classList.remove('active', 'text-zinc-900', 'dark:text-white', 'border-zinc-900', 'dark:border-white');
-                t.classList.add('text-zinc-400', 'border-transparent');
-            });
-            tab.classList.add('active', 'text-zinc-900', 'dark:text-white', 'border-zinc-900', 'dark:border-white');
-            tab.classList.remove('text-zinc-400', 'border-transparent');
+            rightTabs.forEach(t => { t.className = inactiveRightTab; });
+            tab.className = activeRightTab;
             
             const target = tab.dataset.target;
-            document.querySelectorAll('.right-pane').forEach(p => { p.classList.remove('block'); p.classList.add('hidden'); });
-            document.getElementById(target).classList.remove('hidden'); document.getElementById(target).classList.add('block');
+            hostElement.querySelectorAll('.right-pane').forEach(p => { 
+                p.classList.remove('block'); 
+                p.classList.add('hidden'); 
+            });
+            hostElement.querySelector(`#${target}`).classList.remove('hidden'); 
+            hostElement.querySelector(`#${target}`).classList.add('block');
             
             if (target === 'pane-saved') renderSavedItems();
         };
@@ -697,17 +792,17 @@ export function init() {
     const getSaved = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
     const setSaved = (data) => localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
-    document.getElementById('btn-copy-res').onclick = async () => {
+    hostElement.querySelector('#btn-copy-res').onclick = async () => {
         if (!currentResultData) return;
         try { 
             await navigator.clipboard.writeText(currentResultText); 
-            UI.showAlert('Đã chép', 'Kết quả đã được sao chép.', 'success', 1000); 
+            IslandKit.notify('Đã sao chép', 'Các thông số kích cỡ đã lưu vào clipboard.', 'success'); 
         } catch (e) { 
-            UI.showAlert('Lỗi', 'Trình duyệt không hỗ trợ chép dữ liệu.', 'error'); 
+            IslandKit.notify('Lỗi', 'Không thể sao chép dữ liệu.', 'error'); 
         }
     };
 
-    document.getElementById('btn-save-res').onclick = () => {
+    hostElement.querySelector('#btn-save-res').onclick = () => {
         if (!currentResultData) return;
         
         let defName = '';
@@ -717,69 +812,74 @@ export function init() {
             defName = `${selectedType} (${selectedSystem} ${selectedSize})`;
         }
         
-        showDialog({
-            type: 'prompt',
-            title: 'Lưu Kích Cỡ',
-            message: 'Đặt tên gợi nhớ để dễ dàng xem lại sau.',
-            defaultValue: defName,
-            okText: 'Lưu lại',
-            onConfirm: (name) => {
-                if (!name || name.trim() === '') return UI.showAlert('Lỗi', 'Vui lòng nhập tên.', 'warning');
+        const name = prompt('Đặt tên gợi nhớ để lưu kích cỡ:', defName);
+        if (!name || name.trim() === '') return;
 
-                let dataToSave = [];
-                if (currentResultData.suggest) {
-                    dataToSave = [
-                        { std: 'Giày', val: currentResultData.shoe },
-                        { std: 'Áo', val: currentResultData.shirt },
-                        { std: 'Quần', val: currentResultData.pants }
-                    ];
-                } else {
-                    dataToSave = currentResultData.resultRow.map((val, i) => {
-                        if (val == null || String(val).trim() === '') return null;
-                        return { std: currentResultData.standards[i], val: val };
-                    }).filter(Boolean);
-                }
+        let dataToSave = [];
+        if (currentResultData.suggest) {
+            dataToSave = [
+                { std: 'Giày', val: currentResultData.shoe },
+                { std: 'Áo', val: currentResultData.shirt },
+                { std: 'Quần', val: currentResultData.pants }
+            ];
+        } else {
+            dataToSave = currentResultData.resultRow.map((val, i) => {
+                if (val == null || String(val).trim() === '') return null;
+                return { std: currentResultData.standards[i], val: val };
+            }).filter(Boolean);
+        }
 
-                const savedData = getSaved();
-                savedData.push({ id: Date.now(), name: name.trim(), type: currentResultData.suggest ? 'Gợi ý' : selectedType, items: dataToSave });
-                setSaved(savedData);
-                
-                UI.showAlert('Đã lưu', 'Kích cỡ đã được lưu thành công.', 'success', 1000);
-                rightTabs[1].click(); 
-            }
+        const savedData = getSaved();
+        savedData.push({ 
+            id: Date.now(), 
+            name: name.trim(), 
+            type: currentResultData.suggest ? 'Gợi ý' : selectedType, 
+            items: dataToSave 
         });
+        setSaved(savedData);
+        
+        IslandKit.notify('Đã lưu', `Đã lưu thông số "${name.trim()}".`, 'success');
+        rightTabs[1].click(); 
     };
 
     const renderSavedItems = () => {
         const savedData = getSaved();
         if (savedData.length === 0) {
-            savedContent.innerHTML = '<div class="text-zinc-500 text-center py-10 text-[12px] font-medium opacity-50">Chưa có thông số nào được lưu.</div>';
+            savedContent.innerHTML = '<div class="text-zinc-400 text-center py-16 text-xs font-medium">Chưa có thông số kích cỡ nào được lưu.</div>';
             return;
         }
 
-        let html = '<div class="space-y-3">';
-        savedData.reverse().forEach(entry => {
-            const tags = entry.items.map(item => `<span class="bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2.5 py-1 rounded-lg text-[11px] text-zinc-600 dark:text-zinc-300 font-medium whitespace-nowrap"><strong class="text-zinc-900 dark:text-white">${item.std}:</strong> ${item.val}</span>`).join('');
+        let html = '<div class="space-y-2.5">';
+        savedData.slice().reverse().forEach(entry => {
+            const tags = entry.items.map(item => `
+                <span class="bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] px-2 py-0.5 rounded-[8px] text-[10px] text-zinc-600 dark:text-zinc-400 font-medium whitespace-nowrap">
+                    <strong class="text-zinc-900 dark:text-white font-bold">${item.std}:</strong> ${item.val}
+                </span>`).join('');
             
             let icon = 'fa-bookmark';
             if (entry.type === 'Giày Dép') icon = 'fa-shoe-prints';
-            else if (entry.type === 'Áo') icon = 'fa-tshirt';
+            else if (entry.type === 'Áo') icon = 'fa-shirt';
             else if (entry.type === 'Quần') icon = 'fa-user-tie';
             else if (entry.type === 'Nhẫn') icon = 'fa-ring';
-            else if (entry.type === 'Gợi ý') icon = 'fa-magic';
+            else if (entry.type === 'Gợi ý') icon = 'fa-wand-magic-sparkles';
 
             html += `
-                <div class="bg-white dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 flex flex-col">
-                    <div class="flex justify-between items-center mb-3">
-                        <div class="font-bold text-sm text-zinc-900 dark:text-white truncate flex items-center gap-2">
-                            <i class="fas ${icon} text-blue-500 w-4 text-center"></i> ${escapeHTML(entry.name)}
+                <div class="bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[18px] p-3.5 flex flex-col space-y-2">
+                    <div class="flex justify-between items-center">
+                        <div class="font-bold text-xs text-zinc-900 dark:text-white truncate flex items-center gap-1.5">
+                            <i class="fas ${icon} text-accent-theme text-xs"></i> 
+                            <span class="truncate">${escapeHTML(entry.name)}</span>
                         </div>
-                        <div class="flex gap-1.5">
-                            <button class="flat-btn w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500 active:text-zinc-900 dark:active:text-white flex items-center justify-center btn-copy-saved" data-id="${entry.id}"><i class="far fa-copy text-[11px]"></i></button>
-                            <button class="flat-btn w-7 h-7 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-500 active:bg-red-100 dark:active:bg-red-500/20 flex items-center justify-center btn-del-saved" data-id="${entry.id}"><i class="fas fa-trash-alt text-[11px]"></i></button>
+                        <div class="flex items-center gap-1">
+                            <button class="w-7 h-7 rounded-[8px] bg-white dark:bg-[#27272a] text-zinc-500 hover:text-accent-theme flex items-center justify-center text-xs btn-copy-saved active:scale-90 transition-all shadow-sm" data-id="${entry.id}">
+                                <i class="far fa-copy text-[10px]"></i>
+                            </button>
+                            <button class="w-7 h-7 rounded-[8px] bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 flex items-center justify-center text-xs btn-del-saved active:scale-90 transition-all" data-id="${entry.id}">
+                                <i class="far fa-trash-can text-[10px]"></i>
+                            </button>
                         </div>
                     </div>
-                    <div class="flex flex-wrap gap-2">${tags}</div>
+                    <div class="flex flex-wrap gap-1.5">${tags}</div>
                 </div>
             `;
         });
@@ -788,16 +888,11 @@ export function init() {
 
         savedContent.querySelectorAll('.btn-del-saved').forEach(btn => {
             btn.onclick = () => {
-                showDialog({
-                    type: 'confirm',
-                    title: 'Xóa mục này?',
-                    message: 'Dữ liệu size đã lưu sẽ bị xóa vĩnh viễn.',
-                    okText: 'Xóa',
-                    onConfirm: () => {
-                        const idToDel = parseInt(btn.dataset.id);
-                        setSaved(getSaved().filter(item => item.id !== idToDel));
-                        renderSavedItems();
-                    }
+                UI.showConfirm('Xác nhận xóa?', 'Thông số kích cỡ này sẽ bị gỡ vĩnh viễn khỏi thiết bị.', () => {
+                    const idToDel = parseInt(btn.dataset.id);
+                    setSaved(getSaved().filter(item => item.id !== idToDel));
+                    renderSavedItems();
+                    IslandKit.notify('Đã xóa', 'Đã gỡ mục khỏi danh sách lưu.', 'info');
                 });
             };
         });
@@ -807,33 +902,43 @@ export function init() {
                 const item = getSaved().find(i => i.id === parseInt(btn.dataset.id));
                 if (item) {
                     const txt = `${item.name}\n` + item.items.map(i => `${i.std}: ${i.val}`).join('\n');
-                    try { await navigator.clipboard.writeText(txt); UI.showAlert('Đã chép', 'Đã chép thông số.', 'success', 1000); } catch (e) {}
+                    try { 
+                        await navigator.clipboard.writeText(txt); 
+                        IslandKit.notify('Đã sao chép', `Đã sao chép "${item.name}".`, 'success'); 
+                    } catch (e) {}
                 }
             };
         });
     };
 
-    document.getElementById('btn-clear-all').onclick = () => {
-        document.querySelectorAll('#product-tabs button').forEach(b => {
-            b.className = 'flat-btn flex items-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-[12px] font-bold text-zinc-600 dark:text-zinc-400 bg-white dark:bg-[#09090b] transition-colors whitespace-nowrap';
+    btnClearAll.onclick = () => {
+        productTabs.querySelectorAll('button').forEach(b => {
+            b.className = 'h-9 px-3.5 rounded-[12px] text-xs font-semibold text-zinc-600 dark:text-zinc-400 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] flex items-center gap-1.5 shrink-0 active:scale-95 transition-all';
         });
         
         isSuggestMode = false;
-        selectedType = null; selectedSystem = null; selectedSize = null;
-        sgGenderBtns[0].click(); sgHeight.value = ''; sgWeight.value = '';
+        selectedType = null; 
+        selectedSystem = null; 
+        selectedSize = null;
+        sgGenderBtns[0].click(); 
+        sgHeight.value = ''; 
+        sgWeight.value = '';
 
         manualSteps.classList.remove('hidden');
         autoSuggestSteps.classList.add('hidden');
 
         stepSystem.classList.add('opacity-50', 'pointer-events-none');
-        systemContainer.innerHTML = '<div class="text-[12px] font-medium text-zinc-400">Vui lòng chọn công cụ trước.</div>';
+        systemContainer.innerHTML = '<div class="text-xs font-medium text-zinc-400 py-1">Vui lòng chọn danh mục phía trên.</div>';
         
         stepSize.classList.add('opacity-50', 'pointer-events-none');
-        sizeContainer.innerHTML = ''; customSizeInput.value = '';
+        sizeContainer.innerHTML = ''; 
+        customSizeInput.value = '';
         
-        resetResults(); rightTabs[0].click();
+        resetResults(); 
+        rightTabs[0].click();
+        IslandKit.notify('Đặt lại', 'Đã làm mới toàn bộ trường quy đổi.', 'info');
     };
 
-    // Khởi chạy
+    // Initialize
     renderProductTabs();
 }

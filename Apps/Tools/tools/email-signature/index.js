@@ -1,199 +1,298 @@
 import { UI } from '../../js/ui.js';
 
+// =============================================================================
+// 0. DYNAMIC THEME ACCENT CONTROLLER
+// =============================================================================
+const DEFAULT_EMERALD = '#10b981';
+
+export const ThemeKit = {
+    getAccentColor: () => {
+        return localStorage.getItem('hunqos_accent_color') || 
+               localStorage.getItem('hunqos_icon_custom_bg') || 
+               DEFAULT_EMERALD;
+    },
+    applyAccent: (container) => {
+        if (!container) return;
+        const accent = ThemeKit.getAccentColor();
+        container.style.setProperty('--kit-accent', accent);
+    }
+};
+
+// =============================================================================
+// 1. ADAPTIVE ISLAND & TOAST FALLBACK CONTROLLER
+// =============================================================================
+export const IslandKit = {
+    isIslandActive: () => {
+        const isEnabled = localStorage.getItem('hunqos_dynamic_island') !== 'false';
+        const wrapper = document.getElementById('dynamic-island-wrapper');
+        const isDOMVisible = wrapper && !wrapper.classList.contains('hidden') && window.getComputedStyle(wrapper).display !== 'none';
+        return Boolean(isEnabled && isDOMVisible && typeof window.triggerIslandNotification === 'function');
+    },
+
+    notify: (title, desc, type = 'info', duration = 2800) => {
+        if (IslandKit.isIslandActive()) {
+            window.triggerIslandNotification(title, desc, type, duration);
+        } else {
+            UI.showAlert(title, desc, type, duration);
+        }
+    }
+};
+
+// =============================================================================
+// 2. TEMPLATE RENDERER (HUNQOS IDENTITY MAIL PREVIEW)
+// =============================================================================
 export function template() {
     return `
-        <div class="space-y-6">
-            <div class="flex justify-between items-start mb-2">
-                <div>
-                    <h2 class="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">Tạo Chữ ký Email</h2>
-                    <p class="text-sm text-zinc-500 mt-1">Thiết kế chữ ký chuẩn Minimal Premium cho Gmail, Outlook.</p>
+    <div id="sig-root-container" class="w-full h-full bg-[#f4f4f6] dark:bg-[#000000] text-[#18181b] dark:text-[#f4f4f6] select-none overflow-hidden font-sans transition-colors duration-200">
+        
+        <style>
+            #sig-root-container {
+                --kit-accent: #10b981;
+            }
+            .bg-accent-theme {
+                background-color: var(--kit-accent) !important;
+            }
+            .text-accent-theme {
+                color: var(--kit-accent) !important;
+            }
+            .border-accent-theme {
+                border-color: var(--kit-accent) !important;
+            }
+            .bg-accent-theme-alpha {
+                background-color: color-mix(in srgb, var(--kit-accent) 14%, transparent) !important;
+            }
+            .hover-bg-accent-theme-alpha:hover {
+                background-color: color-mix(in srgb, var(--kit-accent) 20%, transparent) !important;
+            }
+        </style>
+
+        <!-- MAIN SCROLLER -->
+        <main class="w-full h-full overflow-y-auto no-scrollbar px-3.5 sm:px-6 pt-6 pb-24 max-w-5xl mx-auto space-y-5">
+            
+            <!-- SEAMLESS HERO TITLE -->
+            <div class="px-1 flex items-start justify-between">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-accent-theme shadow-sm transition-colors"></span>
+                        <span class="text-[11px] font-mono tracking-wider font-semibold uppercase text-accent-theme">HunqOS Workspace</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">Tạo Chữ ký Email</h1>
+                    <p class="text-[12px] text-zinc-500 dark:text-zinc-400 font-normal">Thiết kế chữ ký HTML chuẩn định dạng cho Gmail, Outlook & Apple Mail.</p>
                 </div>
-                <button id="btn-es-reset" class="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all flex items-center justify-center shadow-sm" title="Khôi phục mặc định">
-                    <i class="fas fa-undo-alt text-sm"></i>
+
+                <button id="btn-es-reset" class="w-10 h-10 rounded-[14px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] text-zinc-500 hover:text-rose-500 flex items-center justify-center active:scale-95 transition-all shadow-sm" title="Khôi phục mặc định">
+                    <i class="fas fa-rotate-left text-xs"></i>
                 </button>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <!-- WORKSPACE GRID -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                 
-                <div class="lg:col-span-5 premium-card bg-white dark:bg-zinc-900 rounded-[32px] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col overflow-hidden relative">
+                <!-- CỘT TRÁI: FORM ĐIỀU KHIỂN & CÀI ĐẶT -->
+                <div class="lg:col-span-5 rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-4 sm:p-5 shadow-sm space-y-4">
                     
-                    <div class="flex items-center border-b border-zinc-100 dark:border-zinc-800 p-2 gap-1 bg-zinc-50/50 dark:bg-zinc-950/30">
-                        <button class="es-tab-btn active flex-1 py-2 text-[13px] font-bold rounded-xl text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 shadow-sm transition-all border border-zinc-200/50 dark:border-zinc-700/50" data-tab="es-info">
+                    <!-- SEGMENTED TABS -->
+                    <div class="grid grid-cols-3 gap-1 p-1 rounded-[14px] bg-black/[0.05] dark:bg-black/50 border border-black/[0.04] dark:border-white/[0.08] w-full" id="es-source-tabs">
+                        <button class="es-tab-btn active py-1.5 rounded-[10px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all text-center" data-tab="es-info">
                             Thông tin
                         </button>
-                        <button class="es-tab-btn flex-1 py-2 text-[13px] font-medium rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all border border-transparent" data-tab="es-links">
+                        <button class="es-tab-btn py-1.5 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all text-center" data-tab="es-links">
                             Liên kết
                         </button>
-                        <button class="es-tab-btn flex-1 py-2 text-[13px] font-medium rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all border border-transparent" data-tab="es-design">
+                        <button class="es-tab-btn py-1.5 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all text-center" data-tab="es-design">
                             Thiết kế
                         </button>
                     </div>
 
-                    <div class="p-5 sm:p-6">
-                        
-                        <div id="es-info" class="es-tab-content space-y-4 block">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="space-y-1.5">
-                                    <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Họ & Tên</label>
-                                    <input type="text" id="es-in-name" class="es-input w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-sm font-semibold text-zinc-900 dark:text-white">
-                                </div>
-                                <div class="space-y-1.5">
-                                    <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Chức vụ</label>
-                                    <input type="text" id="es-in-title" class="es-input w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-sm font-medium text-zinc-900 dark:text-white">
-                                </div>
+                    <!-- TAB 1: THÔNG TIN CÁ NHÂN -->
+                    <div id="es-info" class="es-tab-content space-y-3.5 block">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Họ & Tên</label>
+                                <input type="text" id="es-in-name" class="es-input w-full bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3 py-2 text-xs font-bold text-zinc-900 dark:text-white outline-none focus:border-accent-theme transition-all">
                             </div>
-
-                            <div class="space-y-1.5">
-                                <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Công ty / Tổ chức</label>
-                                <input type="text" id="es-in-company" class="es-input w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-sm font-medium text-zinc-900 dark:text-white">
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="space-y-1.5">
-                                    <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Điện thoại</label>
-                                    <input type="tel" id="es-in-phone" class="es-input w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-sm font-medium text-zinc-900 dark:text-white">
-                                </div>
-                                <div class="space-y-1.5">
-                                    <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Email</label>
-                                    <input type="email" id="es-in-email" class="es-input w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-sm font-medium text-zinc-900 dark:text-white">
-                                </div>
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Chức vụ</label>
+                                <input type="text" id="es-in-title" class="es-input w-full bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3 py-2 text-xs font-semibold text-zinc-900 dark:text-white outline-none focus:border-accent-theme transition-all">
                             </div>
                         </div>
 
-                        <div id="es-links" class="es-tab-content space-y-4 hidden animate-in fade-in slide-in-from-bottom-2">
-                            <div class="space-y-1.5">
-                                <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Link Avatar (Hình ảnh)</label>
-                                <div class="flex items-center bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 focus-within:ring-2 focus-within:ring-zinc-900 dark:focus-within:ring-white transition-all">
-                                    <i class="fas fa-image text-zinc-400 text-xs w-5 text-center"></i>
-                                    <input type="url" id="es-in-avatar" class="es-input flex-1 bg-transparent border-none px-2 py-2.5 outline-none text-sm font-medium text-zinc-900 dark:text-white" placeholder="https://...">
-                                </div>
-                            </div>
-
-                            <div class="space-y-1.5">
-                                <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Website / Portfolio</label>
-                                <div class="flex items-center bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 focus-within:ring-2 focus-within:ring-zinc-900 dark:focus-within:ring-white transition-all">
-                                    <i class="fas fa-globe text-zinc-400 text-xs w-5 text-center"></i>
-                                    <input type="url" id="es-in-website" class="es-input flex-1 bg-transparent border-none px-2 py-2.5 outline-none text-sm font-medium text-zinc-900 dark:text-white" placeholder="https://hunq.online">
-                                </div>
-                            </div>
-                            
-                            <hr class="border-zinc-200 dark:border-zinc-800 my-4">
-
-                            <div class="space-y-3">
-                                <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Mạng xã hội (Bật/Tắt qua Link)</label>
-                                
-                                <div class="flex items-center bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 focus-within:ring-2 focus-within:ring-blue-500/50 transition-all">
-                                    <i class="fab fa-facebook text-zinc-400 text-sm w-5 text-center"></i>
-                                    <input type="url" id="es-in-fb" class="es-input flex-1 bg-transparent border-none px-2 py-2.5 outline-none text-sm font-medium text-zinc-900 dark:text-white" placeholder="Link Facebook">
-                                </div>
-                                
-                                <div class="flex items-center bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 focus-within:ring-2 focus-within:ring-zinc-900 dark:focus-within:ring-white transition-all">
-                                    <i class="fab fa-twitter text-zinc-400 text-sm w-5 text-center"></i>
-                                    <input type="url" id="es-in-x" class="es-input flex-1 bg-transparent border-none px-2 py-2.5 outline-none text-sm font-medium text-zinc-900 dark:text-white" placeholder="Link X (Twitter)">
-                                </div>
-
-                                <div class="flex items-center bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 focus-within:ring-2 focus-within:ring-blue-600/50 transition-all">
-                                    <i class="fab fa-linkedin text-zinc-400 text-sm w-5 text-center"></i>
-                                    <input type="url" id="es-in-li" class="es-input flex-1 bg-transparent border-none px-2 py-2.5 outline-none text-sm font-medium text-zinc-900 dark:text-white" placeholder="Link LinkedIn">
-                                </div>
-
-                                <div class="flex items-center bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 focus-within:ring-2 focus-within:ring-pink-500/50 transition-all">
-                                    <i class="fab fa-tiktok text-zinc-400 text-sm w-5 text-center"></i>
-                                    <input type="url" id="es-in-tk" class="es-input flex-1 bg-transparent border-none px-2 py-2.5 outline-none text-sm font-medium text-zinc-900 dark:text-white" placeholder="Link TikTok">
-                                </div>
-
-                                <div class="flex items-center bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 focus-within:ring-2 focus-within:ring-zinc-900 dark:focus-within:ring-white transition-all">
-                                    <i class="fab fa-github text-zinc-400 text-sm w-5 text-center"></i>
-                                    <input type="url" id="es-in-gh" class="es-input flex-1 bg-transparent border-none px-2 py-2.5 outline-none text-sm font-medium text-zinc-900 dark:text-white" placeholder="Link GitHub">
-                                </div>
-
-                                <div class="flex items-center gap-2">
-                                    <div class="flex items-center bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 focus-within:ring-2 focus-within:ring-zinc-900 dark:focus-within:ring-white transition-all w-1/3">
-                                        <input type="text" id="es-in-other-name" class="es-input w-full bg-transparent border-none py-2.5 outline-none text-sm font-medium text-zinc-900 dark:text-white" placeholder="Vd: Zalo">
-                                    </div>
-                                    <div class="flex items-center bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 focus-within:ring-2 focus-within:ring-zinc-900 dark:focus-within:ring-white transition-all flex-1">
-                                        <i class="fas fa-link text-zinc-400 text-xs w-5 text-center"></i>
-                                        <input type="url" id="es-in-other-url" class="es-input flex-1 bg-transparent border-none px-2 py-2.5 outline-none text-sm font-medium text-zinc-900 dark:text-white" placeholder="URL nền tảng khác">
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Công ty / Tổ chức</label>
+                            <input type="text" id="es-in-company" class="es-input w-full bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3 py-2 text-xs font-semibold text-zinc-900 dark:text-white outline-none focus:border-accent-theme transition-all">
                         </div>
 
-                        <div id="es-design" class="es-tab-content space-y-6 hidden animate-in fade-in slide-in-from-bottom-2">
-                            <div class="space-y-3">
-                                <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Màu Điểm Nhấn (Accent Color)</label>
-                                <div class="flex flex-wrap gap-3">
-                                    <button class="es-color-btn w-8 h-8 rounded-full shadow-sm ring-2 ring-offset-2 ring-zinc-400 dark:ring-offset-zinc-900 transition-all" style="background-color: #09090b;" data-color="#09090b"></button>
-                                    <button class="es-color-btn w-8 h-8 rounded-full shadow-sm transition-all" style="background-color: #2563eb;" data-color="#2563eb"></button>
-                                    <button class="es-color-btn w-8 h-8 rounded-full shadow-sm transition-all" style="background-color: #059669;" data-color="#059669"></button>
-                                    <button class="es-color-btn w-8 h-8 rounded-full shadow-sm transition-all" style="background-color: #ea580c;" data-color="#ea580c"></button>
-                                    <div class="relative w-8 h-8 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-700 shadow-sm ml-2">
-                                        <input type="color" id="es-custom-color" class="absolute -top-2 -left-2 w-12 h-12 cursor-pointer" value="#09090b" title="Chọn màu tùy chỉnh">
-                                    </div>
-                                </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Điện thoại</label>
+                                <input type="tel" id="es-in-phone" class="es-input w-full bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3 py-2 text-xs font-mono font-medium text-zinc-900 dark:text-white outline-none focus:border-accent-theme transition-all">
                             </div>
-
-                            <div class="space-y-3">
-                                <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Mẫu (Template)</label>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <button class="es-tpl-btn active px-3 py-3 rounded-xl border-2 border-zinc-900 dark:border-white bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm font-bold transition-all flex flex-col items-start gap-1" data-tpl="premium">
-                                        <div class="flex items-center gap-2"><i class="fas fa-star text-blue-500"></i> Premium</div>
-                                        <span class="text-[10px] font-normal opacity-70 text-left">Hiện đại, Cân đối</span>
-                                    </button>
-                                    <button class="es-tpl-btn px-3 py-3 rounded-xl border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 text-sm font-bold transition-all flex flex-col items-start gap-1" data-tpl="corporate">
-                                        <div class="flex items-center gap-2"><i class="fas fa-briefcase text-emerald-500"></i> Corporate</div>
-                                        <span class="text-[10px] font-normal opacity-70 text-left">Doanh nghiệp</span>
-                                    </button>
-                                    <button class="es-tpl-btn px-3 py-3 rounded-xl border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 text-sm font-bold transition-all flex flex-col items-start gap-1" data-tpl="elegant">
-                                        <div class="flex items-center gap-2"><i class="fas fa-gem text-amber-500"></i> Elegant</div>
-                                        <span class="text-[10px] font-normal opacity-70 text-left">Canh giữa, Sang trọng</span>
-                                    </button>
-                                    <button class="es-tpl-btn px-3 py-3 rounded-xl border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 text-sm font-bold transition-all flex flex-col items-start gap-1" data-tpl="minimal">
-                                        <div class="flex items-center gap-2"><i class="fas fa-align-left text-zinc-400"></i> Minimal</div>
-                                        <span class="text-[10px] font-normal opacity-70 text-left">Tối giản, Text thuần</span>
-                                    </button>
-                                </div>
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Email</label>
+                                <input type="email" id="es-in-email" class="es-input w-full bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3 py-2 text-xs font-mono font-medium text-zinc-900 dark:text-white outline-none focus:border-accent-theme transition-all">
                             </div>
                         </div>
                     </div>
+
+                    <!-- TAB 2: LIÊN KẾT & MẠNG XÃ HỘI -->
+                    <div id="es-links" class="es-tab-content space-y-3.5 hidden">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">URL Ảnh đại diện</label>
+                            <div class="flex items-center bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3 py-1 focus-within:border-accent-theme transition-all">
+                                <i class="fas fa-image text-zinc-400 text-xs mr-2"></i>
+                                <input type="url" id="es-in-avatar" class="es-input w-full bg-transparent border-none text-xs font-mono text-zinc-900 dark:text-white outline-none py-1" placeholder="https://...">
+                            </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Website / Portfolio</label>
+                            <div class="flex items-center bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3 py-1 focus-within:border-accent-theme transition-all">
+                                <i class="fas fa-globe text-zinc-400 text-xs mr-2"></i>
+                                <input type="url" id="es-in-website" class="es-input w-full bg-transparent border-none text-xs font-mono text-zinc-900 dark:text-white outline-none py-1" placeholder="https://...">
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-black/[0.05] dark:border-white/[0.08] space-y-2.5">
+                            <label class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Mạng xã hội</label>
+                            
+                            <div class="flex items-center bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3 py-1 focus-within:border-accent-theme transition-all">
+                                <i class="fab fa-facebook text-zinc-400 text-xs mr-2.5 w-4 text-center"></i>
+                                <input type="url" id="es-in-fb" class="es-input w-full bg-transparent border-none text-xs font-mono text-zinc-900 dark:text-white outline-none py-1" placeholder="Facebook URL">
+                            </div>
+
+                            <div class="flex items-center bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3 py-1 focus-within:border-accent-theme transition-all">
+                                <i class="fab fa-x-twitter text-zinc-400 text-xs mr-2.5 w-4 text-center"></i>
+                                <input type="url" id="es-in-x" class="es-input w-full bg-transparent border-none text-xs font-mono text-zinc-900 dark:text-white outline-none py-1" placeholder="X (Twitter) URL">
+                            </div>
+
+                            <div class="flex items-center bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3 py-1 focus-within:border-accent-theme transition-all">
+                                <i class="fab fa-linkedin text-zinc-400 text-xs mr-2.5 w-4 text-center"></i>
+                                <input type="url" id="es-in-li" class="es-input w-full bg-transparent border-none text-xs font-mono text-zinc-900 dark:text-white outline-none py-1" placeholder="LinkedIn URL">
+                            </div>
+
+                            <div class="flex items-center bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3 py-1 focus-within:border-accent-theme transition-all">
+                                <i class="fab fa-github text-zinc-400 text-xs mr-2.5 w-4 text-center"></i>
+                                <input type="url" id="es-in-gh" class="es-input w-full bg-transparent border-none text-xs font-mono text-zinc-900 dark:text-white outline-none py-1" placeholder="GitHub URL">
+                            </div>
+
+                            <div class="flex gap-2">
+                                <input type="text" id="es-in-other-name" class="es-input w-24 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3 py-1.5 text-xs font-medium text-zinc-900 dark:text-white outline-none" placeholder="Zalo">
+                                <input type="url" id="es-in-other-url" class="es-input flex-1 bg-[#f2f2f7] dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] rounded-[14px] px-3 py-1.5 text-xs font-mono text-zinc-900 dark:text-white outline-none" placeholder="https://zalo.me/...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: THIẾT KẾ & MẪU -->
+                    <div id="es-design" class="es-tab-content space-y-4 hidden">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Màu chữ ký</label>
+                            <div class="flex items-center gap-2.5">
+                                <button class="es-color-btn w-7 h-7 rounded-full shadow-sm ring-2 ring-offset-2 ring-zinc-400 dark:ring-offset-[#161618] transition-all" style="background-color: #18181b;" data-color="#18181b"></button>
+                                <button class="es-color-btn w-7 h-7 rounded-full shadow-sm transition-all" style="background-color: #10b981;" data-color="#10b981"></button>
+                                <button class="es-color-btn w-7 h-7 rounded-full shadow-sm transition-all" style="background-color: #2563eb;" data-color="#2563eb"></button>
+                                <button class="es-color-btn w-7 h-7 rounded-full shadow-sm transition-all" style="background-color: #f59e0b;" data-color="#f59e0b"></button>
+                                <div class="relative w-7 h-7 rounded-full overflow-hidden border border-black/[0.1] dark:border-white/[0.15] shadow-sm ml-1 flex items-center justify-center">
+                                    <input type="color" id="es-custom-color" class="absolute -inset-2 w-12 h-12 cursor-pointer bg-transparent border-none" value="#10b981" title="Tùy chỉnh màu">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2 pt-2 border-t border-black/[0.05] dark:border-white/[0.08]">
+                            <label class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Bố cục mẫu</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button class="es-tpl-btn active p-2.5 rounded-[14px] border border-accent-theme bg-accent-theme-alpha text-left transition-all" data-tpl="premium">
+                                    <div class="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5"><i class="fas fa-gem text-[10px] text-accent-theme"></i> Premium</div>
+                                    <span class="text-[10px] text-zinc-500 dark:text-zinc-400">Hiện đại, viền đứng</span>
+                                </button>
+                                <button class="es-tpl-btn p-2.5 rounded-[14px] border border-black/[0.05] dark:border-white/[0.08] hover:bg-black/5 dark:hover:bg-white/5 text-left transition-all" data-tpl="corporate">
+                                    <div class="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5"><i class="fas fa-briefcase text-[10px] text-zinc-400"></i> Corporate</div>
+                                    <span class="text-[10px] text-zinc-500 dark:text-zinc-400">Doanh nghiệp</span>
+                                </button>
+                                <button class="es-tpl-btn p-2.5 rounded-[14px] border border-black/[0.05] dark:border-white/[0.08] hover:bg-black/5 dark:hover:bg-white/5 text-left transition-all" data-tpl="elegant">
+                                    <div class="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5"><i class="fas fa-align-center text-[10px] text-zinc-400"></i> Elegant</div>
+                                    <span class="text-[10px] text-zinc-500 dark:text-zinc-400">Căn giữa, tối giản</span>
+                                </button>
+                                <button class="es-tpl-btn p-2.5 rounded-[14px] border border-black/[0.05] dark:border-white/[0.08] hover:bg-black/5 dark:hover:bg-white/5 text-left transition-all" data-tpl="minimal">
+                                    <div class="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5"><i class="fas fa-bars-staggered text-[10px] text-zinc-400"></i> Minimal</div>
+                                    <span class="text-[10px] text-zinc-500 dark:text-zinc-400">Thuần văn bản</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
-                <div class="lg:col-span-7 space-y-4 lg:sticky lg:top-[70px]">
+                <!-- CỘT PHẢI: BẢN XEM TRƯỚC (HUNQOS MAIL CANVAS) -->
+                <div class="lg:col-span-7 space-y-4 lg:sticky lg:top-6">
                     
-                    <div class="premium-card bg-white dark:bg-zinc-900 rounded-[32px] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm p-1.5 overflow-hidden">
-                        <div class="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/50 flex items-center bg-zinc-50 dark:bg-zinc-950/30 rounded-t-[26px]">
-                            <div class="flex gap-1.5 mr-4">
-                                <div class="w-3 h-3 rounded-full bg-red-400 border border-red-500/20"></div>
-                                <div class="w-3 h-3 rounded-full bg-amber-400 border border-amber-500/20"></div>
-                                <div class="w-3 h-3 rounded-full bg-emerald-400 border border-emerald-500/20"></div>
-                            </div>
-                            <span class="text-[11px] font-semibold text-zinc-400 flex-1 text-center pr-10">Bản xem trước (Live Preview)</span>
-                        </div>
+                    <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] shadow-sm overflow-hidden">
                         
-                        <div class="p-6 md:p-8 bg-white min-h-[220px] flex items-center justify-start overflow-x-auto rounded-b-[26px] selection:bg-blue-100 selection:text-black">
-                            <div id="es-preview-box" class="w-full">
+                        <!-- HEADER NÉT RIÊNG HUNQOS -->
+                        <div class="px-4 py-3 border-b border-black/[0.05] dark:border-white/[0.08] flex items-center justify-between bg-white dark:bg-[#161618]">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-6 h-6 rounded-[8px] bg-accent-theme-alpha text-accent-theme flex items-center justify-center text-xs">
+                                    <i class="fas fa-envelope-open-text text-[11px]"></i>
                                 </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-bold text-zinc-900 dark:text-white tracking-tight">Mail Canvas</span>
+                                    <span class="text-[9px] font-mono px-1.5 py-0.2 rounded-md bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400 font-semibold">HTML 4</span>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <span class="flex items-center gap-1.5 text-[10px] font-mono font-semibold text-zinc-500 dark:text-zinc-400">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-theme animate-pulse"></span>
+                                    Live Render
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- EMAIL BODY CANVAS (Trắng thuần chuẩn Mail Client) -->
+                        <div class="p-6 sm:p-8 bg-white overflow-x-auto min-h-[220px] flex items-center justify-start selection:bg-emerald-100 selection:text-black">
+                            <div id="es-preview-box" class="w-full"></div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button id="btn-es-copy-visual" class="py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-md flex items-center justify-center gap-2 group">
-                            <i class="fas fa-copy"></i> SAO CHÉP GIAO DIỆN
+                    <!-- ACTION BUTTONS -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <button id="btn-es-copy-visual" class="h-12 rounded-[16px] bg-accent-theme text-white font-bold text-xs tracking-wide flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-sm">
+                            <i class="far fa-copy text-sm"></i> Sao chép giao diện
                         </button>
-                        <button id="btn-es-copy-html" class="py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 rounded-2xl font-bold text-sm hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm">
-                            <i class="fas fa-code"></i> SAO CHÉP HTML
+                        <button id="btn-es-copy-html" class="h-12 rounded-[16px] bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-800 dark:text-zinc-200 font-semibold text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+                            <i class="fas fa-code text-xs"></i> Sao chép mã HTML
                         </button>
                     </div>
-                    <p class="text-[11px] text-zinc-500 text-center px-4 leading-relaxed">Nhấp <strong class="text-zinc-700 dark:text-zinc-300">Sao chép Giao diện</strong>, mở Cài đặt Gmail > Chữ ký, dán (Ctrl+V) và lưu lại.</p>
+
+                    <p class="text-[11px] text-zinc-400 text-center leading-relaxed">
+                        Nhấn <b>Sao chép giao diện</b> rồi mở cài đặt chữ ký trong Gmail/Outlook và dán (<kbd class="font-mono text-[10px] bg-black/5 dark:bg-white/10 px-1 py-0.5 rounded">Ctrl+V</kbd>).
+                    </p>
                 </div>
 
             </div>
-        </div>
+
+        </main>
+    </div>
     `;
 }
 
-export function init() {
-    // --- STATE QUẢN LÝ DỮ LIỆU ---
+// =============================================================================
+// 3. LOGIC HOOKS & EVENT DISPATCHING
+// =============================================================================
+export function init(hostElement) {
+    const rootContainer = hostElement.querySelector('#sig-root-container') || hostElement;
+
+    // Khởi tạo ThemeKit
+    const updateAccent = () => ThemeKit.applyAccent(rootContainer);
+    updateAccent();
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'hunqos_accent_color' || e.key === 'hunqos_icon_custom_bg') {
+            updateAccent();
+        }
+    });
+
+    const defaultAccent = ThemeKit.getAccentColor();
+
     let state = {
         name: 'Đinh Mạnh Hùng',
         title: 'Mechatronics Engineer',
@@ -203,91 +302,86 @@ export function init() {
         website: 'https://hunq.online',
         avatar: 'https://i.ibb.co/V3QzKxB/avatar.png',
         
-        // Social Links state
         fb: '',
         x: 'https://x.com/hunq',
         li: 'https://linkedin.com/in/hunq',
-        tk: '',
         gh: 'https://github.com/hunq',
         otherName: 'Zalo',
         otherUrl: 'https://zalo.me/',
         
-        color: '#09090b', 
+        color: defaultAccent,
         template: 'premium'
     };
 
-    if (document.documentElement.classList.contains('dark')) state.color = '#2563eb'; 
+    const _ = sel => hostElement.querySelector(sel);
+    const $$ = sel => hostElement.querySelectorAll(sel);
 
     const inputs = {
-        name: document.getElementById('es-in-name'),
-        title: document.getElementById('es-in-title'),
-        company: document.getElementById('es-in-company'),
-        phone: document.getElementById('es-in-phone'),
-        email: document.getElementById('es-in-email'),
-        website: document.getElementById('es-in-website'),
-        avatar: document.getElementById('es-in-avatar'),
-        fb: document.getElementById('es-in-fb'),
-        x: document.getElementById('es-in-x'),
-        li: document.getElementById('es-in-li'),
-        tk: document.getElementById('es-in-tk'),
-        gh: document.getElementById('es-in-gh'),
-        otherName: document.getElementById('es-in-other-name'),
-        otherUrl: document.getElementById('es-in-other-url')
+        name: _('#es-in-name'),
+        title: _('#es-in-title'),
+        company: _('#es-in-company'),
+        phone: _('#es-in-phone'),
+        email: _('#es-in-email'),
+        website: _('#es-in-website'),
+        avatar: _('#es-in-avatar'),
+        fb: _('#es-in-fb'),
+        x: _('#es-in-x'),
+        li: _('#es-in-li'),
+        gh: _('#es-in-gh'),
+        otherName: _('#es-in-other-name'),
+        otherUrl: _('#es-in-other-url')
     };
-    
-    const colorBtns = document.querySelectorAll('.es-color-btn');
-    const customColorPicker = document.getElementById('es-custom-color');
-    const tplBtns = document.querySelectorAll('.es-tpl-btn');
-    const tabBtns = document.querySelectorAll('.es-tab-btn');
-    const tabContents = document.querySelectorAll('.es-tab-content');
-    
-    const previewBox = document.getElementById('es-preview-box');
-    const btnCopyVisual = document.getElementById('btn-es-copy-visual');
-    const btnCopyHtml = document.getElementById('btn-es-copy-html');
-    const btnReset = document.getElementById('btn-es-reset');
+
+    const colorBtns = $$('.es-color-btn');
+    const customColorPicker = _('#es-custom-color');
+    const tplBtns = $$('.es-tpl-btn');
+    const tabBtns = $$('.es-tab-btn');
+    const tabContents = $$('.es-tab-content');
+
+    const previewBox = _('#es-preview-box');
+    const btnCopyVisual = _('#btn-es-copy-visual');
+    const btnCopyHtml = _('#btn-es-copy-html');
+    const btnReset = _('#btn-es-reset');
+
+    // Segmented Tabs Switching
+    const activeTabClass = 'es-tab-btn active py-1.5 rounded-[10px] text-xs font-semibold bg-white dark:bg-[#2c2c2e] text-zinc-900 dark:text-white shadow-sm border border-black/[0.04] dark:border-white/[0.1] transition-all text-center';
+    const inactiveTabClass = 'es-tab-btn py-1.5 rounded-[10px] text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-transparent transition-all text-center';
 
     tabBtns.forEach(btn => {
-        btn.onclick = () => {
-            tabBtns.forEach(b => {
-                b.classList.remove('active', 'bg-white', 'dark:bg-zinc-800', 'shadow-sm', 'text-zinc-900', 'dark:text-white', 'font-bold', 'border-zinc-200/50', 'dark:border-zinc-700/50');
-                b.classList.add('text-zinc-500', 'font-medium', 'border-transparent');
-            });
-            btn.classList.remove('text-zinc-500', 'font-medium', 'border-transparent');
-            btn.classList.add('active', 'bg-white', 'dark:bg-zinc-800', 'shadow-sm', 'text-zinc-900', 'dark:text-white', 'font-bold', 'border-zinc-200/50', 'dark:border-zinc-700/50');
-            
+        btn.addEventListener('click', () => {
+            tabBtns.forEach(b => b.className = inactiveTabClass);
+            btn.className = activeTabClass;
+
             tabContents.forEach(c => c.classList.replace('block', 'hidden'));
-            document.getElementById(btn.dataset.tab).classList.replace('hidden', 'block');
-        };
+            const target = _(`#${btn.dataset.tab}`);
+            if (target) target.classList.replace('hidden', 'block');
+        });
     });
 
-    // --- CẤU HÌNH ICON MẠNG XÃ HỘI ---
     const ICON_BASE = {
         fb: 'https://cdn-icons-png.flaticon.com/512/5968/5968764.png',
         x: 'https://cdn-icons-png.flaticon.com/512/11262/11262828.png',
         li: 'https://cdn-icons-png.flaticon.com/512/174/174857.png',
-        tk: 'https://cdn-icons-png.flaticon.com/512/3046/3046121.png',
         gh: 'https://cdn-icons-png.flaticon.com/512/733/733553.png'
     };
 
     const renderSocialsTable = (color, align = 'left') => {
         let tds = '';
-        ['fb', 'x', 'li', 'tk', 'gh'].forEach(key => {
+        ['fb', 'x', 'li', 'gh'].forEach(key => {
             if (state[key]) {
-                tds += `<td style="padding-right: 8px;"><a href="${state[key]}"><img src="${ICON_BASE[key]}" width="20" height="20" alt="${key}" style="display: block; border: 0;"></a></td>`;
+                tds += `<td style="padding-right: 8px;"><a href="${state[key]}"><img src="${ICON_BASE[key]}" width="18" height="18" alt="${key}" style="display: block; border: 0;"></a></td>`;
             }
         });
-        
-        // Nền tảng khác (Render ra text)
+
         if (state.otherName && state.otherUrl) {
             tds += `<td style="padding-right: 8px; vertical-align: middle;"><a href="${state.otherUrl}" style="color: ${color}; font-size: 11px; font-weight: bold; text-decoration: none; font-family: sans-serif; letter-spacing: 0.5px; text-transform: uppercase;">${state.otherName}</a></td>`;
         }
 
         if (!tds) return '';
-        
         const tableAlign = align === 'center' ? 'margin: 12px auto 0 auto;' : 'margin-top: 12px;';
-        
+
         return `
-        <table cellpadding="0" cellspacing="0" border="0" style="${tableAlign} padding-top: 12px; border-top: 1px solid #f4f4f5;">
+        <table cellpadding="0" cellspacing="0" border="0" style="${tableAlign} padding-top: 10px; border-top: 1px solid #f4f4f5;">
             <tr>${tds}</tr>
         </table>
         `;
@@ -299,23 +393,23 @@ export function init() {
 
         if (state.template === 'premium') {
             return `
-            <table cellpadding="0" cellspacing="0" border="0" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #3f3f46; background: #ffffff;">
+            <table cellpadding="0" cellspacing="0" border="0" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; color: #3f3f46; background: #ffffff;">
                 <tr>
                     ${state.avatar ? `
-                    <td style="padding-right: 24px; border-right: 2px solid ${c}; vertical-align: top;">
-                        <img src="${state.avatar}" alt="${state.name}" width="96" height="96" style="border-radius: 50%; display: block; object-fit: cover;">
+                    <td style="padding-right: 20px; border-right: 2px solid ${c}; vertical-align: top;">
+                        <img src="${state.avatar}" alt="${state.name}" width="84" height="84" style="border-radius: 50%; display: block; object-fit: cover;">
                     </td>` : ''}
-                    <td style="padding-left: ${state.avatar ? '24px' : '0'}; vertical-align: top;">
-                        <h2 style="margin: 0 0 4px 0; font-size: 20px; font-weight: 700; color: #18181b; letter-spacing: -0.5px;">${state.name}</h2>
+                    <td style="padding-left: ${state.avatar ? '20px' : '0'}; vertical-align: top;">
+                        <h2 style="margin: 0 0 3px 0; font-size: 18px; font-weight: 700; color: #18181b; letter-spacing: -0.3px;">${state.name}</h2>
                         ${(state.title || state.company) ? `
-                        <p style="margin: 0 0 12px 0; font-size: 13px; font-weight: 600; color: ${c}; text-transform: uppercase; letter-spacing: 0.5px;">
+                        <p style="margin: 0 0 10px 0; font-size: 12px; font-weight: 600; color: ${c}; text-transform: uppercase; letter-spacing: 0.5px;">
                             ${state.title} ${state.title && state.company ? `<span style="color: #e4e4e7; margin: 0 4px;">|</span>` : ''} <span style="color: #71717a; font-weight: 500;">${state.company}</span>
                         </p>` : ''}
                         
-                        <table cellpadding="0" cellspacing="0" border="0" style="font-size: 13px; line-height: 1.6; color: #52525b;">
-                            ${state.phone ? `<tr><td style="padding-right: 12px; padding-bottom: 2px;"><strong style="color: #18181b;">P.</strong></td><td style="padding-bottom: 2px;">${state.phone}</td></tr>` : ''}
-                            ${state.email ? `<tr><td style="padding-right: 12px; padding-bottom: 2px;"><strong style="color: #18181b;">E.</strong></td><td style="padding-bottom: 2px;"><a href="mailto:${state.email}" style="color: #52525b; text-decoration: none;">${state.email}</a></td></tr>` : ''}
-                            ${state.website ? `<tr><td style="padding-right: 12px; padding-bottom: 2px;"><strong style="color: #18181b;">W.</strong></td><td style="padding-bottom: 2px;"><a href="${state.website}" style="color: #52525b; text-decoration: none;">${cleanWebsite}</a></td></tr>` : ''}
+                        <table cellpadding="0" cellspacing="0" border="0" style="font-size: 12px; line-height: 1.6; color: #52525b;">
+                            ${state.phone ? `<tr><td style="padding-right: 8px; padding-bottom: 2px;"><strong style="color: #18181b;">P.</strong></td><td style="padding-bottom: 2px;">${state.phone}</td></tr>` : ''}
+                            ${state.email ? `<tr><td style="padding-right: 8px; padding-bottom: 2px;"><strong style="color: #18181b;">E.</strong></td><td style="padding-bottom: 2px;"><a href="mailto:${state.email}" style="color: #52525b; text-decoration: none;">${state.email}</a></td></tr>` : ''}
+                            ${state.website ? `<tr><td style="padding-right: 8px; padding-bottom: 2px;"><strong style="color: #18181b;">W.</strong></td><td style="padding-bottom: 2px;"><a href="${state.website}" style="color: #52525b; text-decoration: none;">${cleanWebsite}</a></td></tr>` : ''}
                         </table>
                         
                         ${renderSocialsTable(c, 'left')}
@@ -328,12 +422,12 @@ export function init() {
             <table cellpadding="0" cellspacing="0" border="0" style="font-family: Arial, sans-serif; font-size: 13px; color: #333333; background: #ffffff;">
                 <tr>
                     ${state.avatar ? `
-                    <td style="padding-right: 20px; vertical-align: middle;">
-                        <img src="${state.avatar}" alt="${state.name}" width="90" height="90" style="border-radius: 8px; display: block; object-fit: cover;">
+                    <td style="padding-right: 18px; vertical-align: middle;">
+                        <img src="${state.avatar}" alt="${state.name}" width="80" height="80" style="border-radius: 8px; display: block; object-fit: cover;">
                     </td>` : ''}
-                    <td style="padding-left: ${state.avatar ? '20px' : '0'}; border-left: 3px solid ${c}; vertical-align: middle;">
-                        <h2 style="margin: 0 0 4px 0; font-size: 18px; font-weight: bold; color: #111111;">${state.name}</h2>
-                        <p style="margin: 0 0 10px 0; font-size: 14px; color: ${c};">${state.title}${state.title && state.company ? ' / ' : ''}${state.company}</p>
+                    <td style="padding-left: ${state.avatar ? '18px' : '0'}; border-left: 3px solid ${c}; vertical-align: middle;">
+                        <h2 style="margin: 0 0 3px 0; font-size: 17px; font-weight: bold; color: #111111;">${state.name}</h2>
+                        <p style="margin: 0 0 8px 0; font-size: 13px; color: ${c};">${state.title}${state.title && state.company ? ' / ' : ''}${state.company}</p>
                         
                         <p style="margin: 0; font-size: 12px; line-height: 1.6; color: #555555;">
                             ${state.phone ? `<strong style="color:#111;">M:</strong> ${state.phone}<br>` : ''}
@@ -347,17 +441,17 @@ export function init() {
         }
         else if (state.template === 'elegant') {
             return `
-            <table cellpadding="0" cellspacing="0" border="0" style="font-family: Georgia, serif; font-size: 14px; color: #444444; text-align: center; width: 100%; max-width: 400px; background: #ffffff;">
+            <table cellpadding="0" cellspacing="0" border="0" style="font-family: Georgia, serif; font-size: 13px; color: #444444; text-align: center; width: 100%; max-width: 380px; background: #ffffff;">
                 <tr>
-                    <td style="padding-bottom: 16px;">
-                        ${state.avatar ? `<img src="${state.avatar}" alt="${state.name}" width="80" height="80" style="border-radius: 50%; display: inline-block; object-fit: cover; margin-bottom: 12px; border: 2px solid ${c}; padding: 2px;">` : ''}
-                        <h2 style="margin: 0 0 4px 0; font-size: 22px; font-weight: normal; color: #111111;">${state.name}</h2>
-                        <p style="margin: 0; font-size: 13px; font-style: italic; color: ${c};">${state.title}${state.company ? ` &bull; ${state.company}` : ''}</p>
+                    <td style="padding-bottom: 14px;">
+                        ${state.avatar ? `<img src="${state.avatar}" alt="${state.name}" width="76" height="76" style="border-radius: 50%; display: inline-block; object-fit: cover; margin-bottom: 10px; border: 2px solid ${c}; padding: 2px;">` : ''}
+                        <h2 style="margin: 0 0 3px 0; font-size: 20px; font-weight: normal; color: #111111;">${state.name}</h2>
+                        <p style="margin: 0; font-size: 12px; font-style: italic; color: ${c};">${state.title}${state.company ? ` &bull; ${state.company}` : ''}</p>
                     </td>
                 </tr>
                 <tr>
-                    <td style="border-top: 1px solid #eaeaea; border-bottom: 1px solid #eaeaea; padding: 12px 0;">
-                        <p style="margin: 0; font-family: Arial, sans-serif; font-size: 12px; color: #666666;">
+                    <td style="border-top: 1px solid #eaeaea; border-bottom: 1px solid #eaeaea; padding: 10px 0;">
+                        <p style="margin: 0; font-family: Arial, sans-serif; font-size: 11px; color: #666666;">
                             ${state.phone ? `${state.phone} &nbsp;|&nbsp; ` : ''}
                             ${state.email ? `<a href="mailto:${state.email}" style="color: #666; text-decoration: none;">${state.email}</a>` : ''}
                             ${state.website ? ` &nbsp;|&nbsp; <a href="${state.website}" style="color: #666; text-decoration: none;">${cleanWebsite}</a>` : ''}
@@ -365,7 +459,7 @@ export function init() {
                     </td>
                 </tr>
                 <tr>
-                    <td style="padding-top: 12px;">
+                    <td style="padding-top: 10px;">
                         ${renderSocialsTable(c, 'center')}
                     </td>
                 </tr>
@@ -375,14 +469,14 @@ export function init() {
             return `
             <table cellpadding="0" cellspacing="0" border="0" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; color: #52525b; line-height: 1.6; background: #ffffff;">
                 <tr>
-                    <td style="padding-bottom: 10px;">
-                        <h2 style="margin: 0 0 2px 0; font-size: 16px; font-weight: 700; color: #18181b; letter-spacing: -0.3px;">${state.name}</h2>
+                    <td style="padding-bottom: 8px;">
+                        <h2 style="margin: 0 0 2px 0; font-size: 15px; font-weight: 700; color: #18181b;">${state.name}</h2>
                         ${(state.title || state.company) ? `
-                        <p style="margin: 0; color: ${c}; font-weight: 600;">${state.title} <span style="color: #a1a1aa; font-weight: 400;">@</span> ${state.company}</p>` : ''}
+                        <p style="margin: 0; color: ${c}; font-weight: 600; font-size: 12px;">${state.title} <span style="color: #a1a1aa; font-weight: 400;">@</span> ${state.company}</p>` : ''}
                     </td>
                 </tr>
                 <tr>
-                    <td style="padding-top: 10px; border-top: 1px solid #e4e4e7;">
+                    <td style="padding-top: 8px; border-top: 1px solid #e4e4e7;">
                         ${state.phone ? `<span style="color: #18181b; font-weight: 700;">T</span> &nbsp;${state.phone} &nbsp;&nbsp;&nbsp;` : ''}
                         ${state.email ? `<span style="color: #18181b; font-weight: 700;">E</span> &nbsp;<a href="mailto:${state.email}" style="color: #52525b; text-decoration: none;">${state.email}</a> <br>` : ''}
                         ${state.website ? `<span style="color: #18181b; font-weight: 700;">W</span> &nbsp;<a href="${state.website}" style="color: #52525b; text-decoration: none;">${cleanWebsite}</a>` : ''}
@@ -394,72 +488,68 @@ export function init() {
     };
 
     const updatePreview = () => {
-        previewBox.innerHTML = generateHTML();
+        if (previewBox) previewBox.innerHTML = generateHTML();
     };
 
     const syncInputToState = () => {
         for (let key in inputs) {
-            state[key] = inputs[key].value;
+            if (inputs[key]) state[key] = inputs[key].value;
         }
         updatePreview();
     };
 
     const syncStateToInput = () => {
         for (let key in inputs) {
-            inputs[key].value = state[key];
+            if (inputs[key]) inputs[key].value = state[key];
         }
-        
+
         colorBtns.forEach(b => {
-            if (b.dataset.color === state.color) b.classList.add('ring-2', 'ring-offset-2', 'ring-zinc-400', 'dark:ring-offset-zinc-900');
-            else b.classList.remove('ring-2', 'ring-offset-2', 'ring-zinc-400', 'dark:ring-offset-zinc-900');
-        });
-        
-        tplBtns.forEach(b => {
-            if (b.dataset.tpl === state.template) {
-                b.classList.replace('border-zinc-200', 'border-zinc-900');
-                b.classList.replace('dark:border-zinc-800', 'dark:border-white');
-                b.classList.replace('bg-white', 'bg-zinc-50');
-                b.classList.replace('dark:bg-zinc-900', 'dark:bg-zinc-800');
-                b.classList.replace('text-zinc-500', 'text-zinc-900');
-                b.classList.add('dark:text-white');
+            if (b.dataset.color === state.color) {
+                b.classList.add('ring-2', 'ring-offset-2', 'ring-zinc-400', 'dark:ring-offset-[#161618]');
             } else {
-                b.classList.replace('border-zinc-900', 'border-zinc-200');
-                b.classList.replace('dark:border-white', 'dark:border-zinc-800');
-                b.classList.replace('bg-zinc-50', 'bg-white');
-                b.classList.replace('dark:bg-zinc-800', 'dark:bg-zinc-900');
-                b.classList.replace('text-zinc-900', 'text-zinc-500');
-                b.classList.remove('dark:text-white');
+                b.classList.remove('ring-2', 'ring-offset-2', 'ring-zinc-400', 'dark:ring-offset-[#161618]');
             }
         });
-        
+
+        tplBtns.forEach(b => {
+            if (b.dataset.tpl === state.template) {
+                b.className = 'es-tpl-btn active p-2.5 rounded-[14px] border border-accent-theme bg-accent-theme-alpha text-left transition-all';
+                b.querySelector('i')?.classList.add('text-accent-theme');
+            } else {
+                b.className = 'es-tpl-btn p-2.5 rounded-[14px] border border-black/[0.05] dark:border-white/[0.08] hover:bg-black/5 dark:hover:bg-white/5 text-left transition-all';
+                b.querySelector('i')?.classList.remove('text-accent-theme');
+            }
+        });
+
         updatePreview();
     };
 
     for (let key in inputs) {
-        inputs[key].addEventListener('input', syncInputToState);
+        inputs[key]?.addEventListener('input', syncInputToState);
     }
 
     colorBtns.forEach(btn => {
-        btn.onclick = () => {
+        btn.addEventListener('click', () => {
             state.color = btn.dataset.color;
-            customColorPicker.value = state.color;
+            if (customColorPicker) customColorPicker.value = state.color;
             syncStateToInput();
-        };
+        });
     });
 
-    customColorPicker.addEventListener('input', (e) => {
+    customColorPicker?.addEventListener('input', (e) => {
         state.color = e.target.value;
         syncStateToInput();
     });
 
     tplBtns.forEach(btn => {
-        btn.onclick = () => {
+        btn.addEventListener('click', () => {
             state.template = btn.dataset.tpl;
             syncStateToInput();
-        };
+        });
     });
 
-    btnCopyVisual.onclick = () => {
+    // Copy Visual (dán trực tiếp vào Gmail/Outlook)
+    btnCopyVisual?.addEventListener('click', () => {
         const selection = window.getSelection();
         const range = document.createRange();
         range.selectNodeContents(previewBox);
@@ -468,32 +558,39 @@ export function init() {
 
         try {
             document.execCommand('copy');
-            UI.showAlert('Tuyệt vời!', 'Giao diện đã được chép. Mở cài đặt chữ ký Gmail và ấn Ctrl+V (hoặc Cmd+V) để dán.', 'success', 5000);
+            IslandKit.notify('Đã sao chép chữ ký', 'Mở Cài đặt Gmail/Outlook và nhấn Ctrl+V (hoặc Cmd+V) để dán.', 'success', 3500);
         } catch (err) {
-            UI.showAlert('Lỗi', 'Trình duyệt không hỗ trợ sao chép định dạng này.', 'error');
+            IslandKit.notify('Lỗi sao chép', 'Trình duyệt không hỗ trợ sao chép định dạng trực quan.', 'error');
         }
         selection.removeAllRanges();
-    };
+    });
 
-    btnCopyHtml.onclick = async () => {
+    // Copy mã HTML
+    btnCopyHtml?.addEventListener('click', async () => {
         try {
             await navigator.clipboard.writeText(generateHTML());
-            UI.showAlert('Đã chép HTML', 'Mã nguồn thẻ <table> đã lưu vào bộ nhớ tạm.', 'info');
+            IslandKit.notify('Đã sao chép HTML', 'Mã nguồn bảng HTML đã lưu vào clipboard.', 'success');
         } catch (err) {
-            UI.showAlert('Lỗi', 'Không thể chép mã HTML', 'error');
+            IslandKit.notify('Lỗi sao chép', 'Không thể truy cập bộ nhớ tạm.', 'error');
         }
-    };
+    });
 
-    btnReset.onclick = () => {
-        UI.showConfirm('Khôi phục mặc định', 'Bạn có chắc muốn xóa tất cả thông tin vừa nhập?', () => {
-            state = {
-                name: '', title: '', company: '', phone: '', email: '', website: '', avatar: '',
-                fb: '', x: '', li: '', tk: '', gh: '', otherName: '', otherUrl: '',
-                color: '#09090b', template: 'premium'
-            };
-            syncStateToInput();
-        });
-    };
+    // Reset Form
+    btnReset?.addEventListener('click', () => {
+        UI.showConfirm(
+            'Khôi phục mặc định?',
+            'Bạn có chắc muốn xóa tất cả thông tin vừa nhập?',
+            () => {
+                state = {
+                    name: '', title: '', company: '', phone: '', email: '', website: '', avatar: '',
+                    fb: '', x: '', li: '', gh: '', otherName: '', otherUrl: '',
+                    color: ThemeKit.getAccentColor(), template: 'premium'
+                };
+                syncStateToInput();
+                IslandKit.notify('Đã đặt lại', 'Đã xóa toàn bộ nội dung chữ ký.', 'info');
+            }
+        );
+    });
 
     syncStateToInput();
 }
