@@ -6,11 +6,201 @@ import { UI } from './ui.js';
 // ==========================================
 const contentsContainer = document.getElementById('tab-contents-container');
 const singleAppHost = document.getElementById('single-app-host');
+const multiSplitHost = document.getElementById('multi-split-host');
+const splitGridContainer = document.getElementById('split-grid-container');
+const windowWorkspaceHost = document.getElementById('window-workspace-host');
 const appSwitcher = document.getElementById('app-switcher');
 const switcherCardsWrapper = document.getElementById('switcher-cards-wrapper');
 const wallpaperLayer = document.getElementById('wallpaper-layer');
 
 let currentLoadingToolId = null;
+
+// ==========================================
+// TRẠNG THÁI HỆ THỐNG
+// ==========================================
+const state = {
+    tabs: [{ tabId: 'tab-1', toolId: 'home' }],
+    activeTabId: 'tab-1',
+    isSplitActive: false,
+    splitGridCount: 2,
+    splitToolIds: [],
+    isWindowModeEnabled: localStorage.getItem('hunqos_window_mode') !== 'false',
+    openWindows: []
+};
+
+// ==========================================
+// NHẬN DIỆN THIẾT BỊ: MOBUI / TABUI / DEXUI
+// ==========================================
+let forcedDeviceMode = localStorage.getItem('hunqos_device_mode') || 'auto';
+
+function detectDeviceMode() {
+    if (forcedDeviceMode !== 'auto') {
+        document.documentElement.setAttribute('data-device-mode', forcedDeviceMode);
+        return forcedDeviceMode;
+    }
+    const w = window.innerWidth;
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    let mode = 'phone';
+
+    if (w >= 1024 && !isTouch) {
+        mode = 'desktop'; // DexUI
+    } else if (w >= 680 || (w >= 600 && isTouch)) {
+        mode = 'tablet';  // TabUI
+    } else {
+        mode = 'phone';   // MobUI
+    }
+
+    document.documentElement.setAttribute('data-device-mode', mode);
+    return mode;
+}
+
+window.setForcedDeviceMode = (mode) => {
+    forcedDeviceMode = mode;
+    localStorage.setItem('hunqos_device_mode', mode);
+
+    const modeLabels = {
+        'auto': 'Tự động',
+        'phone': 'MobUI',
+        'tablet': 'TabUI',
+        'desktop': 'DexUI'
+    };
+
+    ['auto', 'phone', 'tablet', 'desktop'].forEach(m => {
+        const btn = document.getElementById(`mode-btn-${m}`);
+        if (btn) {
+            btn.className = (m === mode)
+                ? "py-2.5 px-2 rounded-xl bg-accent-theme text-white font-medium text-xs text-center border border-white/20 transition-all"
+                : "py-2.5 px-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs text-center transition-all";
+        }
+    });
+
+    detectDeviceMode();
+    initHomescreenPages();
+    renderDesktopTabs();
+    UI.showAlert('Chế độ hiển thị', `Đã chuyển sang ${modeLabels[mode]}.`, 'success');
+};
+
+function getGridColumns() {
+    const mode = detectDeviceMode();
+    if (mode === 'desktop') return 8; // DexUI Grid
+    if (mode === 'tablet') return 6;  // TabUI Grid
+    return 4; // MobUI Grid
+}
+
+// ==========================================
+// CHẾ ĐỘ PURE MINIMAL (ZEN DASHBOARD)
+// ==========================================
+let isPureMinimal = localStorage.getItem('hunqos_pure_minimal') === 'true';
+
+function applyPureMinimalMode(enable) {
+    isPureMinimal = enable;
+    document.body.classList.toggle('pure-minimal-mode', enable);
+    const toggleBtn = document.getElementById('toggle-minimal-setting');
+    toggleBtn?.classList.toggle('active', enable);
+    if (enable) {
+        renderPureMinimalAppList();
+        updatePureMinimalClock();
+    }
+}
+
+document.getElementById('toggle-minimal-setting')?.addEventListener('click', () => {
+    isPureMinimal = !isPureMinimal;
+    localStorage.setItem('hunqos_pure_minimal', isPureMinimal);
+    applyPureMinimalMode(isPureMinimal);
+    UI.showAlert('Pure Minimal', isPureMinimal ? 'Đã bật chế độ Zen Minimalist.' : 'Đã trở lại giao diện chuẩn.', 'info');
+});
+
+function updatePureMinimalClock() {
+    const clock = document.getElementById('minimal-clock');
+    const date = document.getElementById('minimal-date');
+    const now = new Date();
+    if (clock) clock.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    if (date) {
+        const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+        date.textContent = `${days[now.getDay()]}, ${now.getDate()} tháng ${now.getMonth() + 1}`;
+    }
+}
+
+function renderPureMinimalAppList(filterText = '') {
+    const listEl = document.getElementById('minimal-app-list');
+    if (!listEl) return;
+    const query = filterText.trim().toLowerCase();
+    const filtered = TOOLS.filter(t => !query || t.name.toLowerCase().includes(query) || (t.desc && t.desc.toLowerCase().includes(query)));
+
+    listEl.innerHTML = filtered.map(tool => `
+        <div class="zen-app-card" onclick="window.openToolGlobal('${tool.id}')">
+            <div class="zen-app-icon">
+                <i class="${tool.icon}"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="zen-app-name truncate">${tool.name}</div>
+                <div class="zen-app-desc">${tool.desc || 'Tiện ích hệ thống'}</div>
+            </div>
+            <i class="fas fa-chevron-right text-[10px] text-zinc-700"></i>
+        </div>
+    `).join('');
+}
+
+document.getElementById('minimal-search-input')?.addEventListener('input', (e) => {
+    renderPureMinimalAppList(e.target.value);
+});
+
+// ==========================================
+// CÀI ĐẶT: BẬT/TẮT CỬA SỔ & BỘ NHỚ
+// ==========================================
+const windowModeToggle = document.getElementById('toggle-windowmode-setting');
+if (windowModeToggle) {
+    windowModeToggle.classList.toggle('active', state.isWindowModeEnabled);
+    windowModeToggle.addEventListener('click', () => {
+        state.isWindowModeEnabled = !state.isWindowModeEnabled;
+        localStorage.setItem('hunqos_window_mode', state.isWindowModeEnabled);
+        windowModeToggle.classList.toggle('active', state.isWindowModeEnabled);
+        UI.showAlert('Quản lý cửa sổ', state.isWindowModeEnabled ? 'Đã bật chế độ cửa sổ nổi.' : 'Đã tắt chế độ cửa sổ nổi (mở ứng dụng toàn màn hình).', 'info');
+    });
+}
+
+async function updateStorageInfo() {
+    const storageEl = document.getElementById('system-storage-info');
+    if (!storageEl) return;
+    if (navigator.storage && navigator.storage.estimate) {
+        try {
+            const { quota, usage } = await navigator.storage.estimate();
+            const usedMB = (usage / (1024 * 1024)).toFixed(1);
+            const totalGB = (quota / (1024 * 1024 * 1024)).toFixed(0);
+            storageEl.textContent = `${usedMB} MB / ~${totalGB} GB`;
+            return;
+        } catch (e) {}
+    }
+    storageEl.textContent = 'Trực tuyến / PWA';
+}
+
+// ==========================================
+// QUẢN LÝ CHẶN CHUỘT PHẢI
+// ==========================================
+let isContextMenuBlocked = localStorage.getItem('hunqos_block_contextmenu') !== 'false';
+
+function handleGlobalContextMenu(e) {
+    if (!isContextMenuBlocked) return true;
+    const tag = e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) {
+        return true;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+}
+document.addEventListener('contextmenu', handleGlobalContextMenu, { capture: true });
+
+const contextmenuToggleBtn = document.getElementById('toggle-contextmenu-setting');
+if (contextmenuToggleBtn) {
+    contextmenuToggleBtn.classList.toggle('active', isContextMenuBlocked);
+    contextmenuToggleBtn.addEventListener('click', () => {
+        isContextMenuBlocked = !isContextMenuBlocked;
+        localStorage.setItem('hunqos_block_contextmenu', isContextMenuBlocked);
+        contextmenuToggleBtn.classList.toggle('active', isContextMenuBlocked);
+        UI.showAlert('Bảo vệ', isContextMenuBlocked ? 'Đã bật chặn chuột phải.' : 'Đã mở khóa chuột phải.', 'info');
+    });
+}
 
 // ==========================================
 // LỊCH SỬ GẦN ĐÂY
@@ -32,21 +222,13 @@ function pushRecentTool(toolId) {
 }
 
 // ==========================================
-// QUẢN LÝ HÌNH NỀN (INDEXEDDB / LOCALSTORAGE & ĐỔI ẢNH)
+// QUẢN LÝ HÌNH NỀN
 // ==========================================
 const DB_NAME = 'HunqOS_DB';
 const DB_STORE = 'settings';
 let dbInstance = null;
 let currentCustomWallpaper = null;
-
-const DEFAULT_WP_DARK = 'radial-gradient(circle at 15% 15%, #064e3b 0%, #06241b 45%, #020f0b 100%)';
-const DEFAULT_WP_LIGHT = 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 40%, #7dd3fc 100%)';
-
 let isDarkMode = localStorage.getItem('hunqos_darkmode') !== 'false';
-
-function getDefaultWallpaper() {
-    return isDarkMode ? DEFAULT_WP_DARK : DEFAULT_WP_LIGHT;
-}
 
 function openOSDatabase() {
     return new Promise((resolve, reject) => {
@@ -90,31 +272,27 @@ async function getWallpaperFromDB() {
 
 async function syncWallpaperDisplay() {
     if (!wallpaperLayer) return;
-
-    if (isMinimalUI) {
+    if (isPureMinimal) {
         wallpaperLayer.style.backgroundImage = 'none';
         return;
     }
-
     if (currentCustomWallpaper === null) {
         currentCustomWallpaper = await getWallpaperFromDB();
     }
-
     if (currentCustomWallpaper && !currentCustomWallpaper.startsWith('radial-gradient') && !currentCustomWallpaper.startsWith('linear-gradient')) {
         wallpaperLayer.style.backgroundImage = `url('${currentCustomWallpaper}')`;
     } else {
-        wallpaperLayer.style.backgroundImage = getDefaultWallpaper();
+        wallpaperLayer.style.backgroundImage = '';
     }
 }
 
 function applyWallpaper(wp) {
     currentCustomWallpaper = wp;
     if (!wallpaperLayer) return;
-
     if (wp && !wp.startsWith('radial-gradient') && !wp.startsWith('linear-gradient')) {
         wallpaperLayer.style.backgroundImage = `url('${wp}')`;
     } else {
-        wallpaperLayer.style.backgroundImage = getDefaultWallpaper();
+        wallpaperLayer.style.backgroundImage = '';
     }
 }
 
@@ -122,8 +300,8 @@ window.resetWallpaper = async () => {
     currentCustomWallpaper = null;
     await saveWallpaperToDB(null);
     localStorage.removeItem('hunqos_custom_wp');
-    applyWallpaper(getDefaultWallpaper());
-    UI.showAlert('Hình nền', 'Đã khôi phục hình nền mặc định.', 'info');
+    applyWallpaper(null);
+    UI.showAlert('Hình nền', 'Đã khôi phục nền mặc định.', 'info');
 };
 
 const wallpaperFileInput = document.getElementById('wallpaper-file-input');
@@ -131,7 +309,6 @@ if (wallpaperFileInput) {
     wallpaperFileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = async (event) => {
             const base64 = event.target.result;
@@ -144,161 +321,22 @@ if (wallpaperFileInput) {
 }
 
 // ==========================================
-// CẤU HÌNH THEME & BỘ PHÂN GIẢI MÀU NỀN ĐƠN / GRADIENT
+// CẤU HÌNH THEME & XỬ LÝ MÀU SẮC ICON
 // ==========================================
-let storedColorMode = localStorage.getItem('hunqos_icon_colormode') || 'white';
-if (storedColorMode === 'accent') {
-    storedColorMode = 'white';
-    localStorage.setItem('hunqos_icon_colormode', 'white');
-}
-
-const themeConfig = {
-    shape: localStorage.getItem('hunqos_icon_shape') || 'rounded',
-    bgMode: localStorage.getItem('hunqos_icon_bgmode') || 'default',
-    customBg: localStorage.getItem('hunqos_icon_custom_bg') || '#10b981',
-    colorMode: storedColorMode,
-    customColor: localStorage.getItem('hunqos_icon_custom_color') || '#ffffff'
-};
-
-function applyThemeShape() {
-    document.documentElement.classList.remove('shape-rounded', 'shape-circle', 'shape-square');
-    document.documentElement.classList.add(`shape-${themeConfig.shape}`);
-
-    ['rounded', 'circle', 'square'].forEach(s => {
-        const btn = document.getElementById(`shape-btn-${s}`);
-        if (btn) {
-            btn.className = (s === themeConfig.shape)
-                ? "py-2 px-2 text-xs rounded-xl bg-accent-theme text-white font-medium text-center"
-                : "py-2 px-2 text-xs rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-center";
-        }
-    });
-}
-
-function updateThemeUIControls() {
-    ['default', 'config', 'custom'].forEach(m => {
-        const btn = document.getElementById(`bgmode-btn-${m}`);
-        if (btn) {
-            btn.className = (m === themeConfig.bgMode)
-                ? "py-2 px-1 text-xs rounded-xl bg-accent-theme text-white font-medium text-center"
-                : "py-2 px-1 text-xs rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-center";
-        }
-    });
-
-    ['white', 'config', 'custom'].forEach(m => {
-        const btn = document.getElementById(`colormode-btn-${m}`);
-        if (btn) {
-            btn.className = (m === themeConfig.colorMode)
-                ? "py-2 px-1 text-xs rounded-xl bg-accent-theme text-white font-medium text-center"
-                : "py-2 px-1 text-xs rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-center";
-        }
-    });
-
-    const customBgWrap = document.getElementById('custom-bg-picker-wrap');
-    if (customBgWrap) customBgWrap.classList.toggle('hidden', themeConfig.bgMode !== 'custom');
-
-    const customIconWrap = document.getElementById('custom-icon-picker-wrap');
-    if (customIconWrap) customIconWrap.classList.toggle('hidden', themeConfig.colorMode !== 'custom');
-}
-
-/**
- * Trợ thủ phân tích màu sắc: Tự nhận diện mã màu đơn sắc hay gradient để xuất CSS chuẩn
- */
 function resolveColorCss(colorValue, isBackground = true) {
     if (!colorValue || typeof colorValue !== 'string') return '';
     const trimmed = colorValue.trim();
     const isGrad = trimmed.includes('gradient(');
-
-    if (isBackground) {
-        return isGrad ? `background-image: ${trimmed};` : `background-color: ${trimmed};`;
-    }
+    if (isBackground) return isGrad ? `background-image: ${trimmed};` : `background-color: ${trimmed};`;
     return isGrad ? `background-image: ${trimmed};` : `color: ${trimmed};`;
 }
 
-/**
- * Tính toán Style Icon: Xử lý mượt mà cả bgColor đơn sắc và gradient
- */
 function computeIconStyles(tool) {
-    let bgStyle = '';
-
-    if (isMinimalUI) {
-        bgStyle = 'background-color: #09090b; border: 1px solid rgba(255, 255, 255, 0.2);';
-    } else if (themeConfig.bgMode === 'default' || themeConfig.bgMode === 'config') {
-        const rawColor = tool.bgColor || tool.color || 'linear-gradient(135deg, #10b981 0%, #047857 100%)';
-        bgStyle = resolveColorCss(rawColor, true);
-    } else if (themeConfig.bgMode === 'custom') {
-        bgStyle = resolveColorCss(themeConfig.customBg, true);
-    }
-
-    let iconStyle = '';
-    let iconClass = '';
-    let chosenColor = '#ffffff';
-
-    if (isMinimalUI) {
-        chosenColor = '#ffffff';
-    } else if (themeConfig.colorMode === 'white') {
-        chosenColor = '#ffffff';
-    } else if (themeConfig.colorMode === 'config') {
-        chosenColor = tool.iconColor || '#ffffff';
-    } else if (themeConfig.colorMode === 'custom') {
-        chosenColor = themeConfig.customColor || '#ffffff';
-    }
-
-    if (chosenColor.includes('gradient(')) {
-        iconClass = 'icon-gradient-text';
-        iconStyle = `background-image: ${chosenColor};`;
-    } else {
-        iconStyle = `color: ${chosenColor};`;
-    }
-
-    return { bgStyle, iconStyle, iconClass };
+    const rawColor = tool.bgColor || tool.color || 'linear-gradient(135deg, #10b981 0%, #047857 100%)';
+    const bgStyle = resolveColorCss(rawColor, true);
+    const iconStyle = `color: ${tool.iconColor || '#ffffff'};`;
+    return { bgStyle, iconStyle, iconClass: '' };
 }
-
-window.setIconShape = (shape) => {
-    themeConfig.shape = shape;
-    localStorage.setItem('hunqos_icon_shape', shape);
-    applyThemeShape();
-    UI.showAlert('Dáng icon', `Đã đổi dáng biểu tượng.`, 'success');
-};
-
-window.setIconBgMode = (mode) => {
-    themeConfig.bgMode = mode;
-    localStorage.setItem('hunqos_icon_bgmode', mode);
-    updateThemeUIControls();
-    initHomescreenPages();
-    renderDock();
-    UI.showAlert('Nền Icon', `Đã đổi kiểu màu nền icon.`, 'success');
-};
-
-window.applyCustomBg = () => {
-    const textVal = document.getElementById('custom-bg-text-input')?.value.trim();
-    const colorVal = document.getElementById('custom-bg-color-input')?.value;
-    const finalVal = textVal || colorVal;
-    themeConfig.customBg = finalVal;
-    localStorage.setItem('hunqos_icon_custom_bg', finalVal);
-    initHomescreenPages();
-    renderDock();
-    UI.showAlert('Nền Icon', `Đã lưu màu nền tùy chọn.`, 'success');
-};
-
-window.setIconColorMode = (mode) => {
-    themeConfig.colorMode = mode;
-    localStorage.setItem('hunqos_icon_colormode', mode);
-    updateThemeUIControls();
-    initHomescreenPages();
-    renderDock();
-    UI.showAlert('Biểu tượng', `Đã đổi màu biểu tượng.`, 'success');
-};
-
-window.applyCustomIconColor = () => {
-    const textVal = document.getElementById('custom-icon-text-input')?.value.trim();
-    const colorVal = document.getElementById('custom-icon-color-input')?.value;
-    const finalVal = textVal || colorVal;
-    themeConfig.customColor = finalVal;
-    localStorage.setItem('hunqos_icon_custom_color', finalVal);
-    initHomescreenPages();
-    renderDock();
-    UI.showAlert('Biểu tượng', `Đã lưu màu biểu tượng tùy chọn.`, 'success');
-};
 
 // ==========================================
 // QUẢN LÝ BỐ CỤC THEO DANH MỤC CATID
@@ -326,23 +364,15 @@ function createLayoutFromCategories() {
     const assignedIds = new Set(Object.values(layout).flatMap(p => p.tools));
     const remainingTools = TOOLS.filter(t => !assignedIds.has(t.id)).map(t => t.id);
     if (remainingTools.length > 0) {
-        layout[pageIdx] = {
-            catId: 'other',
-            title: 'Ứng dụng khác',
-            icon: 'fas fa-th-large',
-            tools: remainingTools
-        };
+        layout[pageIdx] = { catId: 'other', title: 'Khác', icon: 'fas fa-th-large', tools: remainingTools };
     }
-
     return layout;
 }
 
 function getStoredPageLayout() {
-    const raw = localStorage.getItem('hunqos_page_layout_v14');
+    const raw = localStorage.getItem('hunqos_page_layout_v22');
     if (raw) {
-        try {
-            return JSON.parse(raw);
-        } catch (e) {}
+        try { return JSON.parse(raw); } catch (e) {}
     }
     return createLayoutFromCategories();
 }
@@ -352,7 +382,7 @@ let selectedOrganizerPage = 0;
 let selectedToolsForBatch = new Set();
 
 function savePageLayout() {
-    localStorage.setItem('hunqos_page_layout_v14', JSON.stringify(pageLayout));
+    localStorage.setItem('hunqos_page_layout_v22', JSON.stringify(pageLayout));
 }
 
 function getPageCount() {
@@ -366,26 +396,8 @@ window.autoOrganizeByCategories = () => {
     selectedToolsForBatch.clear();
     savePageLayout();
     initHomescreenPages();
-    UI.showAlert('Bố cục danh mục', 'Đã tự động gom nhóm ứng dụng theo danh mục chuẩn.', 'success');
+    UI.showAlert('Bố cục', 'Đã tự động gom nhóm ứng dụng theo danh mục.', 'success');
 };
-
-// ==========================================
-// MINIMALUI & ACCENT
-// ==========================================
-let isMinimalUI = localStorage.getItem('hunqos_minimal_ui') === 'true';
-function applyMinimalUI(enable) {
-    isMinimalUI = enable;
-    document.body.classList.toggle('minimal-ui', enable);
-    document.getElementById('toggle-minimal-setting')?.classList.toggle('active', enable);
-    syncWallpaperDisplay();
-}
-
-document.getElementById('toggle-minimal-setting')?.addEventListener('click', () => {
-    isMinimalUI = !isMinimalUI;
-    localStorage.setItem('hunqos_minimal_ui', isMinimalUI);
-    applyMinimalUI(isMinimalUI);
-    UI.showAlert('MinimalUI', isMinimalUI ? 'Đã kích hoạt chế độ siêu tối giản OLED.' : 'Đã trở về giao diện chuẩn.', 'info');
-});
 
 let currentAccentColor = localStorage.getItem('hunqos_accent_color') || '#10b981';
 function applySystemAccent(color) {
@@ -401,41 +413,15 @@ window.setSystemAccent = (color) => {
 };
 
 // ==========================================
-// THIẾT LẬP THIẾT BỊ
-// ==========================================
-function detectDeviceMode() {
-    const w = window.innerWidth;
-    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-    const mode = (w >= 1024 && !isTouch) ? 'desktop' : (w >= 680 && isTouch ? 'tablet' : 'phone');
-    document.documentElement.setAttribute('data-device-mode', mode);
-    return mode;
-}
-
-function getGridColumns() {
-    const mode = detectDeviceMode();
-    const isLandscape = window.innerWidth > window.innerHeight;
-    if (mode === 'desktop') return 8;
-    if (mode === 'tablet') return 6;
-    if (isLandscape) return 6;
-    return 4;
-}
-
-// ==========================================
 // STATUS BAR & DARK MODE
 // ==========================================
 function updateStatusbarBackground() {
     const topBar = document.getElementById('top-system-bar');
-    const bottomNav = document.getElementById('bottom-nav-container');
     const isHome = !contentsContainer || contentsContainer.classList.contains('hidden') || contentsContainer.style.display === 'none';
 
     if (topBar) {
         topBar.classList.remove('statusbar-home', 'statusbar-app-dark', 'statusbar-app-light');
         topBar.classList.add(isHome ? 'statusbar-home' : (isDarkMode ? 'statusbar-app-dark' : 'statusbar-app-light'));
-    }
-
-    if (bottomNav) {
-        bottomNav.classList.remove('nav-home', 'nav-app-dark', 'nav-app-light');
-        bottomNav.classList.add(isHome ? 'nav-home' : (isDarkMode ? 'nav-app-dark' : 'nav-app-light'));
     }
 }
 
@@ -451,7 +437,6 @@ document.getElementById('toggle-darkmode-setting')?.addEventListener('click', ()
     isDarkMode = !isDarkMode;
     localStorage.setItem('hunqos_darkmode', isDarkMode);
     applyDarkMode(isDarkMode);
-    UI.showAlert('Giao diện', `Đã chuyển sang nền ${isDarkMode ? 'Tối' : 'Sáng'}.`, 'info');
 });
 
 // ==========================================
@@ -487,19 +472,15 @@ function renderDock() {
         }
 
         const tool = getToolData(item.id);
-        const isHomeBtn = item.id === 'home';
-
-        if (isHomeBtn) {
+        if (item.id === 'home') {
             return `
-                <button onclick="window.openToolGlobal('${item.id}')" class="dock-item bg-white text-zinc-900 flex items-center justify-center text-lg active:scale-95 transition-transform" title="${tool.name}">
+                <button onclick="window.goHome()" class="dock-item bg-white text-zinc-900 flex items-center justify-center text-lg active:scale-95 transition-transform" title="${tool.name}">
                     <i class="${tool.icon}"></i>
                 </button>
             `;
         }
 
-        // Tự động giải mã màu đơn sắc hoặc gradient cho Dock item
         const { bgStyle, iconStyle, iconClass } = computeIconStyles(tool);
-
         return `
             <button onclick="window.openToolGlobal('${item.id}')" class="dock-item flex items-center justify-center text-lg active:scale-95 transition-transform border border-white/20 shadow-md" style="${bgStyle}" title="${tool.name}">
                 <i class="${tool.icon} ${iconClass}" style="${iconStyle}"></i>
@@ -509,7 +490,7 @@ function renderDock() {
 }
 
 // ==========================================
-// HOMESCREEN LAUNCHER (TÍCH HỢP MÀU NỀN ĐƠN & GRADIENT)
+// HOMESCREEN LAUNCHER
 // ==========================================
 let currentPageIndex = 0;
 let totalPages = 1;
@@ -529,7 +510,7 @@ function initHomescreenPages() {
 
     const recentIds = getRecentToolIds();
     const recentTools = recentIds.map(id => getToolData(id)).filter(Boolean);
-    const suggestedTools = TOOLS.slice(0, 8);
+    const suggestedTools = TOOLS.slice(0, cols * 2);
 
     let p0Html = `
         <div class="page-category-header">
@@ -591,7 +572,6 @@ function initHomescreenPages() {
         pageEl.className = 'launcher-page no-scrollbar';
 
         const toolIds = pageData.tools || [];
-
         pageEl.innerHTML = `
             <div class="page-category-header">
                 <div class="page-category-badge">
@@ -615,7 +595,6 @@ function initHomescreenPages() {
                 }).join('')}
             </div>
         `;
-
         pagesSlider.appendChild(pageEl);
     }
 
@@ -705,7 +684,7 @@ function renderPageOrganizer() {
     const currentToolIds = currentPageData.tools || [];
 
     let headerHtml = `
-        <div class="flex items-center gap-2 mb-2.5 p-2 bg-black/30 rounded-lg border border-white/5">
+        <div class="flex items-center gap-2 mb-2.5 p-2 bg-black/40 rounded-lg border border-white/5">
             <span class="text-xs text-white/50 shrink-0">Đổi tên trang:</span>
             <input type="text" value="${currentPageData.title || ''}" 
                    onchange="window.renamePageCategory(${selectedOrganizerPage}, this.value)"
@@ -714,9 +693,7 @@ function renderPageOrganizer() {
         </div>
     `;
 
-    if (countBadge) {
-        countBadge.textContent = `Đã chọn ${selectedToolsForBatch.size} app`;
-    }
+    if (countBadge) countBadge.textContent = `Đã chọn ${selectedToolsForBatch.size} app`;
 
     if (selectAllBtnText) {
         const allSelected = currentToolIds.length > 0 && currentToolIds.every(id => selectedToolsForBatch.has(id));
@@ -766,33 +743,25 @@ function renderPageOrganizer() {
 }
 
 window.toggleToolSelection = (toolId) => {
-    if (selectedToolsForBatch.has(toolId)) {
-        selectedToolsForBatch.delete(toolId);
-    } else {
-        selectedToolsForBatch.add(toolId);
-    }
+    if (selectedToolsForBatch.has(toolId)) selectedToolsForBatch.delete(toolId);
+    else selectedToolsForBatch.add(toolId);
     renderPageOrganizer();
 };
 
 window.toggleSelectAllTools = () => {
     const currentToolIds = pageLayout[selectedOrganizerPage]?.tools || [];
     const allSelected = currentToolIds.length > 0 && currentToolIds.every(id => selectedToolsForBatch.has(id));
-
-    if (allSelected) {
-        currentToolIds.forEach(id => selectedToolsForBatch.delete(id));
-    } else {
-        currentToolIds.forEach(id => selectedToolsForBatch.add(id));
-    }
+    if (allSelected) currentToolIds.forEach(id => selectedToolsForBatch.delete(id));
+    else currentToolIds.forEach(id => selectedToolsForBatch.add(id));
     renderPageOrganizer();
 };
 
 window.applyBatchMove = () => {
     const targetSelect = document.getElementById('batch-target-page-select');
     if (!targetSelect || selectedToolsForBatch.size === 0) {
-        UI.showAlert('Lưu ý', 'Hãy tích chọn ít nhất 1 ứng dụng trước khi chuyển.', 'warning');
+        UI.showAlert('Lưu ý', 'Hãy chọn ít nhất 1 ứng dụng.', 'warning');
         return;
     }
-
     const toPage = parseInt(targetSelect.value, 10);
     if (isNaN(toPage) || toPage === selectedOrganizerPage) return;
 
@@ -800,16 +769,14 @@ window.applyBatchMove = () => {
     if (!pageLayout[toPage]) pageLayout[toPage] = { title: `Trang ${toPage + 1}`, tools: [] };
 
     const movingIds = Array.from(selectedToolsForBatch);
-
     pageLayout[selectedOrganizerPage].tools = pageLayout[selectedOrganizerPage].tools.filter(id => !selectedToolsForBatch.has(id));
     pageLayout[toPage].tools.push(...movingIds);
 
     const movedCount = movingIds.length;
     selectedToolsForBatch.clear();
-
     savePageLayout();
     initHomescreenPages();
-    UI.showAlert('Đã chuyển xong', `Đã chuyển ${movedCount} ứng dụng sang ${pageLayout[toPage].title}.`, 'success');
+    UI.showAlert('Thành công', `Đã chuyển ${movedCount} app sang ${pageLayout[toPage].title}.`, 'success');
 };
 
 window.renamePageCategory = (pageIndex, newTitle) => {
@@ -817,7 +784,6 @@ window.renamePageCategory = (pageIndex, newTitle) => {
     pageLayout[pageIndex].title = newTitle.trim() || `Trang ${pageIndex + 1}`;
     savePageLayout();
     initHomescreenPages();
-    UI.showAlert('Đổi tên trang', `Đã cập nhật thành: ${pageLayout[pageIndex].title}`, 'success');
 };
 
 window.selectOrganizerPage = (p) => {
@@ -828,22 +794,17 @@ window.selectOrganizerPage = (p) => {
 
 window.addNewPageSetting = () => {
     const nextPageIndex = getPageCount();
-    pageLayout[nextPageIndex] = {
-        title: `Trang ${nextPageIndex + 1}`,
-        icon: 'fas fa-folder-plus',
-        tools: []
-    };
+    pageLayout[nextPageIndex] = { title: `Trang ${nextPageIndex + 1}`, icon: 'fas fa-folder-plus', tools: [] };
     selectedOrganizerPage = nextPageIndex;
     selectedToolsForBatch.clear();
     savePageLayout();
     initHomescreenPages();
-    UI.showAlert('Trang mới', 'Đã tạo trang mới.', 'info');
+    UI.showAlert('Trang mới', 'Đã thêm trang mới.', 'info');
 };
 
 window.removeEmptyPage = (pageIndex) => {
     const numPages = getPageCount();
     if (numPages <= 1) return;
-
     const newLayout = {};
     let newIndex = 0;
     for (let p = 0; p < numPages; p++) {
@@ -857,15 +818,29 @@ window.removeEmptyPage = (pageIndex) => {
     selectedToolsForBatch.clear();
     savePageLayout();
     initHomescreenPages();
-    UI.showAlert('Bố cục', 'Đã xóa trang rỗng.', 'info');
 };
 
 // ==========================================
-// WORKSPACE, APP LAUNCHER & ĐIỀU HƯỚNG
+// ĐIỀU HƯỚNG & NÚT HOME THÔNG MINH
 // ==========================================
-const state = {
-    tabs: [{ tabId: 'tab-1', toolId: 'home' }],
-    activeTabId: 'tab-1'
+function isHomeScreenVisible() {
+    const homescreenLauncher = document.getElementById('homescreen-launcher');
+    return homescreenLauncher && !homescreenLauncher.classList.contains('hidden') && homescreenLauncher.style.display !== 'none';
+}
+
+window.goHome = () => {
+    window.closeMultitasking();
+
+    // NẾU ĐÃ Ở MÀN HÌNH CHÍNH -> BẤM TIẾP SẼ VỀ TRANG 1
+    if (isHomeScreenVisible()) {
+        const targetHomeIndex = totalPages > 1 ? 1 : 0;
+        goToPage(targetHomeIndex);
+        return;
+    }
+
+    if (state.isSplitActive) window.exitSplitView();
+    state.activeTabId = 'tab-1';
+    showHomescreen();
 };
 
 function showHomescreen() {
@@ -874,7 +849,7 @@ function showHomescreen() {
         contentsContainer.style.display = 'none';
     }
     const homescreenLauncher = document.getElementById('homescreen-launcher');
-    if (homescreenLauncher) {
+    if (homescreenLauncher && !isPureMinimal) {
         homescreenLauncher.classList.remove('hidden');
         homescreenLauncher.style.display = 'flex';
     }
@@ -894,12 +869,9 @@ function hideHomescreen() {
     updateStatusbarBackground();
 }
 
-window.goHome = () => {
-    window.closeMultitasking();
-    state.activeTabId = 'tab-1';
-    showHomescreen();
-};
-
+// ==========================================
+// QUẢN LÝ APP: DEXUI CỬA SỔ / TABUI CHIA LƯỚI / MOBUI
+// ==========================================
 async function openTool(toolId) {
     if (toolId === 'home') {
         window.goHome();
@@ -907,7 +879,17 @@ async function openTool(toolId) {
     }
 
     pushRecentTool(toolId);
+    const mode = detectDeviceMode();
+
+    // 1. NẾU BẬT CỬA SỔ NỔI TRÊN DEXUI HOẶC TABUI -> MỞ CỬA SỔ
+    if (state.isWindowModeEnabled && (mode === 'desktop' || mode === 'tablet')) {
+        openToolInFloatingWindow(toolId);
+        return;
+    }
+
+    // 2. MỞ DẠNG SINGLE APP
     hideHomescreen();
+    if (state.isSplitActive) window.exitSplitView();
 
     let pane = document.getElementById(`pane-${toolId}`);
     if (!pane) {
@@ -940,7 +922,265 @@ async function openTool(toolId) {
 window.openToolGlobal = openTool;
 
 // ==========================================
-// ĐA NHIỆM & SPOTLIGHT
+// CỬA SỔ NỔI TỰ DO (KÉO RÊ & CHỈNH KÍCH THƯỚC)
+// ==========================================
+let windowZIndex = 100;
+
+function openToolInFloatingWindow(toolId) {
+    hideHomescreen();
+    singleAppHost.classList.add('hidden');
+    multiSplitHost.classList.add('hidden');
+    windowWorkspaceHost.classList.remove('hidden');
+
+    const winId = `float-win-${toolId}`;
+    let winEl = document.getElementById(winId);
+    const tool = getToolData(toolId);
+
+    if (winEl) {
+        winEl.style.zIndex = ++windowZIndex;
+        winEl.classList.add('active-window');
+        return;
+    }
+
+    winEl = document.createElement('div');
+    winEl.id = winId;
+    winEl.className = 'os-floating-window active-window';
+    winEl.style.top = `${50 + (state.openWindows.length % 6) * 28}px`;
+    winEl.style.left = `${60 + (state.openWindows.length % 6) * 28}px`;
+    winEl.style.width = '680px';
+    winEl.style.height = '480px';
+    winEl.style.zIndex = ++windowZIndex;
+
+    winEl.innerHTML = `
+        <div class="os-window-header" id="${winId}-header">
+            <div class="os-traffic-lights">
+                <div class="traffic-btn traffic-btn-close" onclick="window.closeFloatingWindow('${toolId}')" title="Đóng">
+                    <i class="fas fa-times"></i>
+                </div>
+                <div class="traffic-btn traffic-btn-min" onclick="window.minimizeFloatingWindow('${toolId}')" title="Thu nhỏ">
+                    <i class="fas fa-minus"></i>
+                </div>
+                <div class="traffic-btn traffic-btn-max" onclick="window.maximizeFloatingWindow('${toolId}')" title="Phóng to">
+                    <i class="fas fa-expand-alt"></i>
+                </div>
+            </div>
+            <div class="os-window-title">
+                <i class="${tool.icon} text-accent-theme"></i>
+                <span>${tool.name}</span>
+            </div>
+            <div class="w-12"></div>
+        </div>
+        <div class="os-window-content no-scrollbar" id="${winId}-content">
+            <div class="m-auto text-xs text-white/40 p-6"><i class="fas fa-spinner fa-spin mr-1.5"></i> Đang tải...</div>
+        </div>
+        <div class="window-resize-handle" id="${winId}-resizer" title="Kéo để chỉnh kích thước">
+            <i class="fas fa-arrows-up-down-left-right"></i>
+        </div>
+    `;
+
+    windowWorkspaceHost.appendChild(winEl);
+    state.openWindows.push(toolId);
+    if (!state.tabs.some(t => t.toolId === toolId)) {
+        state.tabs.push({ tabId: toolId, toolId: toolId });
+    }
+
+    makeFloatingWindowInteractive(winEl, document.getElementById(`${winId}-header`), document.getElementById(`${winId}-resizer`));
+    renderDesktopTabs();
+
+    import(`../tools/${toolId}/index.js`).then(mod => {
+        const contentEl = document.getElementById(`${winId}-content`);
+        if (!contentEl) return;
+        if (mod.template) contentEl.innerHTML = mod.template();
+        if (mod.init) mod.init(contentEl);
+    });
+}
+
+function makeFloatingWindowInteractive(winEl, headerEl, resizerEl) {
+    let offsetX = 0, offsetY = 0, isDragging = false;
+    let isResizing = false, startW = 0, startH = 0, startX = 0, startY = 0;
+
+    // Kéo di chuyển cửa sổ
+    headerEl.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.traffic-btn')) return;
+        isDragging = true;
+        winEl.style.zIndex = ++windowZIndex;
+        document.querySelectorAll('.os-floating-window').forEach(w => w.classList.remove('active-window'));
+        winEl.classList.add('active-window');
+        offsetX = e.clientX - winEl.offsetLeft;
+        offsetY = e.clientY - winEl.offsetTop;
+    });
+
+    // Kéo chỉnh kích thước cửa sổ
+    resizerEl.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        isResizing = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startW = parseInt(document.defaultView.getComputedStyle(winEl).width, 10);
+        startH = parseInt(document.defaultView.getComputedStyle(winEl).height, 10);
+        document.body.style.userSelect = 'none';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+            winEl.style.left = `${Math.max(0, e.clientX - offsetX)}px`;
+            winEl.style.top = `${Math.max(42, e.clientY - offsetY)}px`;
+        }
+        if (isResizing) {
+            const newW = Math.max(320, startW + (e.clientX - startX));
+            const newH = Math.max(220, startH + (e.clientY - startY));
+            winEl.style.width = `${newW}px`;
+            winEl.style.height = `${newH}px`;
+        }
+    });
+
+    window.addEventListener('mouseup', () => {
+        isDragging = false;
+        if (isResizing) {
+            isResizing = false;
+            document.body.style.userSelect = '';
+        }
+    });
+
+    winEl.addEventListener('mousedown', () => {
+        winEl.style.zIndex = ++windowZIndex;
+        document.querySelectorAll('.os-floating-window').forEach(w => w.classList.remove('active-window'));
+        winEl.classList.add('active-window');
+    });
+}
+
+window.closeFloatingWindow = (toolId) => {
+    document.getElementById(`float-win-${toolId}`)?.remove();
+    state.openWindows = state.openWindows.filter(id => id !== toolId);
+    state.tabs = state.tabs.filter(t => t.toolId !== toolId);
+    renderDesktopTabs();
+    if (state.openWindows.length === 0) window.goHome();
+};
+
+window.minimizeFloatingWindow = (toolId) => {
+    const winEl = document.getElementById(`float-win-${toolId}`);
+    if (winEl) winEl.style.display = 'none';
+};
+
+window.maximizeFloatingWindow = (toolId) => {
+    const winEl = document.getElementById(`float-win-${toolId}`);
+    if (!winEl) return;
+    if (winEl.dataset.maximized === 'true') {
+        winEl.style.top = winEl.dataset.prevTop;
+        winEl.style.left = winEl.dataset.prevLeft;
+        winEl.style.width = winEl.dataset.prevWidth;
+        winEl.style.height = winEl.dataset.prevHeight;
+        winEl.dataset.maximized = 'false';
+    } else {
+        winEl.dataset.prevTop = winEl.style.top;
+        winEl.dataset.prevLeft = winEl.style.left;
+        winEl.dataset.prevWidth = winEl.style.width;
+        winEl.dataset.prevHeight = winEl.style.height;
+        winEl.style.top = '42px';
+        winEl.style.left = '0px';
+        winEl.style.width = '100vw';
+        winEl.style.height = 'calc(100vh - 42px - 72px)';
+        winEl.dataset.maximized = 'true';
+    }
+};
+
+// ==========================================
+// ĐA NHIỆM LƯỚI MỞ RỘNG (CHIA 2, 3, 4)
+// ==========================================
+const layoutPickerModal = document.getElementById('layout-picker-modal');
+
+window.openLayoutSelector = () => {
+    layoutPickerModal?.classList.remove('pointer-events-none', 'opacity-0');
+    layoutPickerModal?.classList.add('opacity-100');
+};
+
+window.closeLayoutSelector = () => {
+    layoutPickerModal?.classList.add('pointer-events-none', 'opacity-0');
+    layoutPickerModal?.classList.remove('opacity-100');
+};
+
+window.setSplitLayoutMode = (count) => {
+    window.closeLayoutSelector();
+    state.splitGridCount = count;
+
+    // Lấy danh sách app đang chạy hoặc lấy app mẫu từ TOOLS
+    const runningTools = state.tabs.filter(t => t.toolId !== 'home').map(t => t.toolId);
+    const chosenTools = [...runningTools];
+    while (chosenTools.length < count) {
+        const next = TOOLS.find(t => !chosenTools.includes(t.id));
+        if (next) chosenTools.push(next.id);
+        else break;
+    }
+
+    startMultiSplitView(chosenTools.slice(0, count));
+};
+
+async function startMultiSplitView(toolIds) {
+    hideHomescreen();
+    state.isSplitActive = true;
+    state.splitToolIds = toolIds;
+
+    singleAppHost.classList.add('hidden');
+    windowWorkspaceHost.classList.add('hidden');
+    multiSplitHost.classList.remove('hidden');
+
+    const count = toolIds.length;
+    splitGridContainer.className = 'w-full h-full grid gap-2 p-2';
+
+    if (count === 2) {
+        splitGridContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        splitGridContainer.style.gridTemplateRows = '1fr';
+    } else if (count === 3) {
+        splitGridContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        splitGridContainer.style.gridTemplateRows = 'repeat(2, 1fr)';
+    } else {
+        splitGridContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        splitGridContainer.style.gridTemplateRows = 'repeat(2, 1fr)';
+    }
+
+    splitGridContainer.innerHTML = toolIds.map((id, idx) => {
+        const tool = getToolData(id);
+        const isSpanned = (count === 3 && idx === 0) ? 'row-span-2' : '';
+        return `
+            <div class="split-pane-card ${isSpanned}" id="pane-split-${id}">
+                <div class="split-pane-header">
+                    <span class="text-xs font-semibold text-white truncate flex items-center gap-1.5">
+                        <i class="${tool.icon} text-accent-theme"></i> ${tool.name}
+                    </span>
+                    <button onclick="window.exitSplitView()" class="text-white/40 hover:text-rose-400 text-xs">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="flex-1 overflow-auto no-scrollbar relative" id="pane-content-${id}">
+                    <div class="m-auto text-xs text-white/40 p-4"><i class="fas fa-spinner fa-spin mr-1"></i> Đang tải...</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    for (const id of toolIds) {
+        try {
+            const mod = await import(`../tools/${id}/index.js`);
+            const targetEl = document.getElementById(`pane-content-${id}`);
+            if (targetEl) {
+                if (mod.template) targetEl.innerHTML = mod.template();
+                if (mod.init) mod.init(targetEl);
+            }
+        } catch (e) {}
+    }
+
+    UI.showAlert('Đa nhiệm lưới', `Đang chia màn hình cho ${count} ứng dụng.`, 'info');
+}
+
+window.exitSplitView = () => {
+    state.isSplitActive = false;
+    multiSplitHost.classList.add('hidden');
+    singleAppHost.classList.remove('hidden');
+    splitGridContainer.innerHTML = '';
+};
+
+// ==========================================
+// ĐA NHIỆM SWITCHER & SPOTLIGHT
 // ==========================================
 window.openMultitasking = () => {
     if (!switcherCardsWrapper) return;
@@ -949,13 +1189,21 @@ window.openMultitasking = () => {
     switcherCardsWrapper.innerHTML = running.length ? running.map(tab => {
         const tool = getToolData(tab.toolId);
         return `
-            <div onclick="window.openToolGlobal('${tab.toolId}'); window.closeMultitasking();" 
-                 class="w-[200px] h-[260px] rounded-2xl bg-zinc-900 border border-white/15 p-4 flex flex-col justify-between shrink-0 cursor-pointer active:scale-95 transition-transform">
-                <div class="flex items-center gap-2">
-                    <i class="${tool.icon} text-accent-theme"></i>
-                    <span class="font-bold text-xs truncate">${tool.name}</span>
+            <div class="w-[220px] h-[280px] rounded-2xl bg-zinc-900 border border-white/15 p-4 flex flex-col justify-between shrink-0 cursor-pointer active:scale-95 transition-transform"
+                 onclick="window.openToolGlobal('${tab.toolId}'); window.closeMultitasking();">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 truncate">
+                        <i class="${tool.icon} text-accent-theme text-xs"></i>
+                        <span class="font-bold text-xs truncate">${tool.name}</span>
+                    </div>
                 </div>
-                <div class="text-[11px] text-zinc-500 text-center">Chạm để mở lại</div>
+                <div class="text-[11px] text-zinc-500 text-center">Bấm để mở lại</div>
+                <div class="pt-2 border-t border-white/10 flex gap-2">
+                    <button onclick="event.stopPropagation(); window.setSplitLayoutMode(2)"
+                        class="flex-1 py-1.5 rounded-lg bg-accent-theme/20 border border-accent-theme/40 text-accent-theme text-xs font-semibold">
+                        <i class="fas fa-columns mr-1"></i> Ghép đôi
+                    </button>
+                </div>
             </div>
         `;
     }).join('') : `<div class="text-zinc-500 m-auto text-xs">Không có ứng dụng nào đang mở</div>`;
@@ -972,9 +1220,12 @@ window.closeMultitasking = () => {
 document.getElementById('close-switcher-btn')?.addEventListener('click', window.closeMultitasking);
 
 window.closeAllTabs = () => {
+    if (state.isSplitActive) window.exitSplitView();
     state.tabs = [{ tabId: 'tab-1', toolId: 'home' }];
     state.activeTabId = 'tab-1';
     singleAppHost.innerHTML = '';
+    windowWorkspaceHost.innerHTML = '';
+    state.openWindows = [];
     showHomescreen();
     window.closeMultitasking();
     renderDesktopTabs();
@@ -996,7 +1247,7 @@ function renderDesktopTabs() {
     }).join('');
 }
 
-// Spotlight
+// Spotlight Search
 const cmdPalette = document.getElementById('cmd-palette');
 const cmdInput = document.getElementById('cmd-input');
 const cmdResults = document.getElementById('cmd-results');
@@ -1058,24 +1309,61 @@ if (cmdPalette) {
     });
 }
 
-// Cử chỉ Home Bar
-const homeBar = document.getElementById('home-bar-touch-area');
-if (homeBar) {
-    homeBar.addEventListener('click', () => {
-        const homescreenLauncher = document.getElementById('homescreen-launcher');
-        if (homescreenLauncher && homescreenLauncher.style.display === 'none') {
-            window.goHome();
-        } else {
+// ==========================================
+// MINI BUBBLE (MOBUI)
+// ==========================================
+const miniBubble = document.getElementById('mini-bubble');
+if (miniBubble) {
+    let lastTapTime = 0;
+    let singleTapTimeout = null;
+    let autoDimTimer = null;
+
+    function resetBubbleDimTimer() {
+        miniBubble.classList.remove('bubble-dimmed');
+        clearTimeout(autoDimTimer);
+        autoDimTimer = setTimeout(() => {
+            miniBubble.classList.add('bubble-dimmed');
+        }, 3500);
+    }
+
+    resetBubbleDimTimer();
+    window.addEventListener('touchstart', resetBubbleDimTimer, { passive: true });
+    window.addEventListener('mousemove', resetBubbleDimTimer, { passive: true });
+
+    const handleBubbleTap = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        resetBubbleDimTimer();
+
+        const now = Date.now();
+        const timeDiff = now - lastTapTime;
+
+        if (timeDiff < 280) {
+            clearTimeout(singleTapTimeout);
+            singleTapTimeout = null;
             window.openMultitasking();
+            if (navigator.vibrate) navigator.vibrate(30);
+        } else {
+            singleTapTimeout = setTimeout(() => {
+                window.goHome();
+                singleTapTimeout = null;
+            }, 285);
         }
-    });
+        lastTapTime = now;
+    };
+
+    miniBubble.addEventListener('click', handleBubbleTap);
+    miniBubble.addEventListener('touchend', handleBubbleTap, { passive: false });
 }
 
 // ==========================================
 // CÀI ĐẶT & HỆ THỐNG
 // ==========================================
 const settingsModal = document.getElementById('settings-modal');
-window.openSettings = () => settingsModal?.classList.add('active');
+window.openSettings = () => {
+    updateStorageInfo();
+    settingsModal?.classList.add('active');
+};
 window.closeSettings = () => settingsModal?.classList.remove('active');
 
 let isStatusbarEnabled = localStorage.getItem('hunqos_statusbar_visible') !== 'false';
@@ -1091,18 +1379,18 @@ document.getElementById('toggle-statusbar-setting')?.addEventListener('click', (
     applyStatusbarVisibility(isStatusbarEnabled);
 });
 
-let navMode = localStorage.getItem('hunqos_nav_mode') || 'homebar';
+let navMode = localStorage.getItem('hunqos_nav_mode') || 'bubble';
 function applyNavigationMode(mode) {
     navMode = mode;
     const isAndroid = mode === 'android';
     document.body.classList.toggle('nav-mode-android', isAndroid);
 
-    const btnHomebar = document.getElementById('nav-mode-btn-homebar');
+    const btnBubble = document.getElementById('nav-mode-btn-bubble');
     const btnAndroid = document.getElementById('nav-mode-btn-android');
 
-    if (btnHomebar && btnAndroid) {
-        btnHomebar.classList.toggle('bg-accent-theme', !isAndroid);
-        btnHomebar.classList.toggle('bg-white/10', isAndroid);
+    if (btnBubble && btnAndroid) {
+        btnBubble.classList.toggle('bg-accent-theme', !isAndroid);
+        btnBubble.classList.toggle('bg-white/10', isAndroid);
         btnAndroid.classList.toggle('bg-accent-theme', isAndroid);
         btnAndroid.classList.toggle('bg-white/10', !isAndroid);
     }
@@ -1112,7 +1400,7 @@ applyNavigationMode(navMode);
 window.setNavigationMode = (mode) => {
     localStorage.setItem('hunqos_nav_mode', mode);
     applyNavigationMode(mode);
-    UI.showAlert('Điều hướng', mode === 'android' ? 'Đã bật 3 phím điều hướng.' : 'Đã bật thanh Home Bar.', 'info');
+    UI.showAlert('Điều hướng MobUI', mode === 'android' ? 'Đã bật thanh 3 phím.' : 'Đã bật bóng nổi Mini Bubble.', 'info');
 };
 
 window.factoryResetOS = () => {
@@ -1136,6 +1424,7 @@ function updateOSClock() {
     if (clock) {
         clock.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     }
+    if (isPureMinimal) updatePureMinimalClock();
 }
 setInterval(updateOSClock, 1000);
 updateOSClock();
@@ -1152,10 +1441,8 @@ if ('getBattery' in navigator) {
 }
 
 async function initHunqOS() {
-    applyMinimalUI(isMinimalUI);
+    applyPureMinimalMode(isPureMinimal);
     applySystemAccent(currentAccentColor);
-    applyThemeShape();
-    updateThemeUIControls();
     applyDarkMode(isDarkMode);
     applyNavigationMode(navMode);
     detectDeviceMode();
@@ -1166,7 +1453,9 @@ async function initHunqOS() {
 }
 
 window.addEventListener('resize', () => {
+    detectDeviceMode();
     initHomescreenPages();
+    renderDesktopTabs();
 });
 
 initHunqOS();
