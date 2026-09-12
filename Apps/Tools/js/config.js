@@ -1,402 +1,549 @@
+// =========================================================================
+// 1. DANH MỤC HỆ THỐNG (CATEGORIES)
+// =========================================================================
 export const CATEGORIES = [
-    { id: 'utilities', name: 'Tiện Ích', icon: 'fas fa-tools', desc: 'Các công cụ đa năng, tiện lợi hàng ngày' },
-    { id: 'calc', name: 'Máy Tính', icon: 'fas fa-calculator', desc: 'Tính toán toán học và tài chính' },
-    { id: 'converter', name: 'Chuyển Đổi', icon: 'fas fa-exchange-alt', desc: 'Quy đổi đơn vị, tỷ giá, kích cỡ' },
-    { id: 'text', name: 'Văn Bản', icon: 'fas fa-align-left', desc: 'Xử lý chuỗi, ngôn từ và định dạng văn bản' },
-    { id: 'document', name: 'Tài Liệu', icon: 'fas fa-file-alt', desc: 'Xử lý tệp tin, PDF và tài liệu văn phòng' },
-    { id: 'life', name: 'Đời Sống', icon: 'fas fa-heartbeat', desc: 'Sức khỏe, thời gian và sinh hoạt' },
-    { id: 'dev', name: 'Developer', icon: 'fas fa-code', desc: 'Công cụ lập trình, web và dữ liệu' },
-    { id: 'system', name: 'Hệ Thống', icon: 'fas fa-laptop-code', desc: 'Mạng, bảo mật và thiết bị' },
-    { id: 'entertainment', name: 'Giải Trí', icon: 'fas fa-star', desc: 'Trò chơi, sự kiện và tiện ích thư giãn' }
+    { 
+        id: 'utilities', 
+        name: 'Tiện Ích', 
+        icon: 'fas fa-tools', 
+        color: '#10b981', 
+        desc: 'Công cụ đa năng hỗ trợ công việc và sinh hoạt hàng ngày' 
+    },
+    { 
+        id: 'calc', 
+        name: 'Tính Toán', 
+        icon: 'fas fa-calculator', 
+        color: '#f59e0b', 
+        desc: 'Tính toán tài chính, tiền lương, khoản vay và công thức' 
+    },
+    { 
+        id: 'converter', 
+        name: 'Chuyển Đổi', 
+        icon: 'fas fa-exchange-alt', 
+        color: '#06b6d4', 
+        desc: 'Quy đổi tỷ giá tiền tệ, kích cỡ, khối lượng và đơn vị đo' 
+    },
+    { 
+        id: 'text', 
+        name: 'Văn Bản', 
+        icon: 'fas fa-align-left', 
+        color: '#8b5cf6', 
+        desc: 'Xử lý ký tự, gieo vần, đếm từ và định dạng chuỗi' 
+    },
+    { 
+        id: 'document', 
+        name: 'Tài Liệu', 
+        icon: 'fas fa-file-alt', 
+        color: '#ef4444', 
+        desc: 'Biên tập, ghép tách tệp PDF và bảng tính Excel' 
+    },
+    { 
+        id: 'life', 
+        name: 'Đời Sống', 
+        icon: 'fas fa-heartbeat', 
+        color: '#ec4899', 
+        desc: 'Sức khỏe, chu kỳ giấc ngủ, thời gian và sinh hoạt' 
+    },
+    { 
+        id: 'dev', 
+        name: 'Lập Trình', 
+        icon: 'fas fa-code', 
+        color: '#3b82f6', 
+        desc: 'Công cụ dữ liệu, kiểm thử regex, mã hóa và định dạng code' 
+    },
+    { 
+        id: 'system', 
+        name: 'Hệ Thống', 
+        icon: 'fas fa-microchip', 
+        color: '#64748b', 
+        desc: 'Kiểm tra phần cứng, màn hình, bàn phím và bảo mật mạng' 
+    },
+    { 
+        id: 'entertainment', 
+        name: 'Giải Trí', 
+        icon: 'fas fa-gamepad', 
+        color: '#a855f7', 
+        desc: 'Bảng LED cổ vũ, trò chơi ngẫu nhiên và ghi chú' 
+    }
 ];
 
+// =========================================================================
+// 2. DANH SÁCH CÔNG CỤ (TOOLS) - TƯƠNG THÍCH CHUẨN VỚI MAIN.JS
+// =========================================================================
 export const TOOLS = [
-    // ==========================================
-    // 1. TIỆN ÍCH (utilities)
-    // ==========================================
+    // ---------------------------------------------------------------------
+    // TIỆN ÍCH HẰNG NGÀY (utilities)
+    // ---------------------------------------------------------------------
     {
         id: 'qr-generator',
         catId: 'utilities',
-        name: 'Tạo mã QR',
+        name: 'Tạo Mã QR',
         icon: 'fas fa-qrcode',
-        desc: 'Tạo mã QR tùy chỉnh cho URL, WiFi, Liên hệ, Tin nhắn với khả năng chèn Logo và thay đổi màu sắc.',
-        tags: ['qr code', 'tạo mã qr', 'wifi qr', 'vcard', 'marketing', 'generator']
+        bgColor: 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)',
+        iconColor: '#ffffff',
+        desc: 'Tạo mã QR cho link, WiFi, danh bạ vCard và văn bản kèm logo tùy chỉnh.',
+        tags: ['qr', 'tạo mã qr', 'wifi', 'vcard', 'barcode']
     },
     {
         id: 'email-signature',
         catId: 'utilities',
-        name: 'Tạo chữ ký Email',
+        name: 'Chữ Ký Email',
         icon: 'fas fa-envelope-open-text',
-        desc: 'Thiết kế chữ ký email chuyên nghiệp, tương thích tốt với Gmail, Outlook, Apple Mail và dán trực tiếp dễ dàng.',
-        tags: ['email', 'chữ ký', 'signature', 'gmail', 'outlook', 'mail', 'thiết kế', 'văn phòng']
+        bgColor: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%)',
+        iconColor: '#ffffff',
+        desc: 'Thiết kế chữ ký email chuyên nghiệp cho Gmail, Outlook và Apple Mail.',
+        tags: ['email', 'chữ ký', 'signature', 'gmail', 'mail']
     },
     {
         id: 'reverse-image-search',
         catId: 'utilities',
-        name: 'Tìm kiếm bằng hình ảnh',
-        icon: 'fas fa-image',
-        desc: 'Truy tìm nguồn gốc, ảnh gốc và ảnh tương tự bằng cách upload lên Google Lens, Yandex, Bing.',
-        tags: ['image', 'search', 'ảnh', 'tìm kiếm', 'google lens', 'yandex', 'bing', 'reverse image']
-    },
-    {
-        id: 'excel-unlocker',
-        catId: 'utilities',
-        name: 'Mở khóa Sheet Excel',
-        icon: 'fas fa-file-excel',
-        desc: 'Xóa bỏ mật khẩu bảo vệ trang tính (Sheet Protection) của file Excel. Xử lý an toàn 100% E2E.',
-        tags: ['excel', 'unlock', 'mở khóa', 'bẻ khóa', 'sheet', 'mật khẩu', 'password']
+        name: 'Tìm Ảnh Gốc',
+        icon: 'fas fa-search-plus',
+        bgColor: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #3730a3 100%)',
+        iconColor: '#ffffff',
+        desc: 'Tra cứu nguồn gốc và phiên bản độ phân giải cao qua Google Lens, Yandex.',
+        tags: ['ảnh', 'tìm kiếm', 'google lens', 'image', 'reverse']
     },
     {
         id: 'gmail-dot-trick',
         catId: 'utilities',
-        name: 'Gmail Dot Trick',
-        icon: 'fas fa-envelope-open-text',
-        desc: 'Tạo hàng ngàn bí danh email (alias) bằng cách chèn dấu chấm vào Username.',
-        tags: ['gmail', 'email', 'dot trick', 'alias', 'bí danh', 'clone']
+        name: 'Gmail Alias',
+        icon: 'fas fa-at',
+        bgColor: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 50%, #9f1239 100%)',
+        iconColor: '#ffffff',
+        desc: 'Tạo hàng trăm biến thể email nhận tin bằng quy tắc dấu chấm Gmail.',
+        tags: ['gmail', 'dot trick', 'alias', 'email clone']
     },
     {
         id: 'random-generator',
         catId: 'utilities',
-        name: 'Quay Số / Bốc Thăm',
+        name: 'Bốc Thăm',
         icon: 'fas fa-dice',
-        desc: 'Công cụ quay số, chọn tên ngẫu nhiên tích hợp thuật toán Crypto chống thiên vị.',
-        tags: ['ngẫu nhiên', 'random', 'quay số', 'bốc thăm', 'chọn tên', 'xổ số']
+        bgColor: 'linear-gradient(135deg, #f97316 0%, #ea580c 50%, #9a3412 100%)',
+        iconColor: '#ffffff',
+        desc: 'Quay số ngẫu nhiên, tung xúc xắc và bốc thăm danh sách công bằng.',
+        tags: ['random', 'quay số', 'bốc thăm', 'xúc xắc', 'may mắn']
     },
     {
         id: 'phone-encoder',
         catId: 'utilities',
         name: 'Mã Hóa SĐT',
         icon: 'fas fa-phone-slash',
-        desc: 'Mã hóa số điện thoại thành chữ, emoji, hoặc ký tự tàng hình để lách bộ lọc của các sàn TMĐT. Hỗ trợ giải mã ngược.',
-        tags: ['mã hóa', 'sđt', 'phone', 'encode', 'lách luật', 'shopee', 'tiktok', 'ẩn số']
+        bgColor: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #115e59 100%)',
+        iconColor: '#ffffff',
+        desc: 'Chuyển đổi số điện thoại thành ký tự đặc biệt để đăng bài không bị chặn.',
+        tags: ['sđt', 'ẩn số', 'mã hóa', 'phone', 'lách lọc']
     },
     {
-        id: 'num-to-text',
+        id: 'vn-map',
         catId: 'utilities',
-        name: 'Đọc Số Tiền',
-        icon: 'fas fa-coins',
-        desc: 'Công cụ chuyển đổi số liệu thành văn bản đa ngôn ngữ siêu tốc. Hỗ trợ 5 ngôn ngữ Native (Việt, Anh, Nhật, Trung, Hàn), đọc phát âm chuẩn và tự động dịch.',
-        tags: ['đọc số', 'đổi số thành chữ', 'tiền tệ', 'phát âm', 'text to speech', 'number', 'currency', 'money', 'dịch thuật', 'kế toán']
+        name: 'Tra Cứu Địa Chỉ',
+        icon: 'fas fa-map-marked-alt',
+        bgColor: 'linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #075985 100%)',
+        iconColor: '#ffffff',
+        desc: 'Chuyển đổi và tra cứu đối chiếu địa danh hành chính cũ - mới tại Việt Nam.',
+        tags: ['địa chỉ', 'bản đồ', 'hành chính', 'tỉnh thành', 'quận huyện']
     },
 
-    // ==========================================
-    // 2. MÁY TÍNH (calc)
-    // ==========================================
+    // ---------------------------------------------------------------------
+    // TÍNH TOÁN & TÀI CHÍNH (calc)
+    // ---------------------------------------------------------------------
     {
         id: 'multi-calculator',
         catId: 'calc',
-        name: 'Multi Calculator',
+        name: 'Máy Tính',
         icon: 'fas fa-calculator',
-        desc: 'Máy tính đa năng tích hợp bộ lưu trữ lịch sử tính toán và chuyển đổi đơn vị.',
-        tags: ['máy tính', 'calculator', 'tính toán', 'đa năng']
+        bgColor: 'linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)',
+        iconColor: '#ffffff',
+        desc: 'Máy tính số học đa năng có lưu lại lịch sử các bước tính toán.',
+        tags: ['máy tính', 'calculator', 'cộng trừ', 'số học']
     },
     {
-        id: 'percentage-calculator',
+        id: 'finance',
         catId: 'calc',
-        name: 'Máy Tính Phần Trăm',
-        icon: 'fas fa-percentage',
-        desc: 'Tính toán cực nhanh các bài toán %: tỷ lệ tăng giảm, X là bao nhiêu % của Y, và % của một số.',
-        tags: ['phần trăm', 'tính toán', 'máy tính', 'percentage', 'tỷ lệ']
+        name: 'Quản Lý Thu Chi',
+        icon: 'fas fa-wallet',
+        bgColor: 'linear-gradient(135deg, #10b981 0%, #059669 50%, #064e3b 100%)',
+        iconColor: '#ffffff',
+        desc: 'Sổ tay theo dõi dòng tiền, hoạch định ngân sách và kiểm soát chi tiêu.',
+        tags: ['tài chính', 'thu chi', 'ngân sách', 'tiền', 'finance']
+    },
+    {
+        id: 'salary-calculator',
+        catId: 'calc',
+        name: 'Lương Net/Gross',
+        icon: 'fas fa-money-check-alt',
+        bgColor: 'linear-gradient(135deg, #84cc16 0%, #65a30d 50%, #3f6212 100%)',
+        iconColor: '#ffffff',
+        desc: 'Quy đổi thu nhập Net sang Gross và tính chi tiết tiền bảo hiểm, thuế TNCN.',
+        tags: ['lương', 'net', 'gross', 'thuế tncn', 'bảo hiểm']
     },
     {
         id: 'loan-calculator',
         catId: 'calc',
-        name: 'Máy Tính Vay Trả Góp',
+        name: 'Tính Vay Trả Góp',
         icon: 'fas fa-hand-holding-usd',
-        desc: 'Tính toán chính xác lịch trả nợ hàng tháng theo chuẩn Dư nợ giảm dần hoặc Trả góp cố định (EMI).',
-        tags: ['vay', 'trả góp', 'lãi suất', 'ngân hàng', 'emi', 'tài chính', 'tiền']
+        bgColor: 'linear-gradient(135deg, #eab308 0%, #ca8a04 50%, #854d0e 100%)',
+        iconColor: '#ffffff',
+        desc: 'Lập bảng chi tiết gốc và lãi phải trả hàng tháng theo dư nợ giảm dần.',
+        tags: ['vay', 'lãi suất', 'ngân hàng', 'trả góp', 'emi']
+    },
+    {
+        id: 'percentage-calculator',
+        catId: 'calc',
+        name: 'Tính Phần Trăm',
+        icon: 'fas fa-percentage',
+        bgColor: 'linear-gradient(135deg, #fb923c 0%, #ea580c 50%, #9a3412 100%)',
+        iconColor: '#ffffff',
+        desc: 'Tính tỷ lệ % tăng giảm, chiết khấu giảm giá và độ chênh lệch giữa hai số.',
+        tags: ['phần trăm', 'tỷ lệ', 'chiết khấu', 'percentage']
     },
 
-    // ==========================================
-    // 3. CHUYỂN ĐỔI (converter)
-    // ==========================================
-    {
-        id: 'unit-converter',
-        catId: 'converter',
-        name: 'Chuyển đổi Đơn vị',
-        icon: 'fas fa-exchange-alt',
-        desc: 'Công cụ chuyển đổi 2 chiều siêu tốc giữa các đơn vị Chiều dài, Thể tích, Khối lượng và Tốc độ.',
-        tags: ['chuyển đổi', 'đơn vị', 'mét', 'kg', 'lít', 'converter', 'đo lường']
-    },
+    // ---------------------------------------------------------------------
+    // QUY ĐỔI & CHUYỂN HÓA (converter)
+    // ---------------------------------------------------------------------
     {
         id: 'currency-converter',
         catId: 'converter',
-        name: 'Chuyển đổi Tiền tệ',
+        name: 'Tỷ Giá Ngoại Tệ',
         icon: 'fas fa-money-bill-wave',
-        desc: 'Theo dõi và chuyển đổi tỷ giá ngoại tệ. Tích hợp tỷ giá chuyển tiền Nhật - Việt từ Smiles Wallet.',
-        tags: ['tiền tệ', 'tỷ giá', 'ngoại tệ', 'usd', 'vnd', 'jpy', 'smiles']
+        bgColor: 'linear-gradient(135deg, #22c55e 0%, #16a34a 50%, #166534 100%)',
+        iconColor: '#ffffff',
+        desc: 'Quy đổi tiền tệ trực tuyến theo tỷ giá thị trường thời gian thực.',
+        tags: ['tiền tệ', 'tỷ giá', 'usd', 'vnd', 'jpy', 'ngoại tệ']
+    },
+    {
+        id: 'unit-converter',
+        catId: 'converter',
+        name: 'Đổi Đơn Vị Đo',
+        icon: 'fas fa-balance-scale',
+        bgColor: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 50%, #155e75 100%)',
+        iconColor: '#ffffff',
+        desc: 'Chuyển đổi qua lại giữa độ dài, khối lượng, dung tích, nhiệt độ và áp suất.',
+        tags: ['đơn vị', 'đo lường', 'km', 'kg', 'lít', 'converter']
     },
     {
         id: 'size-converter',
         catId: 'converter',
-        name: 'Đổi cỡ Quần áo/Giày',
+        name: 'Bảng Size Chuẩn',
         icon: 'fas fa-tshirt',
-        desc: 'Quy đổi kích cỡ Giày dép, Áo quần giữa các chuẩn quốc tế (US, UK, EU, VN...) nhanh chóng.',
-        tags: ['size', 'quần áo', 'giày', 'chuyển đổi cỡ', 'converter']
+        bgColor: 'linear-gradient(135deg, #38bdf8 0%, #0284c7 50%, #0369a1 100%)',
+        iconColor: '#ffffff',
+        desc: 'Đối chiếu và quy đổi cỡ giày dép, quần áo giữa các chuẩn US, UK, EU, VN.',
+        tags: ['size', 'cỡ giày', 'quần áo', 'bảng size']
     },
 
-    // ==========================================
-    // 4. VĂN BẢN (text)
-    // ==========================================
+    // ---------------------------------------------------------------------
+    // XỬ LÝ VĂN BẢN (text)
+    // ---------------------------------------------------------------------
     {
         id: 'text-counter',
         catId: 'text',
-        name: 'Định dạng văn bản',
+        name: 'Đếm Văn Bản',
         icon: 'fas fa-font',
-        desc: 'Bộ công cụ: Đếm ký tự, chuẩn hóa, lọc Email/Link, tạo Lorem Ipsum và so sánh (Diff).',
-        tags: ['text', 'văn bản', 'đếm ký tự', 'lorem ipsum', 'chuẩn hóa', 'diff']
+        bgColor: 'linear-gradient(135deg, #a855f7 0%, #9333ea 50%, #6b21a8 100%)',
+        iconColor: '#ffffff',
+        desc: 'Đếm số từ, ký tự, dòng văn bản, xóa khoảng trắng thừa và so sánh khác biệt.',
+        tags: ['đếm từ', 'ký tự', 'văn bản', 'định dạng', 'diff']
     },
     {
-        id: 'morse-code',
+        id: 'num-to-text',
         catId: 'text',
-        name: 'Mã Morse',
-        icon: 'fas fa-ellipsis-h',
-        desc: 'Chuyển đổi văn bản thành mã Morse và ngược lại. Tự động loại bỏ dấu Tiếng Việt.',
-        tags: ['morse', 'mã morse', 'code', 'văn bản', 'giải mã']
+        name: 'Đọc Số Tiền',
+        icon: 'fas fa-coins',
+        bgColor: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #4c1d95 100%)',
+        iconColor: '#ffffff',
+        desc: 'Biến dãy số tiền tệ thành chuỗi chữ tiếng Việt phục vụ viết hóa đơn kế toán.',
+        tags: ['đọc số', 'số thành chữ', 'tiền tệ', 'hóa đơn']
     },
     {
         id: 'word-station',
         catId: 'text',
-        name: 'Trạm Ngôn Từ',
+        name: 'Trạm Tìm Vần',
         icon: 'fas fa-pen-nib',
-        desc: 'Bộ công cụ ngôn ngữ học thông minh giúp gieo vần, đảo vần và nói lái chuẩn xác. Hỗ trợ đắc lực cho sáng tác thơ, rap và viết content sáng tạo.',
-        tags: ['gieo vần', 'nói lái', 'vần đảo', 'từ điển', 'sáng tác', 'thơ', 'rap', 'content', 'word', 'rhyme']
+        bgColor: 'linear-gradient(135deg, #c084fc 0%, #a855f7 50%, #7e22ce 100%)',
+        iconColor: '#ffffff',
+        desc: 'Gợi ý từ gieo vần, đảo chữ, nói lái thông minh hỗ trợ sáng tác thơ và viết rap.',
+        tags: ['gieo vần', 'nói lái', 'thơ', 'rap', 'từ ngữ']
+    },
+    {
+        id: 'kitu',
+        catId: 'text',
+        name: 'Ký Tự Đẹp',
+        icon: 'fas fa-icons',
+        bgColor: 'linear-gradient(135deg, #d946ef 0%, #c026d3 50%, #86198f 100%)',
+        iconColor: '#ffffff',
+        desc: 'Bộ sưu tập emoji, font chữ cách điệu và ký tự tạo tên game độc đáo.',
+        tags: ['ký tự', 'emoji', 'font', 'tên game', 'icon đặc biệt']
+    },
+    {
+        id: 'morse-code',
+        catId: 'text',
+        name: 'Mã Hóa Morse',
+        icon: 'fas fa-ellipsis-h',
+        bgColor: 'linear-gradient(135deg, #64748b 0%, #475569 50%, #334155 100%)',
+        iconColor: '#ffffff',
+        desc: 'Biên dịch văn bản thành mã tín hiệu Morse chấm gạch và giải mã ngược lại.',
+        tags: ['morse', 'mã morse', 'giải mã', 'tín hiệu']
+    },
+    {
+        id: 'text-to-speech',
+        catId: 'text',
+        name: 'Đọc Văn Bản',
+        icon: 'fas fa-volume-up',
+        bgColor: 'linear-gradient(135deg, #ec4899 0%, #db2777 50%, #9d174d 100%)',
+        iconColor: '#ffffff',
+        desc: 'Chuyển đổi nội dung bài viết thành giọng đọc tự nhiên đa ngôn ngữ.',
+        tags: ['tts', 'đọc văn bản', 'giọng nói', 'phát âm']
+    },
+    {
+        id: 'itt',
+        catId: 'text',
+        name: 'Quét Chữ Ảnh',
+        icon: 'fas fa-file-image',
+        bgColor: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 50%, #881337 100%)',
+        iconColor: '#ffffff',
+        desc: 'Nhận dạng và trích xuất chữ viết (OCR) từ hình ảnh chụp tài liệu.',
+        tags: ['ocr', 'quét chữ', 'ảnh sang text', 'nhận diện chữ']
     },
 
-    // ==========================================
-    // 5. TÀI LIỆU (document)
-    // ==========================================
+    // ---------------------------------------------------------------------
+    // TỆP TIN & TÀI LIỆU (document)
+    // ---------------------------------------------------------------------
     {
         id: 'pdf-tools',
         catId: 'document',
-        name: 'PDF Studio Pro',
+        name: 'PDF Studio',
         icon: 'fas fa-file-pdf',
-        desc: 'Bộ công cụ xử lý PDF toàn diện ngay trên trình duyệt (Client-side). Hỗ trợ ghép, tách, ký tên, đóng dấu watermark và xuất ảnh bảo mật tuyệt đối.',
-        tags: ['pdf', 'ghép pdf', 'tách pdf', 'ký pdf', 'watermark', 'chữ ký', 'merge', 'split', 'convert', 'document', 'tài liệu']
+        bgColor: 'linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #991b1b 100%)',
+        iconColor: '#ffffff',
+        desc: 'Gộp nhiều file PDF, tách trang, đặt mật khẩu và chèn chữ ký số trực tiếp.',
+        tags: ['pdf', 'gộp pdf', 'tách trang', 'chữ ký pdf']
+    },
+    {
+        id: 'excel-unlocker',
+        catId: 'document',
+        name: 'Mở Khóa Excel',
+        icon: 'fas fa-unlock-alt',
+        bgColor: 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)',
+        iconColor: '#ffffff',
+        desc: 'Xóa bỏ mật khẩu khóa trang tính (Sheet Protection) nhanh chóng và an toàn.',
+        tags: ['excel', 'mở khóa', 'unlock sheet', 'quên mật khẩu']
+    },
+    {
+        id: 'excel-converter',
+        catId: 'document',
+        name: 'Đổi File Excel',
+        icon: 'fas fa-file-excel',
+        bgColor: 'linear-gradient(135deg, #16a34a 0%, #15803d 50%, #14532d 100%)',
+        iconColor: '#ffffff',
+        desc: 'Chuyển đổi bảng tính qua lại giữa các định dạng XLS, XLSX, CSV và JSON.',
+        tags: ['excel', 'csv', 'chuyển đổi file', 'xlsx']
     },
 
-    // ==========================================
-    // 6. ĐỜI SỐNG (life)
-    // ==========================================
+    // ---------------------------------------------------------------------
+    // ĐỜI SỐNG & SỨC KHỎE (life)
+    // ---------------------------------------------------------------------
     {
         id: 'time-tools',
         catId: 'life',
-        name: 'Đồng hồ & Thời gian',
-        icon: 'fas fa-clock',
-        desc: '7 công cụ thời gian: Đếm ngược, Bấm giờ, Tính khoảng cách ngày, Tính số giờ làm việc, Tính số tuần và Tính tuổi.',
-        tags: ['thời gian', 'đồng hồ', 'đếm ngược', 'bấm giờ', 'ngày', 'tuổi', 'tuần', 'clock', 'time']
+        name: 'Thời Gian',
+        icon: 'fas fa-stopwatch',
+        bgColor: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 50%, #be123c 100%)',
+        iconColor: '#ffffff',
+        desc: 'Đồng hồ đếm ngược, bấm giờ thể thao, tính khoảng cách ngày và số tuần.',
+        tags: ['thời gian', 'bấm giờ', 'đếm ngược', 'khoảng cách ngày']
     },
     {
         id: 'health-calculator',
         catId: 'life',
-        name: 'Tính chỉ số Sức khỏe',
+        name: 'Sức Khỏe BMI',
         icon: 'fas fa-heartbeat',
-        desc: 'Tính toán nhanh chỉ số BMI (chuẩn Châu Á), BMR và lượng Calo tiêu thụ (TDEE) để giảm/tăng cân.',
-        tags: ['sức khỏe', 'bmi', 'bmr', 'tdee', 'calo', 'cân nặng', 'health']
+        bgColor: 'linear-gradient(135deg, #fb7185 0%, #f43f5e 50%, #be123c 100%)',
+        iconColor: '#ffffff',
+        desc: 'Tính chỉ số thể hình BMI, chuyển hóa BMR và mức tiêu hao Calo hằng ngày (TDEE).',
+        tags: ['bmi', 'bmr', 'tdee', 'calo', 'cân nặng', 'sức khỏe']
     },
     {
         id: 'sleep-calculator',
         catId: 'life',
-        name: 'Máy Tính Giấc Ngủ',
+        name: 'Tính Giấc Ngủ',
         icon: 'fas fa-bed',
-        desc: 'Tính toán thời gian đi ngủ và thức dậy tối ưu dựa trên chu kỳ giấc ngủ sinh học (90 phút).',
-        tags: ['ngủ', 'giấc ngủ', 'thức dậy', 'chu kỳ', 'sức khỏe', 'sleep']
+        bgColor: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #312e81 100%)',
+        iconColor: '#ffffff',
+        desc: 'Tính giờ đi ngủ và thức dậy tối ưu dựa theo chu kỳ sinh học 90 phút.',
+        tags: ['ngủ', 'giấc ngủ', 'thức dậy', 'chu kỳ ngủ']
+    },
+    {
+        id: 'choronotype',
+        catId: 'life',
+        name: 'Nhịp Sinh Học',
+        icon: 'fas fa-hourglass-half',
+        bgColor: 'linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #3730a3 100%)',
+        iconColor: '#ffffff',
+        desc: 'Đo lường nhịp sinh học cá nhân để phân bổ thời gian làm việc hiệu quả nhất.',
+        tags: ['nhịp sinh học', 'choronotype', 'năng suất', 'sức khỏe']
     },
 
-    // ==========================================
-    // 7. DEVELOPER (dev)
-    // ==========================================
+    // ---------------------------------------------------------------------
+    // CÔNG CỤ LẬP TRÌNH (dev)
+    // ---------------------------------------------------------------------
     {
         id: 'json-format',
         catId: 'dev',
         name: 'Format JSON',
         icon: 'fas fa-code',
-        desc: 'Làm đẹp, nén và kiểm tra lỗi cú pháp JSON.',
-        tags: ['json', 'format', 'dev', 'cú pháp', 'validate']
-    },
-    {
-        id: 'base64-converter',
-        catId: 'dev',
-        name: 'Base64 Encode/Decode',
-        icon: 'fas fa-shield-alt',
-        desc: 'Mã hóa và giải mã chuỗi Base64 an toàn, hỗ trợ Unicode (Tiếng Việt).',
-        tags: ['base64', 'encode', 'decode', 'mã hóa', 'giải mã', 'dev']
+        bgColor: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1e40af 100%)',
+        iconColor: '#ffffff',
+        desc: 'Định dạng, nén gọn và kiểm tra cú pháp cấu trúc dữ liệu JSON.',
+        tags: ['json', 'format', 'minify', 'kiểm tra json']
     },
     {
         id: 'regex-tester',
         catId: 'dev',
-        name: 'Kiểm tra Regex',
-        icon: 'fas fa-code',
-        desc: 'Trình kiểm thử Biểu thức chính quy (Regular Expression) theo thời gian thực. Hỗ trợ trích xuất dữ liệu và Capture Groups.',
-        tags: ['regex', 'biểu thức chính quy', 'code', 'dev', 'kiểm tra', 'tester']
+        name: 'Kiểm Thử Regex',
+        icon: 'fas fa-spell-check',
+        bgColor: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #172554 100%)',
+        iconColor: '#ffffff',
+        desc: 'Thử nghiệm biểu thức chính quy (Regular Expression) trực quan theo thời gian thực.',
+        tags: ['regex', 'biểu thức', 'kiểm tra regex', 'pattern']
+    },
+    {
+        id: 'base64-converter',
+        catId: 'dev',
+        name: 'Base64 Mã Hóa',
+        icon: 'fas fa-shield-alt',
+        bgColor: 'linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #082f49 100%)',
+        iconColor: '#ffffff',
+        desc: 'Mã hóa và giải mã văn bản, chuỗi ký tự sang chuẩn Base64 Unicode.',
+        tags: ['base64', 'mã hóa', 'giải mã', 'encode', 'decode']
+    },
+    {
+        id: 'html-entity',
+        catId: 'dev',
+        name: 'HTML Entities',
+        icon: 'fas fa-code-branch',
+        bgColor: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #075985 100%)',
+        iconColor: '#ffffff',
+        desc: 'Chuyển đổi ký tự đặc biệt thành mã HTML an toàn tránh lỗi hiển thị và XSS.',
+        tags: ['html', 'entity', 'encode', 'escape']
     },
     {
         id: 'fake-data-generator',
         catId: 'dev',
-        name: 'Tạo Dữ liệu ảo',
+        name: 'Tạo Data Ảo',
         icon: 'fas fa-database',
-        desc: 'Sinh ra hàng ngàn dòng dữ liệu ngẫu nhiên (Tên, SĐT, Email chuẩn Việt Nam) dưới dạng JSON, CSV, SQL.',
-        tags: ['dữ liệu', 'data', 'fake', 'mock', 'json', 'csv', 'sql', 'test']
+        bgColor: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 50%, #164e63 100%)',
+        iconColor: '#ffffff',
+        desc: 'Tạo danh sách mẫu ngẫu nhiên gồm họ tên, địa chỉ, email và SĐT Việt Nam.',
+        tags: ['mock data', 'dữ liệu ảo', 'fake data', 'test']
     },
     {
         id: 'meta-tag-generator',
         catId: 'dev',
-        name: 'Tạo thẻ Meta (SEO)',
-        icon: 'fas fa-search',
-        desc: 'Tạo thẻ Meta chuẩn SEO cho Google, Open Graph (Facebook), Twitter và xem trước (Live Preview).',
-        tags: ['seo', 'meta tag', 'open graph', 'twitter card', 'apple icon', 'tạo thẻ meta', 'facebook', 'google']
+        name: 'Thẻ Meta SEO',
+        icon: 'fas fa-globe',
+        bgColor: 'linear-gradient(135deg, #0f766e 0%, #115e59 50%, #042f2e 100%)',
+        iconColor: '#ffffff',
+        desc: 'Tạo bộ thẻ Meta SEO chuẩn cho Google, Facebook Open Graph và Twitter Card.',
+        tags: ['seo', 'meta tag', 'open graph', 'tiêu đề web']
+    },
+    {
+        id: 'tree-viewer',
+        catId: 'dev',
+        name: 'Cây Dữ Liệu',
+        icon: 'fas fa-sitemap',
+        bgColor: 'linear-gradient(135deg, #059669 0%, #047857 50%, #064e3b 100%)',
+        iconColor: '#ffffff',
+        desc: 'Phân tích và hiển thị trực quan cấu trúc dạng phân cấp nhánh cây.',
+        tags: ['tree', 'cấu trúc', 'json tree', 'viewer']
     },
 
-    // ==========================================
-    // 8. HỆ THỐNG & BẢO MẬT (system)
-    // ==========================================
+    // ---------------------------------------------------------------------
+    // HỆ THỐNG & PHẦN CỨNG (system)
+    // ---------------------------------------------------------------------
     {
-        id: 'ip-checker',
+        id: 'lcd-test',
         catId: 'system',
-        name: 'Địa chỉ IP của tôi',
-        icon: 'fas fa-network-wired',
-        desc: 'Xem ngay Public IP, vị trí địa lý, nhà mạng (ISP) và bản đồ tương tác OpenStreetMap.',
-        tags: ['ip', 'địa chỉ ip', 'mạng', 'vị trí', 'bản đồ', 'network', 'isp']
+        name: 'Test Màn Hình',
+        icon: 'fas fa-desktop',
+        bgColor: 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 50%, #0369a1 100%)',
+        iconColor: '#ffffff',
+        desc: 'Rà soát điểm ảnh chết (dead pixel), dải màu, tần số quét Hz và độ sáng tấm nền.',
+        tags: ['lcd', 'màn hình', 'điểm chết', 'dead pixel', 'hz', 'fps']
+    },
+    {
+        id: 'key-mouse-test',
+        catId: 'system',
+        name: 'Test Phím Chuột',
+        icon: 'fas fa-keyboard',
+        bgColor: 'linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #3730a3 100%)',
+        iconColor: '#ffffff',
+        desc: 'Kiểm tra độ nhạy, chống kẹt phím (ghosting) và độ phản hồi của chuột.',
+        tags: ['bàn phím', 'test phím', 'chuột', 'click', 'keyboard test']
     },
     {
         id: 'device-info',
         catId: 'system',
-        name: 'Thông tin Thiết bị',
+        name: 'Thông Số Máy',
         icon: 'fas fa-info-circle',
-        desc: 'Truy xuất các thông số ẩn của thiết bị: Hệ điều hành, màn hình, RAM, CPU, User Agent và Mạng.',
-        tags: ['thiết bị', 'thông tin', 'cấu hình', 'màn hình', 'ram', 'cpu', 'browser', 'device']
+        bgColor: 'linear-gradient(135deg, #64748b 0%, #475569 50%, #1e293b 100%)',
+        iconColor: '#ffffff',
+        desc: 'Xem cấu hình phần cứng, RAM, CPU, trình duyệt, độ phân giải và mức pin.',
+        tags: ['thiết bị', 'thông tin máy', 'phần cứng', 'cấu hình']
+    },
+    {
+        id: 'ip-checker',
+        catId: 'system',
+        name: 'Địa Chỉ IP',
+        icon: 'fas fa-network-wired',
+        bgColor: 'linear-gradient(135deg, #475569 0%, #334155 50%, #0f172a 100%)',
+        iconColor: '#ffffff',
+        desc: 'Tra cứu địa chỉ IP mạng công cộng, nhà cung cấp ISP và vị trí địa lý.',
+        tags: ['ip', 'địa chỉ ip', 'mạng', 'isp', 'vị trí']
     },
     {
         id: 'password-generator',
         catId: 'system',
         name: 'Tạo Mật Khẩu',
         icon: 'fas fa-key',
-        desc: 'Tạo mật khẩu siêu bảo mật với Crypto API và kiểm tra độ mạnh của mật khẩu theo thời gian thực.',
-        tags: ['mật khẩu', 'password', 'bảo mật', 'tạo mã', 'generator', 'security']
+        bgColor: 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)',
+        iconColor: '#ffffff',
+        desc: 'Sinh mật khẩu ngẫu nhiên độ bảo mật cao và đo lường độ an toàn ký tự.',
+        tags: ['mật khẩu', 'password', 'bảo mật', 'tạo pass']
     },
     {
         id: 'ui-kit',
         catId: 'system',
-        name: 'UI Kit / Components',
+        name: 'UI Kit Mẫu',
         icon: 'fas fa-cubes',
-        desc: 'Thư viện giao diện tái sử dụng.',
-        tags: ['ui', 'giao diện', 'kit', 'components', 'thiết kế']
+        bgColor: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 50%, #9f1239 100%)',
+        iconColor: '#ffffff',
+        desc: 'Thư viện tổng hợp nút bấm, form nhập liệu và các thành phần giao diện mẫu.',
+        tags: ['ui', 'kit', 'components', 'giao diện']
     },
 
-    // ==========================================
-    // 9. GIẢI TRÍ (entertainment)
-    // ==========================================
+    // ---------------------------------------------------------------------
+    // GIẢI TRÍ & TIỆN ÍCH KHÁC (entertainment)
+    // ---------------------------------------------------------------------
     {
         id: 'led-matrix',
         catId: 'entertainment',
-        name: 'Bảng LED Cổ Vũ',
-        icon: 'fa-solid fa-bolt',
-        desc: 'Hiệu ứng bảng LED chữ chạy động chuyên nghiệp. Tuỳ chỉnh màu sắc, tốc độ, và kiểu dáng linh hoạt dành cho concert hoặc sự kiện.',
-        tags: ['led', 'bảng led', 'chữ chạy', 'cổ vũ', 'concert', 'marquee', 'idol', 'neon']
+        name: 'Bảng Chữ LED',
+        icon: 'fas fa-bolt',
+        bgColor: 'linear-gradient(135deg, #eab308 0%, #ca8a04 50%, #713f12 100%)',
+        iconColor: '#ffffff',
+        desc: 'Màn hình LED chạy chữ phát sáng rực rỡ dành cho sự kiện, concert cổ vũ.',
+        tags: ['led', 'bảng led', 'chữ chạy', 'cổ vũ', 'concert']
     },
     {
         id: 'note-pro',
         catId: 'entertainment',
-        name: 'Ghi chú',
-        icon: 'fa-solid fa-note-sticky',
-        desc: 'Ghi chú nhanh có mã hoá',
-        tags: ['note', 'ghi chú', 'bảo mật']
-    },
-    {
-        id: 'choronotype',
-        catId: 'life',
-        name: 'Giấc sinh học Choronotype',
-        icon: 'fa-solid fa-clock',
-        desc: 'Hiệu ứng bảng LED chữ chạy động chuyên nghiệp. Tuỳ chỉnh màu sắc, tốc độ, và kiểu dáng linh hoạt dành cho concert hoặc sự kiện.',
-        tags: ['led', 'bảng led', 'chữ chạy', 'cổ vũ', 'concert', 'marquee', 'idol', 'neon']
-    },
-    {
-        id: 'lcd-test',
-        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
-        name: 'LCD & Display Test',
-        icon: 'fa-solid fa-desktop',
-        desc: 'Bộ công cụ đo đạc thông số và phân tích chất lượng tấm nền toàn diện. Hỗ trợ kiểm tra điểm ảnh chết, độ đồng nhất, dải màu gradient, gamma và đo tần số quét (FPS/Hz).',
-        tags: ['lcd', 'test màn hình', 'điểm chết', 'dead pixel', 'fps', 'hz', 'tần số quét', 'display', 'gamma', 'monitor', 'phân giải']
-    },
-    {
-        id: 'key-mouse-test',
-        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
-        name: 'Key & Mouse Test',
-        icon: 'fa-solid fa-keyboard',
-        desc: 'Công cụ kiểm tra bàn phím và chuột, giúp xác định các phím bị kẹt, phản hồi chậm hoặc không hoạt động. Hỗ trợ đo tần số quét (FPS/Hz) của thiết bị đầu vào.',
-        tags: ['key', 'mouse', 'test bàn phím', 'test chuột', 'fps', 'hz', 'tần số quét', 'display', 'gamma', 'monitor', 'phân giải']
-    },
-    {
-        id: 'finance',
-        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
-        name: 'Finance',
-        icon: 'fa-solid fa-calculator',
-        desc: 'Công cụ quản lý tài chính cá nhân và doanh nghiệp.',
-        tags: ['finance', 'tài chính', 'quản lý', 'kế toán']
-    },
-    {
-        id: 'kitu',
-        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
-        name: 'Kí tự đặc biệt',
-        icon: 'fa-solid fa-section',
-        desc: 'Công cụ tạo và sao chép kí tự đặc biệt, biểu tượng, emoji và ký hiệu độc đáo.',
-        tags: ['kí tự', 'biểu tượng', 'emoji', 'ký hiệu']
-    },
-    {
-        id: 'salary-calculator',
-        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
-        name: 'Máy tính lương Net/Gross',
-        icon: 'fa-solid fa-calculator',
-        desc: 'Công cụ tính toán lương Net và Gross, bao gồm các khoản phụ cấp, thuế và bảo hiểm xã hội.',
-        tags: ['lương', 'tính lương', 'phụ cấp']
-    },
-    {
-        id: 'vn-map',
-        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
-        name: 'Chuyển đổi địa chỉ',
-        icon: 'fa-solid fa-calculator',
-        desc: 'Công cụ chuyển đổi địa chỉ cũ sang địa chỉ mới đơn vị hành chính Việt Nam.',
-        tags: ['địa chỉ', 'chuyển đổi', 'hành chính']
-    },
-    {
-        id: 'html-entity',
-        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
-        name: 'HTML Entity Encoder/Decoder',
-        icon: 'fa-solid fa-code',
-        desc: 'Công cụ mã hóa và giải mã HTML Entity, giúp bảo vệ nội dung web và xử lý ký tự đặc biệt.',
-        tags: ['html', 'entity', 'encode', 'decode', 'web']
-    },
-    {
-        id: 'tree-viewer',
-        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
-        name: 'Tree Viewer',
-        icon: 'fa-solid fa-tree',
-        desc: 'Công cụ hiển thị dữ liệu dạng cây (tree structure) từ JSON, XML hoặc các định dạng dữ liệu khác.',
-        tags: ['tree', 'viewer', 'json', 'xml', 'data']
-    },
-    {
-        id: 'excel-converter',
-        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
-        name: 'Excel Converter',
-        icon: 'fa-solid fa-file-excel',
-        desc: 'Công cụ chuyển đổi giữa các định dạng tệp Excel (XLS, XLSX) và các định dạng khác.',
-        tags: ['excel', 'converter', 'file']
-    },
-    {
-        id: 'itt',
-        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
-        name: 'Image to Text',
-        icon: 'fa-solid fa-file-image',
-        desc: 'Công cụ chuyển đổi hình ảnh thành văn bản bằng OCR.',
-        tags: ['image', 'text', 'ocr']
-    },
-    {
-        id: 'text-to-speech',
-        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
-        name: 'Chuyển văn bản thành giọng nói',
-        icon: 'fa-solid fa-volume-up',
-        desc: 'Công cụ chuyển đổi văn bản thành giọng nói với nhiều ngôn ngữ và giọng đọc khác nhau.',
-        tags: ['text', 'speech', 'voice', 'tts']
+        name: 'Ghi Chú Nhanh',
+        icon: 'fas fa-sticky-note',
+        bgColor: 'linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #78350f 100%)',
+        iconColor: '#ffffff',
+        desc: 'Trình soạn thảo ghi chú nhanh, gọn gàng và lưu trữ dữ liệu an toàn trên máy.',
+        tags: ['ghi chú', 'note', 'soạn thảo', 'lưu trữ']
     }
-
 ];
