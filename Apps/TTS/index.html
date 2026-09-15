@@ -1,932 +1,1144 @@
 <!DOCTYPE html>
-<html lang="vi" class="scroll-smooth dark">
+<html lang="vi" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Edge TTS API • Apple Developer Documentation</title>
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backend TTS Service - API Documentation & Playground</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
-          fontFamily: {
-            sans: ['-apple-system', 'BlinkMacSystemFont', '"Plus Jakarta Sans"', 'SF Pro Text', 'system-ui', 'sans-serif'],
-            mono: ['"JetBrains Mono"', 'SF Mono', 'ui-monospace', 'monospace'],
-          },
           colors: {
-            apple: {
-              blue: '#0071E3',
-              darkBlue: '#0A84FF',
-              green: '#34C759',
-              purple: '#AF52DE',
-            }
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+            },
+            darkbg: '#0b0f17',
+            cardbg: '#111827',
+            sidebar: '#0d131f'
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
           }
         }
       }
     }
   </script>
-
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
   <style>
-    /* CSS Variables for Apple Light & Dark theme */
-    :root {
-      --bg-page: #F5F5F7;
-      --bg-surface: #FFFFFF;
-      --bg-glass: rgba(255, 255, 255, 0.82);
-      --border-subtle: rgba(0, 0, 0, 0.08);
-      --border-focus: rgba(0, 0, 0, 0.16);
-      --text-primary: #1D1D1F;
-      --text-secondary: #6E6E73;
-      --text-tertiary: #86868B;
-      --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
-      --code-bg: #18181B;
-      --code-text: #F4F4F5;
-      --code-border: rgba(255, 255, 255, 0.08);
-    }
-
-    .dark {
-      --bg-page: #000000;
-      --bg-surface: #141416;
-      --bg-glass: rgba(20, 20, 24, 0.8);
-      --border-subtle: rgba(255, 255, 255, 0.08);
-      --border-focus: rgba(255, 255, 255, 0.2);
-      --text-primary: #F5F5F7;
-      --text-secondary: #A1A1A6;
-      --text-tertiary: #6E6E73;
-      --card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.05);
-      --code-bg: #0C0C0E;
-      --code-text: #E4E4E7;
-      --code-border: rgba(255, 255, 255, 0.08);
-    }
-
     body {
-      background-color: var(--bg-page);
-      color: var(--text-primary);
-      transition: background-color 0.25s ease, color 0.25s ease;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
+      font-family: 'Inter', sans-serif;
     }
-
-    /* Apple Frosted Glass */
-    .apple-glass {
-      background: var(--bg-glass);
-      backdrop-filter: blur(24px) saturate(180%);
-      -webkit-backdrop-filter: blur(24px) saturate(180%);
-      border: 1px solid var(--border-subtle);
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
     }
-
-    .apple-card {
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      box-shadow: var(--card-shadow);
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
     }
-    .apple-card:hover {
-      border-color: var(--border-focus);
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
     }
-
-    .apple-code-box {
-      background-color: var(--code-bg);
-      color: var(--code-text);
-      border: 1px solid var(--code-border);
+    ::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.3);
+      border-radius: 4px;
     }
-
-    /* Tactile Apple active feedback */
-    .apple-press {
-      transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(99, 102, 241, 0.6);
     }
-    .apple-press:active {
-      transform: scale(0.96);
+    .endpoint-badge-get {
+      background-color: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
     }
-
-    /* Hide scrollbars cleanly */
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .endpoint-badge-post {
+      background-color: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .glass-panel {
+      background: rgba(17, 24, 39, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .pulse-glow {
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+    }
   </style>
 </head>
-<body class="min-h-screen selection:bg-blue-500 selection:text-white pb-20">
+<body class="bg-darkbg text-slate-200 min-h-screen antialiased selection:bg-brand-500 selection:text-white">
 
-  <!-- Floating Apple Capsule Nav -->
-  <header class="sticky top-3 z-50 px-3 sm:px-6 w-full max-w-5xl mx-auto">
-    <div class="apple-glass rounded-full px-3.5 py-2 flex items-center justify-between shadow-lg">
-      
-      <!-- Brand & Status -->
-      <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white text-xs shadow-md">
-          <i class="fa-solid fa-waveform"></i>
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="text-xs sm:text-sm font-bold tracking-tight">Edge TTS Docs</span>
-            <span class="hidden sm:inline-block px-2 py-0.2 rounded-full text-[10px] font-mono font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">v1.0 Live</span>
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-50 glass-panel border-b border-slate-800/80 bg-darkbg/90 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <button id="mobileMenuBtn" class="lg:hidden text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800">
+          <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+            <i class="fa-solid fa-waveform text-lg"></i>
           </div>
-          <span class="text-[10px] font-mono text-[var(--text-tertiary)] block -mt-0.5">be-api-service.vercel.app</span>
+          <div>
+            <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">Backend TTS API</span>
+            <span class="ml-2 text-xs font-mono px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 border border-brand-500/20">v1.0.0</span>
+          </div>
         </div>
       </div>
 
-      <!-- Quick Actions & Theme Switcher -->
-      <div class="flex items-center gap-2">
-        <a href="#ai-prompt" class="apple-press px-3.5 py-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
-          <i class="fa-solid fa-sparkles text-[11px]"></i>
-          <span>Prompt Cho AI</span>
-        </a>
-
-        <!-- Light / Dark Theme Button -->
-        <button id="btn-theme-toggle" onclick="toggleTheme()" title="Đổi chế độ Sáng / Tối"
-          class="apple-press w-8 h-8 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[var(--text-primary)] transition">
-          <i id="theme-icon" class="fa-solid fa-moon text-xs"></i>
+      <!-- Quick Actions & Status -->
+      <div class="flex items-center space-x-3 sm:space-x-4">
+        <!-- Live Service Status Pill -->
+        <button id="quickHealthCheckBtn" class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-300 hover:border-slate-700 transition">
+          <span class="relative flex h-2 w-2">
+            <span id="statusPing" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span id="statusDot" class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span id="statusText" class="font-mono">Ready</span>
         </button>
+
+        <a href="#playground" class="hidden sm:flex items-center space-x-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition shadow-md shadow-brand-600/30">
+          <i class="fa-solid fa-play text-2xs"></i>
+          <span>Thử nghiệm Live</span>
+        </a>
       </div>
     </div>
-
-    <!-- Mobile-Friendly Sub-Navigation Capsule -->
-    <nav class="mt-2 flex items-center justify-center">
-      <div class="apple-glass p-1 rounded-full flex items-center gap-1 overflow-x-auto no-scrollbar max-w-full text-xs font-medium">
-        <a href="#quick-overview" class="px-3 py-1 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition shrink-0">⚡ 30 Giây</a>
-        <a href="#ai-prompt" class="px-3 py-1 rounded-full text-blue-600 dark:text-blue-400 bg-blue-500/10 font-semibold shrink-0">🤖 Prompt AI</a>
-        <a href="#auth-spec" class="px-3 py-1 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition shrink-0">Bảo mật</a>
-        <a href="#endpoints" class="px-3 py-1 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition shrink-0">Endpoints</a>
-        <a href="#code-samples" class="px-3 py-1 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition shrink-0">Code Mẫu</a>
-        <a href="#playground" class="px-3 py-1 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition shrink-0">Thử Nghiệm</a>
-      </div>
-    </nav>
   </header>
 
-  <main class="max-w-5xl mx-auto px-4 pt-6 space-y-6">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex">
 
-    <!-- Hero Introduction -->
-    <section class="text-center py-4 sm:py-6 space-y-2">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-black/5 dark:bg-white/10 text-[var(--text-secondary)] border border-[var(--border-subtle)]">
-        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span>Sẵn sàng kết nối cho mọi Web App • 24kHz Audio Studio</span>
-      </div>
-      <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight text-[var(--text-primary)]">
-        Edge TTS API Documentation
-      </h1>
-      <p class="text-xs sm:text-sm text-[var(--text-secondary)] max-w-xl mx-auto">
-        Tài liệu chuẩn hóa chuyển văn bản thành giọng nói tiếng Việt mượt mà. Cung cấp sẵn prompt chuẩn để AI tự lập trình trang web theo ý tưởng của bạn.
-      </p>
-    </section>
-
-    <!-- 30-Second Bento Overview -->
-    <section id="quick-overview" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <!-- Bento 1: Auth -->
-      <div class="apple-card rounded-2xl p-4 flex flex-col justify-between gap-3">
-        <div class="space-y-1">
-          <div class="flex items-center justify-between">
-            <span class="text-[10px] font-mono uppercase tracking-wider font-semibold text-[var(--text-tertiary)]">1. Header Xác thực</span>
-            <i class="fa-solid fa-shield-halved text-emerald-500 text-xs"></i>
-          </div>
-          <div class="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 truncate">
-            X-App-Key: TTS-Hunq
-          </div>
-          <p class="text-[11px] text-[var(--text-secondary)]">Kèm header này trong mọi request</p>
-        </div>
-        <button onclick="copyToClipboard('TTS-Hunq', 'Đã chép X-App-Key!')" class="apple-press self-start text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-          <i class="fa-regular fa-copy"></i>
-          <span>Sao chép Key</span>
-        </button>
-      </div>
-
-      <!-- Bento 2: Endpoint -->
-      <div class="apple-card rounded-2xl p-4 flex flex-col justify-between gap-3">
-        <div class="space-y-1">
-          <div class="flex items-center justify-between">
-            <span class="text-[10px] font-mono uppercase tracking-wider font-semibold text-[var(--text-tertiary)]">2. Endpoint TTS</span>
-            <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400">POST</span>
-          </div>
-          <div class="font-mono text-xs font-bold text-[var(--text-primary)] truncate">
-            /api/tts
-          </div>
-          <p class="text-[11px] text-[var(--text-secondary)]">Gửi JSON { text, voice, rate }</p>
-        </div>
-        <a href="#endpoints" class="text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1">
-          <span>Xem thông số</span>
-          <i class="fa-solid fa-arrow-down text-[9px]"></i>
-        </a>
-      </div>
-
-      <!-- Bento 3: Output -->
-      <div class="apple-card rounded-2xl p-4 flex flex-col justify-between gap-3">
-        <div class="space-y-1">
-          <div class="flex items-center justify-between">
-            <span class="text-[10px] font-mono uppercase tracking-wider font-semibold text-[var(--text-tertiary)]">3. Định dạng Output</span>
-            <i class="fa-solid fa-music text-purple-500 text-xs"></i>
-          </div>
-          <div class="font-mono text-xs font-bold text-[var(--text-primary)] truncate">
-            audio/mpeg (MP3)
-          </div>
-          <p class="text-[11px] text-[var(--text-secondary)]">24kHz Mono 48kbps Stream</p>
-        </div>
-        <a href="#playground" class="text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-          <span>Nghe thử trực tiếp</span>
-          <i class="fa-solid fa-play text-[9px]"></i>
-        </a>
-      </div>
-    </section>
-
-    <!-- AI PROMPT BUILDER: Provide backend spec for AI to build any web idea -->
-    <section id="ai-prompt" class="apple-card rounded-3xl p-5 sm:p-7 space-y-4 relative overflow-hidden">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border-subtle)] pb-4">
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-sidebar border-r border-slate-800/80 transform -translate-x-full lg:translate-x-0 lg:static lg:inset-0 transition-transform duration-200 ease-in-out pt-20 lg:pt-6 pb-8 overflow-y-auto shrink-0">
+      <nav class="space-y-6 px-4">
         <div>
-          <div class="flex items-center gap-2">
-            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-              AI READY
-            </span>
-            <h2 class="text-base sm:text-lg font-bold text-[var(--text-primary)]">
-              Prompt Cho AI Xây Dựng Ứng Dụng Mới
-            </h2>
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-2">Tổng Quan</h3>
+          <ul class="space-y-1 text-sm">
+            <li>
+              <a href="#overview" class="nav-link flex items-center px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition group">
+                <i class="fa-solid fa-compass w-5 text-slate-500 group-hover:text-brand-500"></i>
+                <span>Giới thiệu & Base URL</span>
+              </a>
+            </li>
+            <li>
+              <a href="#rules" class="nav-link flex items-center px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition group">
+                <i class="fa-solid fa-shield-halved w-5 text-slate-500 group-hover:text-brand-500"></i>
+                <span>Quy tắc & Auth</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-2">API Endpoints</h3>
+          <ul class="space-y-1 text-sm">
+            <li>
+              <a href="#endpoint-health" class="nav-link flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition group">
+                <div class="flex items-center space-x-2">
+                  <i class="fa-solid fa-heart-pulse w-5 text-slate-500 group-hover:text-emerald-400"></i>
+                  <span>Kiểm tra Backend</span>
+                </div>
+                <span class="text-2xs font-bold px-1.5 py-0.5 rounded endpoint-badge-get">GET</span>
+              </a>
+            </li>
+            <li>
+              <a href="#endpoint-health-tts" class="nav-link flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition group">
+                <div class="flex items-center space-x-2">
+                  <i class="fa-solid fa-wave-square w-5 text-slate-500 group-hover:text-emerald-400"></i>
+                  <span>Kiểm tra Edge TTS</span>
+                </div>
+                <span class="text-2xs font-bold px-1.5 py-0.5 rounded endpoint-badge-get">GET</span>
+              </a>
+            </li>
+            <li>
+              <a href="#endpoint-voices" class="nav-link flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition group">
+                <div class="flex items-center space-x-2">
+                  <i class="fa-solid fa-list-ul w-5 text-slate-500 group-hover:text-emerald-400"></i>
+                  <span>Danh sách Giọng</span>
+                </div>
+                <span class="text-2xs font-bold px-1.5 py-0.5 rounded endpoint-badge-get">GET</span>
+              </a>
+            </li>
+            <li>
+              <a href="#endpoint-tts" class="nav-link flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition group">
+                <div class="flex items-center space-x-2">
+                  <i class="fa-solid fa-microphone-lines w-5 text-slate-500 group-hover:text-blue-400"></i>
+                  <span>Tạo Audio (TTS)</span>
+                </div>
+                <span class="text-2xs font-bold px-1.5 py-0.5 rounded endpoint-badge-post">POST</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-2">Công cụ & Hướng Dẫn</h3>
+          <ul class="space-y-1 text-sm">
+            <li>
+              <a href="#playground" class="nav-link flex items-center px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition group">
+                <i class="fa-solid fa-vial-circle-check w-5 text-slate-500 group-hover:text-amber-400"></i>
+                <span>API Playground</span>
+              </a>
+            </li>
+            <li>
+              <a href="#story-segmentation" class="nav-link flex items-center px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition group">
+                <i class="fa-solid fa-book-open-reader w-5 text-slate-500 group-hover:text-purple-400"></i>
+                <span>Tối ưu Đọc Truyện</span>
+              </a>
+            </li>
+            <li>
+              <a href="#error-codes" class="nav-link flex items-center px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition group">
+                <i class="fa-solid fa-triangle-exclamation w-5 text-slate-500 group-hover:text-rose-400"></i>
+                <span>Mã Lỗi & Xử Lý</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 min-w-0 py-8 lg:px-8 space-y-12">
+
+      <!-- Section: Overview -->
+      <section id="overview" class="scroll-mt-24 space-y-4">
+        <div class="border-b border-slate-800 pb-5">
+          <div class="flex items-center space-x-2 text-brand-500 font-mono text-xs uppercase tracking-widest font-semibold mb-1">
+            <i class="fa-solid fa-bolt"></i> Backend API Documentation
           </div>
-          <p class="text-xs text-[var(--text-secondary)] mt-1 max-w-xl">
-            Sao chép prompt này và dán vào <strong>ChatGPT, Claude, Cursor, v0</strong> kèm theo ý tưởng của bạn (ví dụ: web đọc báo, web đọc truyện chữ, học phát âm). AI sẽ tự code tính năng hoàn chỉnh mà không cần giải thích lại backend!
+          <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Backend TTS API Service</h1>
+          <p class="mt-2 text-slate-400 text-base leading-relaxed">
+            Hệ thống chuyển đổi văn bản thành giọng nói (Text-to-Speech) chính thức của ứng dụng. Sử dụng công nghệ Edge TTS cho chất lượng đọc tự nhiên, độ trễ thấp và hỗ trợ nhiều giọng đọc tiếng Việt cũng như quốc tế.
           </p>
         </div>
 
-        <button onclick="copyCurrentPrompt()" id="btn-copy-prompt" class="apple-press px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shrink-0 transition">
-          <i class="fa-solid fa-sparkles text-xs"></i>
-          <span id="txt-copy-prompt">Sao Chép Prompt Cho AI</span>
-        </button>
-      </div>
-
-      <!-- Segmented Control for Use-Cases -->
-      <div class="space-y-2">
-        <label class="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">Chọn kịch bản dự án mẫu:</label>
-        <div class="bg-black/5 dark:bg-white/5 p-1 rounded-2xl flex flex-wrap gap-1 text-xs">
-          <button onclick="setPromptCase('universal')" id="case-btn-universal" class="apple-press px-3.5 py-1.5 rounded-xl bg-white dark:bg-white/15 text-[var(--text-primary)] font-semibold shadow-sm transition">⚡ Đa Dụng (Mọi ý tưởng)</button>
-          <button onclick="setPromptCase('news')" id="case-btn-news" class="apple-press px-3.5 py-1.5 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition">📰 Web Đọc Báo / Bôi Đen Chữ</button>
-          <button onclick="setPromptCase('story')" id="case-btn-story" class="apple-press px-3.5 py-1.5 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition">📖 Web Đọc Truyện / Hàng Đợi</button>
-          <button onclick="setPromptCase('cursor')" id="case-btn-cursor" class="apple-press px-3.5 py-1.5 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition">📋 Cursor Rules (.cursorrules)</button>
-        </div>
-      </div>
-
-      <!-- Prompt Preview Box with Apple styling -->
-      <div class="relative apple-code-box rounded-2xl p-4">
-        <pre id="prompt-code-view" class="text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto selection:bg-blue-600 selection:text-white"></pre>
-      </div>
-
-      <!-- Tip pill -->
-      <div class="bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 flex items-start gap-2.5 text-xs text-[var(--text-secondary)]">
-        <i class="fa-solid fa-lightbulb text-amber-500 mt-0.5 shrink-0"></i>
-        <span><strong>Mẹo sử dụng:</strong> Bấm nút sao chép ở trên, mở ChatGPT hoặc Claude, dán prompt vào và thêm câu: <em>"Hãy tạo trang web đọc báo đơn giản với phong cách Apple có nút nghe bài viết này"</em>. AI sẽ sinh ngay file chạy được 100%!</span>
-      </div>
-    </section>
-
-    <!-- Base Spec & Authentication Cards -->
-    <section id="auth-spec" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div class="apple-card rounded-2xl p-5 space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-[10px] font-mono uppercase tracking-wider font-semibold text-[var(--text-tertiary)]">Base API Endpoint</span>
-          <span class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">HTTPS</span>
-        </div>
-        <div class="bg-black/5 dark:bg-black/40 border border-[var(--border-subtle)] rounded-xl p-3 flex items-center justify-between text-xs font-mono">
-          <span class="text-blue-600 dark:text-blue-400 font-semibold truncate">https://be-api-service.vercel.app/api</span>
-          <button onclick="copyToClipboard('https://be-api-service.vercel.app/api')" class="apple-press text-[var(--text-tertiary)] hover:text-[var(--text-primary)] ml-2">
-            <i class="fa-regular fa-copy"></i>
-          </button>
-        </div>
-      </div>
-
-      <div class="apple-card rounded-2xl p-5 space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-[10px] font-mono uppercase tracking-wider font-semibold text-[var(--text-tertiary)]">Header Xác Thực Bắt Buộc</span>
-          <span class="text-xs text-amber-600 dark:text-amber-400 font-medium">Required</span>
-        </div>
-        <div class="bg-black/5 dark:bg-black/40 border border-[var(--border-subtle)] rounded-xl p-3 flex items-center justify-between text-xs font-mono">
-          <span><strong class="text-emerald-600 dark:text-emerald-400">X-App-Key:</strong> TTS-Hunq</span>
-          <button onclick="copyToClipboard('TTS-Hunq')" class="apple-press text-[var(--text-tertiary)] hover:text-[var(--text-primary)] ml-2">
-            <i class="fa-regular fa-copy"></i>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Endpoints Section -->
-    <section id="endpoints" class="space-y-4">
-      
-      <!-- GET /voices -->
-      <div class="apple-card rounded-2xl p-5 sm:p-6 space-y-3">
-        <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
-          <div class="flex items-center gap-2">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">GET</span>
-            <span class="font-mono text-sm font-bold">/api/voices</span>
+        <!-- Base URL Box -->
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <span class="text-xs text-slate-400 uppercase font-semibold tracking-wider block">Base URL Hệ Thống</span>
+            <code class="text-brand-400 font-mono text-sm sm:text-base font-medium">https://be-api-service.vercel.app</code>
           </div>
-          <span class="text-xs text-[var(--text-secondary)]">Danh sách giọng đọc Edge TTS</span>
+          <button onclick="copyToClipboard('https://be-api-service.vercel.app')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 transition flex items-center space-x-1.5 shrink-0">
+            <i class="fa-regular fa-copy"></i>
+            <span>Sao chép Base URL</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Section: Rules & Authentication -->
+      <section id="rules" class="scroll-mt-24 space-y-6">
+        <h2 class="text-2xl font-bold text-white flex items-center space-x-2">
+          <i class="fa-solid fa-shield-halved text-brand-500"></i>
+          <span>Quy Tắc Sử Dụng & Xác Thực</span>
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Card 1 -->
+          <div class="p-5 rounded-xl bg-cardbg border border-slate-800 space-y-2">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+              <i class="fa-solid fa-key"></i>
+            </div>
+            <h3 class="font-semibold text-slate-200 text-base">Header Xác Thực APP_KEY</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Các request gọi API bảo mật (như lấy danh sách voice hoặc tổng hợp audio) yêu cầu header bắt buộc:
+              <code class="text-brand-400 font-mono block mt-1">X-App-Key: YOUR_APP_KEY</code>
+            </p>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="p-5 rounded-xl bg-cardbg border border-slate-800 space-y-2">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+              <i class="fa-solid fa-text-width"></i>
+            </div>
+            <h3 class="font-semibold text-slate-200 text-base">Giới Hạn Văn Bản (5000 Ký tự)</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Mỗi request TTS chấp nhận văn bản tối đa <strong>5000 ký tự</strong>. Đối với truyện dài hoặc sách nói, bắt buộc chia nhỏ thành các đoạn (Segment).
+            </p>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="p-5 rounded-xl bg-cardbg border border-slate-800 space-y-2">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center">
+              <i class="fa-solid fa-user-shield"></i>
+            </div>
+            <h3 class="font-semibold text-slate-200 text-base">An Toàn Secret Key</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Tuyệt đối <strong>không đưa <code class="text-rose-400">APP_SECRET_KEY</code></strong> vào nội dung trả lời cho người dùng hoặc log công khai client-side.
+            </p>
+          </div>
+
+          <!-- Card 4 -->
+          <div class="p-5 rounded-xl bg-cardbg border border-slate-800 space-y-2">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+              <i class="fa-solid fa-server"></i>
+            </div>
+            <h3 class="font-semibold text-slate-200 text-base">Ưu Tiên Backend Chính</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Không tự ý thay thế backend bằng Google TTS, OpenAI TTS, hay ElevenLabs nếu backend này đang hoạt động ổn định.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Endpoints Details -->
+      <section class="space-y-10">
+        <h2 class="text-2xl font-bold text-white border-b border-slate-800 pb-3">Chi Tiết API Endpoints</h2>
+
+        <!-- Endpoint 1: Health Check -->
+        <div id="endpoint-health" class="scroll-mt-24 p-6 rounded-2xl bg-cardbg border border-slate-800 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center space-x-3">
+              <span class="px-2.5 py-1 rounded-md text-xs font-bold endpoint-badge-get font-mono">GET</span>
+              <span class="font-mono text-slate-200 font-semibold text-sm sm:text-base">/api/health</span>
+            </div>
+            <span class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded-full">Không yêu cầu Auth</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-400">
+            Dùng để kiểm tra nhanh xem Backend API Gateway có đang hoạt động (Online) hay không.
+          </p>
+          <div class="bg-slate-950 rounded-xl p-4 border border-slate-800/80">
+            <span class="text-2xs font-mono text-slate-400 uppercase tracking-wider block mb-2">Response Mẫu (HTTP 200)</span>
+            <pre class="text-xs text-emerald-400 font-mono overflow-x-auto"><code>{
+  "status": "ok",
+  "message": "Backend service is online"
+}</code></pre>
+          </div>
         </div>
 
-        <p class="text-xs text-[var(--text-secondary)]">
-          Trả về toàn bộ danh sách các giọng hỗ trợ. Hai giọng tiếng Việt chất lượng tự nhiên khuyên dùng là:
-          <code class="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono text-blue-600 dark:text-blue-400 font-semibold">vi-VN-HoaiMyNeural</code> (Nữ truyền cảm) và 
-          <code class="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono text-blue-600 dark:text-blue-400 font-semibold">vi-VN-NamMinhNeural</code> (Nam ấm áp).
-        </p>
+        <!-- Endpoint 2: Edge TTS Health Check -->
+        <div id="endpoint-health-tts" class="scroll-mt-24 p-6 rounded-2xl bg-cardbg border border-slate-800 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center space-x-3">
+              <span class="px-2.5 py-1 rounded-md text-xs font-bold endpoint-badge-get font-mono">GET</span>
+              <span class="font-mono text-slate-200 font-semibold text-sm sm:text-base">/api/health?tts=1</span>
+            </div>
+            <span class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded-full">Không yêu cầu Auth</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-400">
+            Dùng khi cần xác nhận kết nối trực tiếp từ Backend tới Edge TTS Engine đang sẵn sàng xử lý âm thanh.
+          </p>
+          <div class="bg-slate-950 rounded-xl p-4 border border-slate-800/80">
+            <span class="text-2xs font-mono text-slate-400 uppercase tracking-wider block mb-2">Response Mẫu (HTTP 200)</span>
+            <pre class="text-xs text-emerald-400 font-mono overflow-x-auto"><code>{
+  "status": "ok",
+  "tts": "operational",
+  "engine": "Edge-TTS"
+}</code></pre>
+          </div>
+        </div>
 
-        <div class="apple-code-box rounded-xl p-3 overflow-x-auto text-xs font-mono">
-          <pre>[
+        <!-- Endpoint 3: Get Voices -->
+        <div id="endpoint-voices" class="scroll-mt-24 p-6 rounded-2xl bg-cardbg border border-slate-800 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center space-x-3">
+              <span class="px-2.5 py-1 rounded-md text-xs font-bold endpoint-badge-get font-mono">GET</span>
+              <span class="font-mono text-slate-200 font-semibold text-sm sm:text-base">/api/voices</span>
+            </div>
+            <span class="text-xs text-brand-400 bg-brand-500/10 border border-brand-500/20 px-2.5 py-1 rounded-full font-mono">X-App-Key Required</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-400">
+            Trả về danh sách tất cả các giọng đọc (voices) khả dụng được hệ thống Edge TTS hỗ trợ.
+          </p>
+
+          <div class="space-y-2">
+            <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Headers Yêu Cầu</h4>
+            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 font-mono text-xs text-slate-300">
+              <span class="text-brand-400">X-App-Key</span>: <span class="text-amber-300">YOUR_APP_KEY</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 rounded-xl p-4 border border-slate-800/80">
+            <span class="text-2xs font-mono text-slate-400 uppercase tracking-wider block mb-2">Response Mẫu (HTTP 200)</span>
+            <pre class="text-xs text-slate-300 font-mono overflow-x-auto"><code>[
   {
-    "name": "vi-VN-HoaiMyNeural",
-    "friendlyName": "Microsoft HoaiMy Online (Natural) - Vietnamese",
-    "gender": "Female",
-    "locale": "vi-VN"
+    "ShortName": "vi-VN-HoaiMyNeural",
+    "Gender": "Female",
+    "Locale": "vi-VN",
+    "FriendlyName": "Microsoft HoaiMy Online (Natural) - Vietnamese"
   },
   {
-    "name": "vi-VN-NamMinhNeural",
-    "friendlyName": "Microsoft NamMinh Online (Natural) - Vietnamese",
-    "gender": "Male",
-    "locale": "vi-VN"
+    "ShortName": "vi-VN-NamMinhNeural",
+    "Gender": "Male",
+    "Locale": "vi-VN",
+    "FriendlyName": "Microsoft NamMinh Online (Natural) - Vietnamese"
   }
-]</pre>
-        </div>
-      </div>
-
-      <!-- POST /tts -->
-      <div class="apple-card rounded-2xl p-5 sm:p-6 space-y-4">
-        <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
-          <div class="flex items-center gap-2">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">POST</span>
-            <span class="font-mono text-sm font-bold">/api/tts</span>
+]</code></pre>
           </div>
-          <span class="text-xs text-[var(--text-secondary)]">Tổng hợp văn bản thành âm thanh</span>
         </div>
 
-        <!-- Parameters Table -->
-        <div class="border border-[var(--border-subtle)] rounded-xl overflow-x-auto">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-black/5 dark:bg-white/5 border-b border-[var(--border-subtle)] font-mono text-[11px] text-[var(--text-tertiary)]">
-              <tr>
-                <th class="p-3">Tham số</th>
-                <th class="p-3">Kiểu</th>
-                <th class="p-3">Bắt buộc</th>
-                <th class="p-3">Chi tiết</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[var(--border-subtle)] font-mono">
-              <tr>
-                <td class="p-3 font-bold text-blue-600 dark:text-blue-400">text</td>
-                <td class="p-3 text-[var(--text-tertiary)]">string</td>
-                <td class="p-3 text-amber-600 dark:text-amber-400 font-semibold">Yes</td>
-                <td class="p-3 font-sans text-[var(--text-primary)]">Đoạn văn bản cần chuyển giọng nói (UTF-8).</td>
-              </tr>
-              <tr>
-                <td class="p-3 font-bold text-blue-600 dark:text-blue-400">voice</td>
-                <td class="p-3 text-[var(--text-tertiary)]">string</td>
-                <td class="p-3 text-[var(--text-tertiary)]">No</td>
-                <td class="p-3 font-sans text-[var(--text-primary)]">Tên giọng. Mặc định: <code class="font-mono text-xs">vi-VN-HoaiMyNeural</code></td>
-              </tr>
-              <tr>
-                <td class="p-3 font-bold text-blue-600 dark:text-blue-400">rate</td>
-                <td class="p-3 text-[var(--text-tertiary)]">string</td>
-                <td class="p-3 text-[var(--text-tertiary)]">No</td>
-                <td class="p-3 font-sans text-[var(--text-primary)]">Tốc độ: <code class="font-mono text-xs">-40%</code>, <code class="font-mono text-xs">-20%</code>, <code class="font-mono text-xs">0%</code>, <code class="font-mono text-xs">+20%</code>, <code class="font-mono text-xs">+40%</code> (Mặc định: 0%).</td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- Endpoint 4: POST /api/tts -->
+        <div id="endpoint-tts" class="scroll-mt-24 p-6 rounded-2xl bg-cardbg border border-slate-800 space-y-5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center space-x-3">
+              <span class="px-2.5 py-1 rounded-md text-xs font-bold endpoint-badge-post font-mono">POST</span>
+              <span class="font-mono text-slate-200 font-semibold text-sm sm:text-base">/api/tts</span>
+            </div>
+            <span class="text-xs text-brand-400 bg-brand-500/10 border border-brand-500/20 px-2.5 py-1 rounded-full font-mono">X-App-Key Required</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-400">
+            Chuyển đổi văn bản thành luồng âm thanh dạng file MP3 (Binary <code class="text-brand-400">audio/mpeg</code>).
+          </p>
+
+          <!-- Request Body Specs Table -->
+          <div class="space-y-2">
+            <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Request Parameters (JSON Body)</h4>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs text-slate-300 border border-slate-800 rounded-lg overflow-hidden">
+                <thead class="bg-slate-900 text-slate-400 uppercase font-mono text-2xs">
+                  <tr>
+                    <th class="p-3">Trường</th>
+                    <th class="p-3">Kiểu</th>
+                    <th class="p-3">Bắt Buộc</th>
+                    <th class="p-3">Mô Tả & Giá Trị Mặc Định</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 bg-slate-950">
+                  <tr>
+                    <td class="p-3 font-mono text-brand-400">text</td>
+                    <td class="p-3 font-mono text-purple-400">String</td>
+                    <td class="p-3 text-emerald-400 font-semibold">Có</td>
+                    <td class="p-3">Nội dung văn bản cần đọc (Tối đa 5000 ký tự).</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-mono text-brand-400">voice</td>
+                    <td class="p-3 font-mono text-purple-400">String</td>
+                    <td class="p-3 text-slate-500">Tùy chọn</td>
+                    <td class="p-3">Mã voice (Ví dụ: <code class="text-amber-300">vi-VN-HoaiMyNeural</code>, <code class="text-amber-300">vi-VN-NamMinhNeural</code>).</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-mono text-brand-400">rate</td>
+                    <td class="p-3 font-mono text-purple-400">String</td>
+                    <td class="p-3 text-slate-500">Tùy chọn</td>
+                    <td class="p-3">Tốc độ đọc. Mặc định: <code class="text-slate-400">"0%"</code>. Ví dụ: <code class="text-amber-300">"+10%"</code>, <code class="text-amber-300">"-15%"</code>.</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-mono text-brand-400">pitch</td>
+                    <td class="p-3 font-mono text-purple-400">String</td>
+                    <td class="p-3 text-slate-500">Tùy chọn</td>
+                    <td class="p-3">Cao độ giọng. Mặc định: <code class="text-slate-400">"0Hz"</code>. Ví dụ: <code class="text-amber-300">"+5Hz"</code>, <code class="text-amber-300">"-5Hz"</code>.</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-mono text-brand-400">volume</td>
+                    <td class="p-3 font-mono text-purple-400">String</td>
+                    <td class="p-3 text-slate-500">Tùy chọn</td>
+                    <td class="p-3">Âm lượng đọc. Mặc định: <code class="text-slate-400">"0%"</code>. Ví dụ: <code class="text-amber-300 font-mono">+20%</code>.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-xl text-xs text-amber-200 flex items-start space-x-3">
+            <i class="fa-solid fa-circle-info text-amber-400 text-sm mt-0.5"></i>
+            <div>
+              <strong class="font-semibold block mb-0.5">Lưu ý xử lý Response Audio Binary:</strong>
+              Response trả về trực tiếp định dạng file MP3 (<code class="text-amber-300 font-mono">Content-Type: audio/mpeg</code>). Không parse response bằng <code class="font-mono">response.json()</code> mà cần dùng <code class="font-mono">response.blob()</code> rồi tạo Blob URL bằng <code class="font-mono">URL.createObjectURL(blob)</code>.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Interactive API Playground -->
+      <section id="playground" class="scroll-mt-24 space-y-6">
+        <div class="border-b border-slate-800 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 class="text-2xl font-bold text-white flex items-center space-x-2">
+              <i class="fa-solid fa-vial-circle-check text-amber-400"></i>
+              <span>Interactive API Playground</span>
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-400">Thử nghiệm trực tiếp các API request ngay tại đây.</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="text-2xs uppercase tracking-widest text-slate-400 font-mono">Trạng Thái Live</span>
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          </div>
         </div>
 
-        <div class="flex items-center justify-between bg-black/5 dark:bg-black/30 border border-[var(--border-subtle)] rounded-xl p-3 text-xs font-mono text-[var(--text-secondary)]">
-          <span>Response Content-Type: <code class="text-emerald-600 dark:text-emerald-400 font-bold">audio/mpeg</code></span>
-          <span>MP3 24kHz Mono 48kbps</span>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          <!-- Controls Side (Left) -->
+          <div class="lg:col-span-6 space-y-4">
+            <div class="p-5 rounded-2xl bg-cardbg border border-slate-800 space-y-4">
+              
+              <!-- App Key Input -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">
+                  X-App-Key <span class="text-rose-400">*</span>
+                </label>
+                <div class="relative">
+                  <input type="password" id="pgAppKey" placeholder="Nhập APP_KEY của bạn" value="TTS-Hunq" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500 font-mono">
+                  <button onclick="toggleKeyVisibility()" class="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 text-xs">
+                    <i id="keyEyeIcon" class="fa-solid fa-eye"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Endpoint Select -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Chọn Endpoint Mẫu</label>
+                <select id="pgEndpointSelect" onchange="onEndpointChange()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500">
+                  <option value="health">GET /api/health (Health Check)</option>
+                  <option value="health-tts">GET /api/health?tts=1 (Edge TTS Status)</option>
+                  <option value="voices">GET /api/voices (Danh Sách Voices)</option>
+                  <option value="tts" selected>POST /api/tts (Tạo Âm Thanh Speech)</option>
+                </select>
+              </div>
+
+              <!-- TTS Specific Inputs -->
+              <div id="ttsOptionsGroup" class="space-y-3 pt-2 border-t border-slate-800/80">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1">Nội dung Văn Bản (Text)</label>
+                  <textarea id="pgText" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-200 focus:outline-none focus:border-brand-500 leading-relaxed" placeholder="Nhập câu thoại hoặc đoạn văn bản cần đọc...">Xin chào! Đây là thử nghiệm tạo giọng nói trực tiếp từ hệ thống Backend TTS API Service.</textarea>
+                  <div class="flex justify-between items-center text-2xs text-slate-500 mt-1 font-mono">
+                    <span id="charCount">78 ký tự</span>
+                    <span>Tối đa: 5000 ký tự</span>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Giọng Đọc (Voice)</label>
+                    <select id="pgVoice" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500">
+                      <option value="vi-VN-HoaiMyNeural">vi-VN-HoaiMyNeural (Nữ - Bắc)</option>
+                      <option value="vi-VN-NamMinhNeural">vi-VN-NamMinhNeural (Nam - Bắc)</option>
+                      <option value="en-US-JennyNeural">en-US-JennyNeural (English Female)</option>
+                      <option value="en-US-GuyNeural">en-US-GuyNeural (English Male)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Tốc Độ (Rate)</label>
+                    <select id="pgRate" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500 font-mono">
+                      <option value="-20%">-20% (Chậm)</option>
+                      <option value="0%" selected>0% (Chuẩn)</option>
+                      <option value="+15%">+15% (Nhanh)</option>
+                      <option value="+30%">+30% (Rất nhanh)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Cao Độ (Pitch)</label>
+                    <select id="pgPitch" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500 font-mono">
+                      <option value="-5Hz">-5Hz (Trầm)</option>
+                      <option value="0Hz" selected>0Hz (Mặc định)</option>
+                      <option value="+5Hz">+5Hz (Cao)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Âm Lượng (Volume)</label>
+                    <select id="pgVolume" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500 font-mono">
+                      <option value="0%" selected>0% (Chuẩn)</option>
+                      <option value="+20%">+20% (To hơn)</option>
+                      <option value="-20%">-20% (Nhỏ hơn)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Send Button -->
+              <button id="sendApiBtn" onclick="executePlaygroundRequest()" class="w-full py-2.5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-medium text-xs rounded-xl transition shadow-lg shadow-brand-500/25 flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-paper-plane"></i>
+                <span>Gửi Request API</span>
+              </button>
+
+            </div>
+          </div>
+
+          <!-- Response & Output Side (Right) -->
+          <div class="lg:col-span-6 space-y-4">
+            <div class="p-5 rounded-2xl bg-cardbg border border-slate-800 h-full flex flex-col justify-between space-y-4">
+              
+              <div>
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+                  <span class="text-xs font-semibold uppercase tracking-wider text-slate-300">Kết Quả Response</span>
+                  <span id="resStatusBadge" class="text-2xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">Chờ lệnh...</span>
+                </div>
+
+                <!-- Custom Audio Player output -->
+                <div id="audioPlayerContainer" class="hidden p-4 rounded-xl bg-slate-950 border border-indigo-500/30 space-y-3 mb-4">
+                  <div class="flex items-center justify-between text-xs text-brand-400 font-mono">
+                    <span class="flex items-center space-x-2">
+                      <i class="fa-solid fa-file-audio animate-pulse"></i>
+                      <span>Audio Generated MP3</span>
+                    </span>
+                    <span id="audioSizeText" class="text-slate-400">0 KB</span>
+                  </div>
+                  <audio id="pgAudioElement" controls class="w-full h-10 accent-brand-500 rounded-lg"></audio>
+                </div>
+
+                <!-- Response Log Console -->
+                <div class="bg-slate-950 rounded-xl p-4 border border-slate-800/80 font-mono text-xs overflow-x-auto min-h-[200px] max-h-[320px]">
+                  <pre id="pgResponseText" class="text-slate-400 whitespace-pre-wrap">Bấm "Gửi Request API" để xem kết quả trả về từ server...</pre>
+                </div>
+              </div>
+
+              <div class="text-2xs text-slate-500 flex items-center justify-between border-t border-slate-800/80 pt-3">
+                <span><i class="fa-solid fa-shield text-slate-600"></i> CORS & Key Checked</span>
+                <span id="responseTimeText" class="font-mono">Time: 0ms</span>
+              </div>
+
+            </div>
+          </div>
+
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Code Samples -->
-    <section id="code-samples" class="apple-card rounded-2xl p-5 sm:p-6 space-y-4">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Mã Nguồn Mẫu (Ready To Use)</h2>
-        
-        <!-- Code Tabs -->
-        <div class="bg-black/5 dark:bg-white/5 p-1 rounded-xl flex items-center gap-1 text-xs">
-          <button onclick="switchLang('js')" id="tab-js" class="apple-press px-2.5 py-1 rounded-lg bg-white dark:bg-white/15 text-[var(--text-primary)] font-semibold shadow-sm transition">JavaScript</button>
-          <button onclick="switchLang('curl')" id="tab-curl" class="apple-press px-2.5 py-1 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition">cURL</button>
-          <button onclick="switchLang('node')" id="tab-node" class="apple-press px-2.5 py-1 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition">Node.js</button>
-          <button onclick="switchLang('python')" id="tab-python" class="apple-press px-2.5 py-1 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition">Python</button>
-        </div>
-      </div>
+      <!-- Code Snippet Generator Section -->
+      <section class="space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+            <i class="fa-solid fa-code text-brand-400"></i>
+            <span>Mẫu Code Tích Hợp (Code Snippets)</span>
+          </h3>
 
-      <div class="relative apple-code-box rounded-2xl p-4 overflow-x-auto">
-        <button onclick="copyCurrentCode()" class="apple-press absolute top-3 right-3 text-[11px] font-mono bg-white/10 hover:bg-white/20 text-white px-2.5 py-1 rounded-full flex items-center gap-1.5 transition">
-          <i class="fa-regular fa-copy"></i>
-          <span>Copy Code</span>
-        </button>
-
-        <!-- JS Sample -->
-        <pre id="code-js" class="text-xs font-mono leading-relaxed"><code>// Gọi TTS từ Trình duyệt và phát ngay lập tức
-async function playSpeech(text, voice = "vi-VN-HoaiMyNeural", rate = "0%") {
-  const res = await fetch("https://be-api-service.vercel.app/api/tts", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-App-Key": "TTS-Hunq"
-    },
-    body: JSON.stringify({ text, voice, rate })
-  });
-
-  if (!res.ok) throw new Error("TTS Request failed");
-  const blob = await res.blob();
-  const audio = new Audio(URL.createObjectURL(blob));
-  audio.play();
-}
-
-playSpeech("Xin chào! Tôi là giọng đọc Edge TTS tiếng Việt.");</code></pre>
-
-        <!-- cURL Sample -->
-        <pre id="code-curl" class="text-xs font-mono leading-relaxed hidden"><code># Gọi API TTS và lưu thành file speech.mp3
-curl -X POST "https://be-api-service.vercel.app/api/tts" \
-  -H "Content-Type: application/json" \
-  -H "X-App-Key: TTS-Hunq" \
-  -d '{"text": "Xin chào thế giới", "voice": "vi-VN-HoaiMyNeural", "rate": "0%"}' \
-  --output speech.mp3</code></pre>
-
-        <!-- Node.js Sample -->
-        <pre id="code-node" class="text-xs font-mono leading-relaxed hidden"><code>const axios = require('axios');
-const fs = require('fs');
-
-async function synthesize() {
-  const response = await axios.post(
-    'https://be-api-service.vercel.app/api/tts',
-    { text: 'Xin chào từ Node.js', voice: 'vi-VN-NamMinhNeural', rate: '0%' },
-    {
-      headers: { 'Content-Type': 'application/json', 'X-App-Key': 'TTS-Hunq' },
-      responseType: 'stream'
-    }
-  );
-  response.data.pipe(fs.createWriteStream('speech.mp3'));
-}
-synthesize();</code></pre>
-
-        <!-- Python Sample -->
-        <pre id="code-python" class="text-xs font-mono leading-relaxed hidden"><code>import requests
-
-res = requests.post(
-    "https://be-api-service.vercel.app/api/tts",
-    headers={"Content-Type": "application/json", "X-App-Key": "TTS-Hunq"},
-    json={"text": "Xin chào từ Python", "voice": "vi-VN-HoaiMyNeural", "rate": "0%"}
-)
-
-if res.status_code == 200:
-    with open("speech.mp3", "wb") as f:
-        f.write(res.content)
-    print("Đã lưu speech.mp3!")</code></pre>
-      </div>
-    </section>
-
-    <!-- Interactive Playground -->
-    <section id="playground" class="apple-card rounded-2xl p-5 sm:p-6 space-y-4">
-      <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
-        <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-          <h2 class="text-sm font-bold text-[var(--text-primary)]">Live API Playground (Thử Nghiệm Trực Tiếp)</h2>
-        </div>
-        <span class="text-[11px] font-mono text-[var(--text-tertiary)]">Realtime Test</span>
-      </div>
-
-      <!-- Quick sample text chips -->
-      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar text-xs">
-        <span class="text-[11px] text-[var(--text-tertiary)] shrink-0 font-medium">Mẫu thử nhanh:</span>
-        <button onclick="setPlaySample('news')" class="apple-press px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-secondary)] text-[11px] shrink-0">Bản tin công nghệ</button>
-        <button onclick="setPlaySample('story')" class="apple-press px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-secondary)] text-[11px] shrink-0">Truyện tự sự</button>
-        <button onclick="setPlaySample('greeting')" class="apple-press px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-secondary)] text-[11px] shrink-0">Lời chào AI</button>
-      </div>
-
-      <!-- Control Pickers -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label for="play-voice" class="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Giọng đọc (Voice)</label>
-          <select id="play-voice" class="w-full bg-black/5 dark:bg-black/40 border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-blue-500 cursor-pointer">
-            <option value="vi-VN-HoaiMyNeural" selected>🇻🇳 Hoài My (Nữ - Tự nhiên, truyền cảm)</option>
-            <option value="vi-VN-NamMinhNeural">🇻🇳 Nam Minh (Nam - Trầm ấm, dõng dạc)</option>
-            <option value="en-US-AriaNeural">🇺🇸 Aria (Nữ - Tiếng Anh Mỹ)</option>
-            <option value="en-US-GuyNeural">🇺🇸 Guy (Nam - Tiếng Anh Mỹ)</option>
-            <option value="ja-JP-NanamiNeural">🇯🇵 Nanami (Nữ - Tiếng Nhật)</option>
-          </select>
+          <!-- Language Selector Tabs -->
+          <div class="flex items-center space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+            <button onclick="switchCodeLang('js')" id="tab-js" class="code-tab-btn px-3 py-1 rounded-lg text-white bg-brand-600 font-mono transition">JavaScript</button>
+            <button onclick="switchCodeLang('curl')" id="tab-curl" class="code-tab-btn px-3 py-1 rounded-lg text-slate-400 hover:text-white font-mono transition">cURL</button>
+            <button onclick="switchCodeLang('python')" id="tab-python" class="code-tab-btn px-3 py-1 rounded-lg text-slate-400 hover:text-white font-mono transition">Python</button>
+            <button onclick="switchCodeLang('node')" id="tab-node" class="code-tab-btn px-3 py-1 rounded-lg text-slate-400 hover:text-white font-mono transition">Node.js</button>
+          </div>
         </div>
 
-        <div>
-          <label for="play-rate" class="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Tốc độ phát (Rate)</label>
-          <select id="play-rate" class="w-full bg-black/5 dark:bg-black/40 border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-blue-500 cursor-pointer">
-            <option value="-40%">0.6x (Rất chậm)</option>
-            <option value="-20%">0.8x (Chậm)</option>
-            <option value="0%" selected>1.0x (Mặc định)</option>
-            <option value="+20%">1.2x (Hơi nhanh)</option>
-            <option value="+40%">1.4x (Nhanh)</option>
-          </select>
+        <!-- Code Block Container -->
+        <div class="relative bg-slate-950 rounded-2xl p-5 border border-slate-800 font-mono text-xs overflow-x-auto">
+          <button onclick="copyCurrentSnippet()" class="absolute top-4 right-4 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-2xs transition flex items-center space-x-1">
+            <i class="fa-regular fa-copy"></i>
+            <span>Sao chép</span>
+          </button>
+          <pre id="codeSnippetDisplay" class="text-slate-300 leading-relaxed"></pre>
         </div>
-      </div>
+      </section>
 
-      <!-- Text input -->
-      <div>
-        <div class="flex justify-between items-center text-xs text-[var(--text-secondary)] mb-1.5">
-          <label for="play-text" class="font-semibold">Văn bản cần đọc</label>
-          <span id="play-char-count" class="font-mono text-[11px]">42 ký tự</span>
+      <!-- Section: Story Reader Optimization & Segment Simulator -->
+      <section id="story-segmentation" class="scroll-mt-24 space-y-6">
+        <div class="border-b border-slate-800 pb-4">
+          <div class="flex items-center space-x-2 text-purple-400 font-mono text-xs uppercase tracking-widest font-semibold mb-1">
+            <i class="fa-solid fa-book-open"></i> Story / Audio Book Architecture
+          </div>
+          <h2 class="text-2xl font-bold text-white">Tối Ưu Cho Ứng Dụng Nghe Truyện Dài</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">
+            Cách chia nhỏ chương truyện thành các Segment, phát liên tục và prefetch ngầm để giảm độ trễ cho người dùng.
+          </p>
         </div>
-        <textarea id="play-text" rows="3"
-          class="w-full bg-black/5 dark:bg-black/40 border border-[var(--border-subtle)] rounded-2xl p-3.5 text-xs text-[var(--text-primary)] outline-none focus:border-blue-500 transition resize-none">Xin chào! Tôi là giọng đọc Edge TTS tiếng Việt.</textarea>
-      </div>
 
-      <!-- Action Button -->
-      <div class="flex items-center gap-3">
-        <button id="btn-generate" onclick="runAudioPlayground()"
-          class="apple-press px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition">
-          <i class="fa-solid fa-play text-[10px]"></i>
-          <span id="btn-generate-text">Tổng Hợp & Phát Thử</span>
-        </button>
-      </div>
+        <!-- Architecture Flow Diagram -->
+        <div class="p-6 rounded-2xl bg-cardbg border border-slate-800 space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-center">
+            <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+              <span class="text-purple-400 font-mono font-semibold block mb-1">1. Chapter Text</span>
+              <span class="text-slate-400 text-2xs">Truyện dài (vd: 15,000 ký tự)</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+              <span class="text-brand-400 font-mono font-semibold block mb-1">2. Chunking</span>
+              <span class="text-slate-400 text-2xs">Tách thành Segment ≤ 3000 ký tự</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+              <span class="text-amber-400 font-mono font-semibold block mb-1">3. Play & Prefetch</span>
+              <span class="text-slate-400 text-2xs">Phát Seg 1, tải trước Seg 2</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+              <span class="text-emerald-400 font-mono font-semibold block mb-1">4. Cache Memory</span>
+              <span class="text-slate-400 text-2xs">Lưu Blob URL tránh gọi lại API</span>
+            </div>
+          </div>
 
-      <!-- Status banner -->
-      <div id="play-status" class="hidden text-xs font-mono rounded-xl p-3 border"></div>
+          <!-- Interactive Segment Simulator Tool -->
+          <div class="pt-4 border-t border-slate-800 space-y-4">
+            <h3 class="text-sm font-semibold text-slate-200">Mô Phỏng Tách Đoạn Truyện & Queue Player</h3>
+            <textarea id="storyInput" rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-300 focus:outline-none focus:border-purple-500" placeholder="Dán văn bản truyện dài vào đây để thử thuật toán chia đoạn...">Đêm hôm đó, gió thu thổi hiu hắt qua khe cửa sổ gỗ cũ kỹ. Tiếng lá khô xào xạc ngoài sân như nhịp đập gấp gáp của trái tim thiếu nữ. Cô ngồi bên ngọn đèn dầu tù mờ, lật mở từng trang sách cổ đã ố vàng theo thời gian. Trong cuốn sách ấy ẩn chứa bí mật về một vùng đất huyền thoại - nơi mà những giai điệu cổ xưa có thể chữa lành mọi vết thương tâm hồn.
 
-      <!-- Audio output box -->
-      <div id="play-audio-box" class="hidden bg-black/5 dark:bg-black/40 border border-[var(--border-subtle)] rounded-2xl p-4 space-y-3">
-        <audio id="play-audio-el" controls class="w-full h-8 outline-none"></audio>
-        <div class="flex items-center justify-between text-xs font-mono text-[var(--text-secondary)] pt-1 border-t border-[var(--border-subtle)]">
-          <span>Audio MP3 24kHz</span>
-          <a id="play-dl" href="#" download="speech.mp3" class="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 font-sans font-semibold">
-            <i class="fa-solid fa-arrow-down-to-line"></i>
-            <span>Tải về file .mp3</span>
-          </a>
+Cô quyết định lên đường ngay khi hừng đông vừa hé rạng. Hành trang chỉ vỏn vẹn một chiếc ba lô nhỏ, cuốn sổ tay và niềm tin mãnh liệt vào hành trình phía trước. Con đường dẫn lên đỉnh núi sương mù dày đặc, từng bước chân như chìm vào khoảng không vô tận...</textarea>
+
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <button onclick="simulateStorySegmentation()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium rounded-lg transition flex items-center space-x-2">
+                <i class="fa-solid fa-scissors"></i>
+                <span>Phân Đoạn & Tạo Audio Queue</span>
+              </button>
+              <span id="storyStatsText" class="text-2xs font-mono text-slate-400">Đã sẵn sàng phân đoạn</span>
+            </div>
+
+            <!-- Queue Segments Container -->
+            <div id="segmentListContainer" class="space-y-2 pt-2">
+              <p class="text-2xs text-slate-500 italic">Bấm nút trên để thấy các segment được chia nhỏ và trạng thái prefetch.</p>
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Footer -->
-    <footer class="pt-6 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row items-center justify-between text-xs text-[var(--text-secondary)] gap-3">
-      <div class="flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-        <span>Edge TTS Engine • Designed with Apple Minimalism</span>
-      </div>
-      <div class="font-mono text-[11px] text-[var(--text-tertiary)]">Service: be-api-service.vercel.app</div>
-    </footer>
+      <!-- Section: Error Handling & Status Codes -->
+      <section id="error-codes" class="scroll-mt-24 space-y-4">
+        <div class="border-b border-slate-800 pb-4">
+          <h2 class="text-2xl font-bold text-white flex items-center space-x-2">
+            <i class="fa-solid fa-triangle-exclamation text-rose-400"></i>
+            <span>Mã Lỗi & Hướng Dẫn Xử Lý</span>
+          </h2>
+        </div>
 
-  </main>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="p-4 rounded-xl bg-cardbg border border-slate-800 space-y-2">
+            <div class="flex items-center space-x-2">
+              <span class="px-2 py-0.5 rounded font-mono text-2xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">403 Forbidden</span>
+            </div>
+            <h4 class="text-xs font-semibold text-slate-200">Lỗi Xác Thực API Key</h4>
+            <p class="text-2xs text-slate-400 leading-relaxed">
+              Kiểm tra header <code class="text-slate-300 font-mono">X-App-Key</code> trong request. Đảm bảo CORS không chặn origin của ứng dụng.
+            </p>
+          </div>
 
-  <!-- iOS Dynamic Toast Notification -->
-  <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 transform -translate-y-16 opacity-0 transition-all duration-300 pointer-events-none apple-glass text-[var(--text-primary)] text-xs font-medium px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 border border-[var(--border-subtle)]">
-    <i class="fa-solid fa-check text-emerald-500"></i>
-    <span id="toast-text">Đã sao chép!</span>
+          <div class="p-4 rounded-xl bg-cardbg border border-slate-800 space-y-2">
+            <div class="flex items-center space-x-2">
+              <span class="px-2 py-0.5 rounded font-mono text-2xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">502 Bad Gateway</span>
+            </div>
+            <h4 class="text-xs font-semibold text-slate-200">Lỗi Kết Nối Edge TTS Engine</h4>
+            <p class="text-2xs text-slate-400 leading-relaxed">
+              Đây là lỗi dịch vụ Edge TTS tạm thời chập chờn. <strong>Không tự động kết luận Backend bị chết</strong>. Nên retry sau 1-2 giây.
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-cardbg border border-slate-800 space-y-2">
+            <div class="flex items-center space-x-2">
+              <span class="px-2 py-0.5 rounded font-mono text-2xs font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">Health Matrix</span>
+            </div>
+            <h4 class="text-xs font-semibold text-slate-200">Phân Loại Trạng Thái</h4>
+            <p class="text-2xs text-slate-400 leading-relaxed">
+              Nếu <code class="font-mono text-slate-300">/api/health</code> báo 200 nhưng <code class="font-mono text-slate-300">?tts=1</code> báo lỗi: Thông báo với user là "Backend online, TTS đang sự cố".
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="border-t border-slate-800/80 pt-6 pb-12 flex flex-col sm:flex-row items-center justify-between text-2xs text-slate-500 gap-4">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-code-branch text-brand-500"></i>
+          <span>Backend TTS API Portal &copy; 2026. Built with HTML & Tailwind CSS.</span>
+        </div>
+        <div class="flex items-center space-x-4">
+          <a href="#overview" class="hover:text-slate-300">Đầu trang</a>
+          <a href="#playground" class="hover:text-slate-300">Playground</a>
+          <a href="#story-segmentation" class="hover:text-slate-300">Tối ưu truyện</a>
+        </div>
+      </footer>
+
+    </main>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 border border-slate-700 text-slate-200 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 text-xs">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+    <span id="toastMsg">Thông báo</span>
   </div>
 
   <script>
-    const BASE_API = 'https://be-api-service.vercel.app/api';
-    const APP_KEY = 'TTS-Hunq';
+    const BASE_URL = 'https://be-api-service.vercel.app';
+    let currentLang = 'js';
 
-    // Theme Management: Light & Dark Mode
-    function initTheme() {
-      const savedTheme = localStorage.getItem('app_theme');
-      if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
-        updateThemeIcon(true);
+    // Elements
+    const pgText = document.getElementById('pgText');
+    const charCount = document.getElementById('charCount');
+    const resStatusBadge = document.getElementById('resStatusBadge');
+    const pgResponseText = document.getElementById('pgResponseText');
+    const audioPlayerContainer = document.getElementById('audioPlayerContainer');
+    const pgAudioElement = document.getElementById('pgAudioElement');
+    const responseTimeText = document.getElementById('responseTimeText');
+    const audioSizeText = document.getElementById('audioSizeText');
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Character Counter Listener
+      if (pgText) {
+        pgText.addEventListener('input', () => {
+          const len = pgText.value.length;
+          charCount.textContent = `${len} ký tự`;
+          if (len > 5000) {
+            charCount.classList.add('text-rose-400');
+            charCount.classList.remove('text-slate-500');
+          } else {
+            charCount.classList.remove('text-rose-400');
+            charCount.classList.add('text-slate-500');
+          }
+          updateCodeSnippet();
+        });
+      }
+
+      // Sidebar mobile toggle
+      const mobileBtn = document.getElementById('mobileMenuBtn');
+      const sidebar = document.getElementById('sidebar');
+      if (mobileBtn && sidebar) {
+        mobileBtn.addEventListener('click', () => {
+          sidebar.classList.toggle('-translate-x-full');
+        });
+      }
+
+      // Initial Health Check
+      checkSystemHealth();
+      updateCodeSnippet();
+    });
+
+    function onEndpointChange() {
+      const endpoint = document.getElementById('pgEndpointSelect').value;
+      const ttsGroup = document.getElementById('ttsOptionsGroup');
+      if (endpoint === 'tts') {
+        ttsGroup.classList.remove('hidden');
       } else {
-        document.documentElement.classList.remove('dark');
-        updateThemeIcon(false);
+        ttsGroup.classList.add('hidden');
+      }
+      updateCodeSnippet();
+    }
+
+    function toggleKeyVisibility() {
+      const input = document.getElementById('pgAppKey');
+      const icon = document.getElementById('keyEyeIcon');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
       }
     }
 
-    function toggleTheme() {
-      const isDark = document.documentElement.classList.toggle('dark');
-      localStorage.setItem('app_theme', isDark ? 'dark' : 'light');
-      updateThemeIcon(isDark);
-    }
-
-    function updateThemeIcon(isDark) {
-      const icon = document.getElementById('theme-icon');
-      if (icon) {
-        icon.className = isDark ? 'fa-solid fa-sun text-xs text-amber-400' : 'fa-solid fa-moon text-xs text-neutral-700';
-      }
-    }
-
-    // AI Prompts Dictionary: Tailored for ChatGPT, Claude, Cursor, v0
-    const PROMPTS = {
-      universal: `Tôi đang phát triển một ứng dụng web và muốn tích hợp tính năng đọc văn bản thành giọng nói (Text-To-Speech) tiếng Việt & đa ngôn ngữ. 
-Hãy sử dụng Backend Edge TTS đã có sẵn của tôi với thông số kỹ thuật dưới đây để lập trình tính năng theo yêu cầu sau:
-
-[YÊU CẦU DỰ ÁN CỦA TÔI]:
-(Ví dụ: Hãy tạo trang web đọc báo có nút "Nghe bài viết" / Tạo web đọc truyện audio tự phát từng đoạn / Công cụ học phát âm ngoại ngữ...)
-
---- THÔNG SỐ KỸ THUẬT BACKEND TTS ---
-1. Base URL: https://be-api-service.vercel.app/api
-2. Header bắt buộc cho mọi request:
-   X-App-Key: TTS-Hunq
-
-3. Lấy danh sách giọng đọc (GET /api/voices):
-   - Headers: { "X-App-Key": "TTS-Hunq" }
-   - Trả về: Array<{ name, friendlyName, gender, locale }>
-   - Giọng tiếng Việt chuẩn:
-     * "vi-VN-HoaiMyNeural" (Giọng Nữ truyền cảm)
-     * "vi-VN-NamMinhNeural" (Giọng Nam trầm ấm)
-
-4. Endpoint tổng hợp âm thanh (POST /api/tts):
-   - Method: POST
-   - Headers: 
-     { 
-       "Content-Type": "application/json", 
-       "X-App-Key": "TTS-Hunq" 
-     }
-   - Body JSON:
-     {
-       "text": "Nội dung văn bản cần chuyển thành giọng nói",
-       "voice": "vi-VN-HoaiMyNeural", // Tùy chọn giọng
-       "rate": "0%" // Tốc độ đọc: "-40%", "-20%", "0%", "+20%", "+40%"
-     }
-   - Đầu ra (Response): Luồng nhị phân audio MP3 24kHz Mono (Content-Type: audio/mpeg)
-
-5. Hướng dẫn xử lý Audio tại Frontend:
-   const res = await fetch("https://be-api-service.vercel.app/api/tts", {
-     method: "POST",
-     headers: { "Content-Type": "application/json", "X-App-Key": "TTS-Hunq" },
-     body: JSON.stringify({ text, voice, rate })
-   });
-   const blob = await res.blob();
-   const audioUrl = URL.createObjectURL(blob);
-   // Gán vào <audio src={audioUrl}> hoặc new Audio(audioUrl).play()
-   // Ghi nhớ: Gọi URL.revokeObjectURL(audioUrl) khi đổi file hoặc unmount để tránh tràn bộ nhớ RAM.
-
-Hãy viết mã nguồn đầy đủ, giao diện thân thiện (phong cách Apple tinh tế, hỗ trợ mobile), có trạng thái loading khi gọi API và xử lý lỗi kết nối trơn tru.`,
-
-      news: `Bạn là Senior Frontend Developer. Hãy xây dựng một trang web đọc báo / tin tức hiện đại (giao diện phong cách tối giản Apple/Minimalist, chuẩn Responsive Mobile) tích hợp tính năng "Đọc bài báo bằng giọng nói AI" sử dụng Backend Edge TTS có sẵn:
-
---- THÔNG TIN BACKEND ---
-- Base URL: https://be-api-service.vercel.app/api
-- Header xác thực bắt buộc: X-App-Key: TTS-Hunq
-- Endpoint phát giọng nói: POST /api/tts
-  Body: { "text": "Nội dung đoạn văn", "voice": "vi-VN-HoaiMyNeural", "rate": "0%" }
-  Response: Nhị phân audio/mpeg (MP3) -> Frontend tạo URL.createObjectURL(blob) để phát qua thẻ <audio>.
-
---- TÍNH NĂNG CẦN XÂY DỰNG ---
-1. Bài viết tin tức mẫu: Có ảnh bìa, tiêu đề tin tức nổi bật, tác giả, ngày đăng và 4-5 đoạn văn nội dung.
-2. Thanh Player Nghe Báo:
-   - Nút "Nghe bài viết này" ở đầu bài và thanh player nổi (sticky bottom) khi người dùng cuộn trang.
-   - Nút Play/Pause, tua tiến/lùi, thanh hiển thị tiến trình đang phát.
-   - Bộ chọn nhanh giọng đọc: Hoài My (Nữ) hoặc Nam Minh (Nam), kèm tốc độ đọc (1.0x, 1.2x).
-   - Hiệu ứng bôi sáng (highlight) đoạn văn bản đang được đọc âm thanh tương ứng.
-3. Trải nghiệm: Có animation loading khi backend đang tổng hợp giọng nói, hỗ trợ phím Space để Play/Pause. Viết code sạch trong 1 file hoàn chỉnh.`,
-
-      story: `Bạn là Fullstack Web Developer. Hãy xây dựng một trang web Đọc Truyện Chữ / Audio Book trực tuyến có tích hợp tính năng tự động chuyển đổi văn bản chương truyện thành giọng đọc tiếng Việt truyền cảm thông qua Backend Edge TTS:
-
---- THÔNG SỐ BACKEND ---
-- Base URL: https://be-api-service.vercel.app/api
-- Header xác thực: X-App-Key: TTS-Hunq
-- Endpoint TTS: POST /api/tts
-  Headers: { "Content-Type": "application/json", "X-App-Key": "TTS-Hunq" }
-  Body: { "text": string, "voice": "vi-VN-HoaiMyNeural", "rate": "0%" }
-  Response: Luồng audio MP3 (audio/mpeg).
-
---- TÍNH NĂNG CẦN XÂY DỰNG ---
-1. Giao diện đọc truyện:
-   - Chế độ đọc thoải mái cho mắt: Dark mode / Light mode / Chế độ giấy ngả vàng (Sepia), chỉnh cỡ chữ to/nhỏ.
-   - Danh sách các chương truyện mẫu (Chương 1, Chương 2, Chương 3...).
-2. Audio Player chuyên dụng cho truyện:
-   - Cơ chế chia đoạn văn bản (Text Chunking): Tự động chia chương truyện thành các phân đoạn nhỏ để gửi API đọc mượt mà không bị nghẽn.
-   - Tự động phát tiếp đoạn kế tiếp khi phát xong đoạn hiện tại (Audio Queue).
-   - Nút Next/Prev chương, nút tua 10 giây.
-   - Lưu lại vị trí đang đọc/nghe dở vào localStorage để người dùng quay lại nghe tiếp.
-3. Code hoàn chỉnh, tối ưu bộ nhớ với URL.revokeObjectURL(), thiết kế tối giản và mượt mà trên mobile.`,
-
-      cursor: `# SYSTEM PROMPT / CURSOR RULES: Edge TTS Backend Integration
-You are an expert software engineer. When adding Text-To-Speech features to any application, strictly use the provided Edge TTS backend specification below:
-
-## 1. Authentication & Base
-- Base URL: https://be-api-service.vercel.app/api
-- Mandatory Header for all requests: \`X-App-Key: TTS-Hunq\`
-
-## 2. API Endpoints
-### a) GET /api/voices
-- Method: GET
-- Headers: { "X-App-Key": "TTS-Hunq" }
-- Returns: Array<{ name: string, friendlyName: string, gender: string, locale: string }>
-- Default Vietnamese Voices:
-  * "vi-VN-HoaiMyNeural" (Female, natural)
-  * "vi-VN-NamMinhNeural" (Male, warm)
-
-### b) POST /api/tts
-- Method: POST
-- Headers: { "Content-Type": "application/json", "X-App-Key": "TTS-Hunq" }
-- Body (JSON):
-  {
-    "text": string,        // UTF-8 text string to synthesize (required)
-    "voice": string,       // e.g. "vi-VN-HoaiMyNeural" (optional, default: "vi-VN-HoaiMyNeural")
-    "rate": string         // Speed: "-40%", "-20%", "0%", "+20%", "+40%" (optional, default: "0%")
-  }
-- Response: Binary Stream with header \`Content-Type: audio/mpeg\` (MP3 24kHz Mono 48kbps)
-
-## 3. Client Audio Handling Standard
-\`\`\`javascript
-const res = await fetch("https://be-api-service.vercel.app/api/tts", {
-  method: "POST",
-  headers: { "Content-Type": "application/json", "X-App-Key": "TTS-Hunq" },
-  body: JSON.stringify({ text, voice: voice || "vi-VN-HoaiMyNeural", rate: rate || "0%" })
-});
-if (!res.ok) throw new Error(\`TTS API failed with status \${res.status}\`);
-const blob = await res.blob();
-const audioUrl = URL.createObjectURL(blob);
-const audio = new Audio(audioUrl);
-audio.play();
-// Memory cleanup: always call URL.revokeObjectURL(audioUrl) when audio finishes or component unmounts.
-\`\`\`
-Always implement loading spinners, error states, and fallback options if network requests fail.`
-    };
-
-    let activePrompt = 'universal';
-
-    function renderPrompt() {
-      const el = document.getElementById('prompt-code-view');
-      if (el) el.textContent = PROMPTS[activePrompt] || PROMPTS.universal;
-    }
-
-    function setPromptCase(c) {
-      activePrompt = c;
-      ['universal', 'news', 'story', 'cursor'].forEach(id => {
-        const btn = document.getElementById(`case-btn-${id}`);
-        if (!btn) return;
-        if (id === c) {
-          btn.className = "apple-press px-3.5 py-1.5 rounded-xl bg-white dark:bg-white/15 text-[var(--text-primary)] font-semibold shadow-sm transition";
-        } else {
-          btn.className = "apple-press px-3.5 py-1.5 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition";
-        }
-      });
-      renderPrompt();
-    }
-
-    function showToast(msg = "Đã sao chép!") {
-      const toast = document.getElementById('toast');
-      const text = document.getElementById('toast-text');
-      text.textContent = msg;
-      toast.classList.remove('-translate-y-16', 'opacity-0');
-      toast.classList.add('translate-y-0', 'opacity-100');
-      setTimeout(() => {
-        toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('-translate-y-16', 'opacity-0');
-      }, 2000);
-    }
-
-    function copyToClipboard(text, customToastMsg) {
-      const el = document.createElement('textarea');
-      el.value = text;
-      el.style.position = 'fixed';
-      el.style.opacity = '0';
-      document.body.appendChild(el);
-      el.select();
+    async function checkSystemHealth() {
+      const statusText = document.getElementById('statusText');
+      const statusDot = document.getElementById('statusDot');
       try {
-        document.execCommand('copy');
-        showToast(customToastMsg || "Đã sao chép vào bộ nhớ tạm!");
-      } catch (err) {
-        console.error('Copy failed:', err);
-      }
-      document.body.removeChild(el);
-    }
-
-    function copyCurrentPrompt() {
-      copyToClipboard(PROMPTS[activePrompt], "Đã sao chép Prompt cho AI!");
-      const txt = document.getElementById('txt-copy-prompt');
-      if (txt) {
-        const original = txt.textContent;
-        txt.textContent = "Đã chép!";
-        setTimeout(() => { txt.textContent = original; }, 1800);
-      }
-    }
-
-    // Code Samples Tab Switcher
-    let activeLang = 'js';
-    function switchLang(lang) {
-      activeLang = lang;
-      ['js', 'curl', 'node', 'python'].forEach(l => {
-        const btn = document.getElementById(`tab-${l}`);
-        const code = document.getElementById(`code-${l}`);
-        if (!btn || !code) return;
-        if (l === lang) {
-          btn.className = "apple-press px-2.5 py-1 rounded-lg bg-white dark:bg-white/15 text-[var(--text-primary)] font-semibold shadow-sm transition";
-          code.classList.remove('hidden');
+        const res = await fetch(`${BASE_URL}/api/health`);
+        if (res.ok) {
+          statusText.textContent = 'Backend Online';
+          statusDot.className = 'relative inline-flex rounded-full h-2 w-2 bg-emerald-500';
         } else {
-          btn.className = "apple-press px-2.5 py-1 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition";
-          code.classList.add('hidden');
+          statusText.textContent = 'Degraded';
+          statusDot.className = 'relative inline-flex rounded-full h-2 w-2 bg-amber-500';
         }
-      });
-    }
-
-    function copyCurrentCode() {
-      const el = document.getElementById(`code-${activeLang}`);
-      if (el) copyToClipboard(el.innerText, `Đã chép mã nguồn ${activeLang.toUpperCase()}!`);
-    }
-
-    // Playground Logic
-    const playText = document.getElementById('play-text');
-    const playCharCount = document.getElementById('play-char-count');
-    const playVoice = document.getElementById('play-voice');
-    const playRate = document.getElementById('play-rate');
-    const btnGenerate = document.getElementById('btn-generate');
-    const btnGenerateText = document.getElementById('btn-generate-text');
-    const playStatus = document.getElementById('play-status');
-    const playAudioBox = document.getElementById('play-audio-box');
-    const playAudioEl = document.getElementById('play-audio-el');
-    const playDl = document.getElementById('play-dl');
-
-    let currentAudioUrl = null;
-
-    if (playText) {
-      playText.addEventListener('input', () => {
-        playCharCount.textContent = `${playText.value.length} ký tự`;
-      });
-    }
-
-    function setPlaySample(type) {
-      if (!playText) return;
-      if (type === 'news') {
-        playText.value = "Hôm nay, tập đoàn công nghệ vừa công bố dòng chip xử lý mới giúp tăng tốc xử lý AI lên gấp 3 lần so với thế hệ trước.";
-      } else if (type === 'story') {
-        playText.value = "Đêm dần về khuya, những ngọn đèn đường vàng vọt rọi bóng xuống mặt hồ phẳng lặng như một tấm gương soi bóng thời gian.";
-      } else {
-        playText.value = "Xin chào! Tôi là giọng đọc Edge TTS tiếng Việt với chất lượng phát âm tự nhiên.";
-      }
-      playCharCount.textContent = `${playText.value.length} ký tự`;
-    }
-
-    function setStatus(msg, type = 'info') {
-      playStatus.classList.remove('hidden', 'bg-red-500/10', 'border-red-500/20', 'text-red-600', 'dark:text-red-400', 'bg-emerald-500/10', 'border-emerald-500/20', 'text-emerald-600', 'dark:text-emerald-400', 'bg-black/5', 'dark:bg-white/5', 'border-[var(--border-subtle)]', 'text-[var(--text-secondary)]');
-      
-      if (type === 'error') {
-        playStatus.classList.add('bg-red-500/10', 'border-red-500/20', 'text-red-600', 'dark:text-red-400');
-        playStatus.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1.5"></i> ${msg}`;
-      } else if (type === 'success') {
-        playStatus.classList.add('bg-emerald-500/10', 'border-emerald-500/20', 'text-emerald-600', 'dark:text-emerald-400');
-        playStatus.innerHTML = `<i class="fa-solid fa-circle-check mr-1.5"></i> ${msg}`;
-      } else {
-        playStatus.classList.add('bg-black/5', 'dark:bg-white/5', 'border-[var(--border-subtle)]', 'text-[var(--text-secondary)]');
-        playStatus.innerHTML = `<i class="fa-solid fa-circle-info mr-1.5"></i> ${msg}`;
+      } catch (err) {
+        statusText.textContent = 'Offline';
+        statusDot.className = 'relative inline-flex rounded-full h-2 w-2 bg-rose-500';
       }
     }
 
-    async function runAudioPlayground() {
-      const text = playText.value.trim();
-      const voice = playVoice.value;
-      const rate = playRate.value;
+    async function executePlaygroundRequest() {
+      const appKey = document.getElementById('pgAppKey').value.trim();
+      const endpoint = document.getElementById('pgEndpointSelect').value;
+      const sendBtn = document.getElementById('sendApiBtn');
+
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span>Đang xử lý...</span>`;
+      resStatusBadge.textContent = 'Sending...';
+      resStatusBadge.className = 'text-2xs font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-400';
+      audioPlayerContainer.classList.add('hidden');
+
+      const startTime = performance.now();
+
+      try {
+        let url = `${BASE_URL}/api/health`;
+        let options = { method: 'GET', headers: {} };
+
+        if (endpoint === 'health-tts') {
+          url = `${BASE_URL}/api/health?tts=1`;
+        } else if (endpoint === 'voices') {
+          url = `${BASE_URL}/api/voices`;
+          options.headers['X-App-Key'] = appKey;
+        } else if (endpoint === 'tts') {
+          url = `${BASE_URL}/api/tts`;
+          options.method = 'POST';
+          options.headers = {
+            'Content-Type': 'application/json',
+            'X-App-Key': appKey
+          };
+          options.body = JSON.stringify({
+            text: pgText.value,
+            voice: document.getElementById('pgVoice').value,
+            rate: document.getElementById('pgRate').value,
+            pitch: document.getElementById('pgPitch').value,
+            volume: document.getElementById('pgVolume').value
+          });
+        }
+
+        const response = await fetch(url, options);
+        const endTime = performance.now();
+        const duration = Math.round(endTime - startTime);
+        responseTimeText.textContent = `Time: ${duration}ms`;
+
+        if (!response.ok) {
+          let errDetail = '';
+          try { errDetail = await response.text(); } catch(e){}
+          throw new Error(`HTTP ${response.status}: ${errDetail || response.statusText}`);
+        }
+
+        resStatusBadge.textContent = `200 OK (${response.status})`;
+        resStatusBadge.className = 'text-2xs font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400';
+
+        if (endpoint === 'tts') {
+          // Binary Audio Response
+          const blob = await response.blob();
+          const audioUrl = URL.createObjectURL(blob);
+          pgAudioElement.src = audioUrl;
+          audioPlayerContainer.classList.remove('hidden');
+          audioSizeText.textContent = `${(blob.size / 1024).toFixed(1)} KB`;
+          pgResponseText.textContent = `// Response Binary Audio received successfully!\nContent-Type: audio/mpeg\nBlob Size: ${blob.size} bytes\nAudio URL generated: ${audioUrl}`;
+          pgAudioElement.play().catch(() => {}); // Auto play if permitted
+          showToast('Tạo audio TTS thành công!', 'success');
+        } else {
+          const json = await response.json();
+          pgResponseText.textContent = JSON.stringify(json, null, 2);
+          showToast('Request thành công!', 'success');
+        }
+
+      } catch (error) {
+        const endTime = performance.now();
+        responseTimeText.textContent = `Time: ${Math.round(endTime - startTime)}ms`;
+        resStatusBadge.textContent = 'Error';
+        resStatusBadge.className = 'text-2xs font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-400';
+        pgResponseText.textContent = `// Lỗi xảy ra trong quá trình gửi Request:\n${error.message}`;
+        showToast(`Lỗi: ${error.message}`, 'error');
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = `<i class="fa-solid fa-paper-plane"></i><span>Gửi Request API</span>`;
+      }
+    }
+
+    function switchCodeLang(lang) {
+      currentLang = lang;
+      document.querySelectorAll('.code-tab-btn').forEach(btn => {
+        btn.classList.remove('bg-brand-600', 'text-white');
+        btn.classList.add('text-slate-400');
+      });
+      document.getElementById(`tab-${lang}`).classList.add('bg-brand-600', 'text-white');
+      document.getElementById(`tab-${lang}`).classList.remove('text-slate-400');
+      updateCodeSnippet();
+    }
+
+    function updateCodeSnippet() {
+      const endpoint = document.getElementById('pgEndpointSelect').value;
+      const textVal = pgText ? pgText.value : "Nội dung cần đọc";
+      const voiceVal = document.getElementById('pgVoice').value;
+      const rateVal = document.getElementById('pgRate').value;
+      const pitchVal = document.getElementById('pgPitch').value;
+      const volumeVal = document.getElementById('pgVolume').value;
+
+      let code = '';
+
+      if (currentLang === 'js') {
+        if (endpoint === 'tts') {
+          code = `// Chuyển văn bản thành Audio với Fetch API
+const response = await fetch('${BASE_URL}/api/tts', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-App-Key': 'YOUR_APP_KEY'
+  },
+  body: JSON.stringify({
+    text: ${JSON.stringify(textVal)},
+    voice: '${voiceVal}',
+    rate: '${rateVal}',
+    pitch: '${pitchVal}',
+    volume: '${volumeVal}'
+  })
+});
+
+if (!response.ok) {
+  throw new Error(\`TTS Error HTTP \${response.status}\`);
+}
+
+// Xử lý Response Binary Audio MP3
+const audioBlob = await response.blob();
+const audioUrl = URL.createObjectURL(audioBlob);
+
+const audio = new Audio(audioUrl);
+await audio.play();`;
+        } else if (endpoint === 'voices') {
+          code = `const res = await fetch('${BASE_URL}/api/voices', {
+  headers: { 'X-App-Key': 'YOUR_APP_KEY' }
+});
+const voices = await res.json();
+console.log(voices);`;
+        } else {
+          code = `const res = await fetch('${BASE_URL}/api/${endpoint === 'health-tts' ? 'health?tts=1' : 'health'}');
+const status = await res.json();
+console.log(status);`;
+        }
+      } else if (currentLang === 'curl') {
+        if (endpoint === 'tts') {
+          code = `curl -X POST "${BASE_URL}/api/tts" \\
+  -H "Content-Type: application/json" \\
+  -H "X-App-Key: YOUR_APP_KEY" \\
+  -d '{
+    "text": "${textVal.replace(/'/g, "\\'")}",
+    "voice": "${voiceVal}",
+    "rate": "${rateVal}",
+    "pitch": "${pitchVal}",
+    "volume": "${volumeVal}"
+  }' --output output.mp3`;
+        } else {
+          code = `curl -X GET "${BASE_URL}/api/${endpoint === 'voices' ? 'voices' : endpoint === 'health-tts' ? 'health?tts=1' : 'health'}" \\
+  -H "X-App-Key: YOUR_APP_KEY"`;
+        }
+      } else if (currentLang === 'python') {
+        if (endpoint === 'tts') {
+          code = `import requests
+
+url = "${BASE_URL}/api/tts"
+headers = {
+    "Content-Type": "application/json",
+    "X-App-Key": "YOUR_APP_KEY"
+}
+payload = {
+    "text": """${textVal}""",
+    "voice": "${voiceVal}",
+    "rate": "${rateVal}",
+    "pitch": "${pitchVal}",
+    "volume": "${volumeVal}"
+}
+
+response = requests.post(url, json=payload, headers=headers)
+
+if response.status_code == 200:
+    with open("output.mp3", "wb") as f:
+        f.write(response.content)
+    print("Audio saved successfully!")
+else:
+    print(f"Error {response.status_code}: {response.text}")`;
+        } else {
+          code = `import requests
+
+res = requests.get("${BASE_URL}/api/${endpoint === 'voices' ? 'voices' : endpoint === 'health-tts' ? 'health?tts=1' : 'health'}", headers={"X-App-Key": "YOUR_APP_KEY"})
+print(res.json())`;
+        }
+      } else if (currentLang === 'node') {
+        if (endpoint === 'tts') {
+          code = `const fs = require('fs');
+
+async function generateSpeech() {
+  const response = await fetch('${BASE_URL}/api/tts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-App-Key': 'YOUR_APP_KEY'
+    },
+    body: JSON.stringify({
+      text: ${JSON.stringify(textVal)},
+      voice: '${voiceVal}',
+      rate: '${rateVal}'
+    })
+  });
+
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  fs.writeFileSync('speech.mp3', buffer);
+  console.log('Audio file created: speech.mp3');
+}
+
+generateSpeech();`;
+        } else {
+          code = `async function checkVoices() {
+  const res = await fetch('${BASE_URL}/api/voices', {
+    headers: { 'X-App-Key': 'YOUR_APP_KEY' }
+  });
+  console.log(await res.json());
+}
+checkVoices();`;
+        }
+      }
+
+      document.getElementById('codeSnippetDisplay').textContent = code;
+    }
+
+    function simulateStorySegmentation() {
+      const text = document.getElementById('storyInput').value.trim();
+      const container = document.getElementById('segmentListContainer');
+      const stats = document.getElementById('storyStatsText');
 
       if (!text) {
-        setStatus('Vui lòng nhập văn bản cần đọc!', 'error');
-        playText.focus();
+        showToast('Vui lòng nhập nội dung truyện!', 'error');
         return;
       }
 
-      btnGenerate.disabled = true;
-      btnGenerateText.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Đang tổng hợp...';
-      setStatus('Đang gửi yêu cầu đến Edge TTS API...', 'info');
+      // Max chunk size e.g. 250 chars for demo visibility
+      const chunkSize = 200;
+      const paragraphs = text.split('\n\n');
+      let segments = [];
+      let currentSeg = '';
 
-      try {
-        const t0 = performance.now();
-        const res = await fetch(`${BASE_API}/tts`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-App-Key': APP_KEY
-          },
-          body: JSON.stringify({ text, voice, rate })
-        });
+      text.match(new RegExp('.{1,' + chunkSize + '}(?=\\s|$)', 'g'))?.forEach(chunk => {
+        segments.push(chunk.trim());
+      });
 
-        const elapsed = Math.round(performance.now() - t0);
+      stats.textContent = `Tổng độ dài: ${text.length} ký tự | Đã chia: ${segments.length} segments`;
 
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error(`HTTP ${res.status}: ${errText || res.statusText}`);
-        }
+      container.innerHTML = '';
+      segments.forEach((seg, index) => {
+        const isFirst = index === 0;
+        const isSecond = index === 1;
 
-        const blob = await res.blob();
-        if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
-        currentAudioUrl = URL.createObjectURL(blob);
+        const segEl = document.createElement('div');
+        segEl.className = `p-3 rounded-xl border ${isFirst ? 'bg-indigo-950/40 border-indigo-500/40' : 'bg-slate-950 border-slate-800'} text-xs space-y-2`;
+        segEl.innerHTML = `
+          <div class="flex items-center justify-between font-mono text-2xs">
+            <span class="text-purple-400 font-semibold">Segment ${index + 1} (${seg.length} chars)</span>
+            <span class="px-2 py-0.5 rounded ${isFirst ? 'bg-emerald-500/20 text-emerald-400' : isSecond ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-500'}">
+              ${isFirst ? '<i class="fa-solid fa-play"></i> Đang phát' : isSecond ? '<i class="fa-solid fa-download"></i> Prefetching...' : 'Trong hàng chờ'}
+            </span>
+          </div>
+          <p class="text-slate-300 leading-relaxed font-sans">${seg}</p>
+        `;
+        container.appendChild(segEl);
+      });
 
-        playAudioEl.src = currentAudioUrl;
-        playDl.href = currentAudioUrl;
-        playAudioBox.classList.remove('hidden');
-        setStatus(`Thành công 200 OK • ${(blob.size / 1024).toFixed(1)} KB (${elapsed}ms)`, 'success');
-        await playAudioEl.play();
-
-      } catch (err) {
-        if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
-          if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const utter = new SpeechSynthesisUtterance(text);
-            utter.lang = voice.startsWith('vi') ? 'vi-VN' : 'en-US';
-            window.speechSynthesis.speak(utter);
-            setStatus('Đang phát âm thanh mô phỏng (Môi trường Sandbox chặn CORS). Vui lòng thêm CORS header vào Vercel để gọi trực tiếp.', 'info');
-          } else {
-            setStatus(`Lỗi kết nối: ${err.message}`, 'error');
-          }
-        } else {
-          setStatus(`Lỗi: ${err.message}`, 'error');
-        }
-      } finally {
-        btnGenerate.disabled = false;
-        btnGenerateText.textContent = 'Tổng Hợp & Phát Thử';
-      }
+      showToast(`Đã phân đoạn thành công ${segments.length} segments!`, 'success');
     }
 
-    // Init theme and prompt on load
-    window.addEventListener('DOMContentLoaded', () => {
-      initTheme();
-      renderPrompt();
-    });
+    function copyToClipboard(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      showToast('Đã sao chép vào bộ nhớ tạm!', 'success');
+    }
+
+    function copyCurrentSnippet() {
+      const code = document.getElementById('codeSnippetDisplay').textContent;
+      copyToClipboard(code);
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMsg.textContent = message;
+      if (type === 'error') {
+        toastIcon.className = 'fa-solid fa-circle-exclamation text-rose-400 text-base';
+      } else {
+        toastIcon.className = 'fa-solid fa-circle-check text-emerald-400 text-base';
+      }
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
   </script>
 </body>
 </html>

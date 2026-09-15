@@ -306,7 +306,7 @@ export function init(hostElement) {
         }
     });
 
-    const BASE_URL = 'https://be-api-service.vercel.app/api';
+    const BASE_URL = 'https://hunq-tts.vercel.app/api';
     const APP_KEY = 'TTS-Hunq';
 
     const formatSpeedToApiRate = (multiplier) => {

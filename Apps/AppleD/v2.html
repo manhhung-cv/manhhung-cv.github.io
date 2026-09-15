@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apple Device & Jailbreak Lookup</title>
+    <style>
+        :root {
+            --bg-main: #f2f2f7;
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --card-border: rgba(255, 255, 255, 0.6);
+            --text-primary: #1d1d1f;
+            --text-secondary: #86868b;
+            --apple-blue: #0071e3;
+            --apple-green: #34c759;
+            --apple-orange: #ff9500;
+            --apple-red: #ff3b30;
+            --apple-gray: #e5e5ea;
+            --blur-val: blur(20px) saturate(180%);
+            --radius-large: 20px;
+            --radius-medium: 12px;
+            --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-main: #000000;
+                --card-bg: rgba(28, 28, 30, 0.72);
+                --card-border: rgba(255, 255, 255, 0.1);
+                --text-primary: #f5f5f7;
+                --text-secondary: #86868b;
+                --apple-gray: #2c2c2e;
+            }
+        }
+
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container { width: 100%; max-width: 800px; }
+
+        header { text-align: center; margin-bottom: 35px; }
+        header h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 8px 0; }
+        header p { font-size: 17px; color: var(--text-secondary); margin: 0; }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur-val);
+            -webkit-backdrop-filter: var(--blur-val);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-large);
+            padding: 28px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title { font-size: 20px; font-weight: 600; margin: 0; }
+
+        .toggle-wrapper {
+            display: flex;
+            align-items: center;
+            background: var(--apple-gray);
+            padding: 3px;
+            border-radius: 9px;
+            font-size: 13px;
+        }
+
+        .toggle-btn {
+            padding: 6px 12px;
+            border-radius: 7px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-btn.active {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            font-weight: 600;
+        }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group:last-child { margin-bottom: 0; }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        select {
+            width: 100%;
+            appearance: none;
+            -webkit-appearance: none;
+            background-color: var(--apple-gray);
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2386868B%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px top 50%;
+            background-size: 10px auto;
+            border: none;
+            border-radius: var(--radius-medium);
+            padding: 14px 16px;
+            font-size: 16px;
+            color: var(--text-primary);
+            outline: none;
+        }
+
+        select optgroup { font-weight: 700; color: var(--apple-blue); background: var(--bg-main); }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .badge-dot { width: 7px; height: 7px; border-radius: 50%; }
+        .status-success { background: rgba(52, 199, 89, 0.15); color: var(--apple-green); }
+        .status-success .badge-dot { background: var(--apple-green); }
+        .status-warning { background: rgba(255, 149, 0, 0.15); color: var(--apple-orange); }
+        .status-warning .badge-dot { background: var(--apple-orange); }
+        .status-danger { background: rgba(255, 59, 48, 0.15); color: var(--apple-red); }
+        .status-danger .badge-dot { background: var(--apple-red); }
+        .status-info { background: rgba(0, 113, 227, 0.15); color: var(--apple-blue); }
+        .status-info .badge-dot { background: var(--apple-blue); }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .info-card {
+            background: var(--apple-gray);
+            border-radius: var(--radius-medium);
+            padding: 14px 16px;
+        }
+
+        .info-card span { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+        .info-card strong { font-size: 15px; font-weight: 600; }
+
+        .table-container {
+            margin-top: 15px;
+            border-radius: var(--radius-medium);
+            overflow: hidden;
+            border: 1px solid var(--apple-gray);
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { background: var(--apple-gray); color: var(--text-secondary); font-weight: 600; text-align: left; padding: 12px 16px; font-size: 12px; text-transform: uppercase; }
+        td { padding: 14px 16px; border-bottom: 1px solid var(--apple-gray); }
+        tr:last-child td { border-bottom: none; }
+
+        .guide-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .guide-item {
+            background: var(--apple-gray);
+            border-radius: var(--radius-medium);
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .guide-name { font-weight: 700; font-size: 16px; color: var(--apple-blue); }
+        .guide-type { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+        .guide-range { font-size: 13px; margin-top: 8px; font-weight: 500; }
+        .guide-link {
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 13px;
+            color: var(--apple-blue);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .guide-link:hover { text-decoration: underline; }
+
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Tra Cứu iPhone</h1>
+        <p>Kiểm tra định danh thiết bị & khả năng Jailbreak</p>
+    </header>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Định Danh Thiết Bị</h2>
+            <div class="toggle-wrapper">
+                <button class="toggle-btn active" id="btnAuto" onclick="setMode(false)">Tự Động</button>
+                <button class="toggle-btn" id="btnManual" onclick="setMode(true)">Thủ Công</button>
+            </div>
+        </div>
+
+        <div id="autoDetectBlock">
+            <div id="autoDetectStatus" class="badge status-info">
+                <span class="badge-dot"></span> Đang phân tích trình duyệt...
+            </div>
+        </div>
+
+        <div id="manualSelectBlock" style="display: none;">
+            <div class="form-group">
+                <label for="deviceSelect">Mẫu Máy & Mã Identifier</label>
+                <select id="deviceSelect" onchange="onDeviceSelectChange()">
+                    <option value="">-- Chọn iPhone --</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 20px;">
+            <label for="firmwareSelect">Phiên Bản Firmware (iOS)</label>
+            <select id="firmwareSelect" onchange="checkJailbreakStatus()">
+                <option value="">-- Chọn Firmware (Không bắt buộc) --</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Khối kết quả kiểm tra khi chọn Firmware cụ thể -->
+    <div class="card fade-in" id="jailbreakResultCard" style="display: none;">
+        <div class="card-header">
+            <h2 class="card-title">Kết Quả Jailbreak Trực Tiếp</h2>
+        </div>
+        <div id="jailbreakStatus"></div>
+    </div>
+
+    <!-- Khối Hướng Dẫn Jailbreak của thiết bị -->
+    <div class="card fade-in" id="jailbreakGuidesCard" style="display: none;">
+        <div class="card-header">
+            <h2 class="card-title" id="guidesCardTitle">Công Cụ Jailbreak Khả Dụng</h2>
+        </div>
+        <div id="guidesContainer"></div>
+    </div>
+
+    <!-- Khối Thông Số Kỹ Thuật & Lịch Sử Firmware -->
+    <div class="card fade-in" id="deviceDetailsCard" style="display: none;">
+        <div class="card-header">
+            <h2 class="card-title">Thông Số Kỹ Thuật</h2>
+        </div>
+        <div class="info-grid" id="deviceInfoGrid"></div>
+
+        <h3 style="font-size: 16px; margin: 24px 0 12px 0; font-weight: 600;">Lịch Sử Firmware & Sign Status</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Phiên Bản</th>
+                        <th>Loại</th>
+                        <th>Build</th>
+                        <th>Trạng Thái Sign</th>
+                        <th>Khả Năng JB</th>
+                        <th>Ngày Phát Hành</th>
+                    </tr>
+                </thead>
+                <tbody id="firmwareTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let devicesData = [];
+    let currentDevice = null;
+
+    window.onload = async function() {
+        try {
+            const response = await fetch('./data/devices.json');
+            if (!response.ok) throw new Error("Không thể tải file dữ liệu.");
+            devicesData = await response.json();
+            
+            populateDeviceDropdown();
+            autoDetectDevice();
+        } catch (error) {
+            console.error("Lỗi:", error);
+            document.getElementById('autoDetectStatus').className = "badge status-danger";
+            document.getElementById('autoDetectStatus').innerHTML = `<span class="badge-dot"></span> Lỗi tải dữ liệu ./data/devices.json (Cần chạy qua Web Server)`;
+        }
+    };
+
+    function populateDeviceDropdown() {
+        const deviceSelect = document.getElementById('deviceSelect');
+        deviceSelect.innerHTML = '<option value="">-- Chọn iPhone --</option>';
+        devicesData.forEach(item => {
+            let opt = document.createElement('option');
+            opt.value = item.deviceKey;
+            opt.innerHTML = `${item.info.Name} (${item.info.Identifier})`;
+            deviceSelect.appendChild(opt);
+        });
+    }
+
+    function autoDetectDevice() {
+        const ua = navigator.userAgent;
+        const isIOS = /iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        if (!isIOS) {
+            document.getElementById('autoDetectStatus').className = "badge status-warning";
+            document.getElementById('autoDetectStatus').innerHTML = `<span class="badge-dot"></span> Thiết bị ngoài iOS (Mẫu mặc định)`;
+            if(devicesData.length > 0) renderDeviceInfo(devicesData[0]);
+            return;
+        }
+
+        const maxDim = Math.max(window.screen.width * window.devicePixelRatio, window.screen.height * window.devicePixelRatio);
+        let matchedKey = "iPhone17,2";
+        
+        if (maxDim === 2796 || maxDim === 2868) {
+            matchedKey = "iPhone17,2";
+        } else if (maxDim === 2556 || maxDim === 2622) {
+            matchedKey = "iPhone17,1";
+        } else if (maxDim === 2778) {
+            matchedKey = "iPhone17,4";
+        }
+
+        const detected = devicesData.find(d => d.deviceKey === matchedKey) || devicesData[0];
+        
+        document.getElementById('autoDetectStatus').className = "badge status-success";
+        document.getElementById('autoDetectStatus').innerHTML = `<span class="badge-dot"></span> Đã nhận diện: ${detected.info.Name} (${detected.info.Identifier})`;
+        
+        renderDeviceInfo(detected);
+    }
+
+    function setMode(manual) {
+        document.getElementById('btnAuto').classList.toggle('active', !manual);
+        document.getElementById('btnManual').classList.toggle('active', manual);
+
+        document.getElementById('autoDetectBlock').style.display = manual ? 'none' : 'block';
+        document.getElementById('manualSelectBlock').style.display = manual ? 'block' : 'none';
+
+        if (!manual) {
+            autoDetectDevice();
+        } else {
+            document.getElementById('deviceSelect').value = "";
+            resetViews();
+        }
+    }
+
+    function onDeviceSelectChange() {
+        const selectedKey = document.getElementById('deviceSelect').value;
+        if (!selectedKey) {
+            resetViews();
+            return;
+        }
+        const selectedDevice = devicesData.find(d => d.deviceKey === selectedKey);
+        renderDeviceInfo(selectedDevice);
+    }
+
+    function renderDeviceInfo(device) {
+        currentDevice = device;
+        const firmwareSelect = document.getElementById('firmwareSelect');
+        firmwareSelect.innerHTML = '<option value="">-- Chọn Firmware (Không bắt buộc) --</option>';
+
+        const releaseFws = device.firmwares ? device.firmwares.filter(f => f.type === "Release") : [];
+        const betaFws = device.firmwares ? device.firmwares.filter(f => f.type === "Beta") : [];
+
+        if (releaseFws.length > 0) {
+            const releaseGroup = document.createElement('optgroup');
+            releaseGroup.label = "── PHIÊN BẢN CHÍNH THỨC ──";
+            releaseFws.forEach(fw => {
+                let opt = document.createElement('option');
+                opt.value = fw.build;
+                opt.innerHTML = `${fw.osStr} ${fw.version} (Build ${fw.build})`;
+                releaseGroup.appendChild(opt);
+            });
+            firmwareSelect.appendChild(releaseGroup);
+        }
+
+        if (betaFws.length > 0) {
+            const betaGroup = document.createElement('optgroup');
+            betaGroup.label = "── PHIÊN BẢN BETA (THỬ NGHIỆM) ──";
+            betaFws.forEach(fw => {
+                let opt = document.createElement('option');
+                opt.value = fw.build;
+                opt.innerHTML = `${fw.osStr} ${fw.version} (Build ${fw.build})`;
+                betaGroup.appendChild(opt);
+            });
+            firmwareSelect.appendChild(betaGroup);
+        }
+
+        // 1. Thông số kỹ thuật
+        const infoGrid = document.getElementById('deviceInfoGrid');
+        infoGrid.innerHTML = `
+            <div class="info-card"><span>Tên Máy</span><strong>${device.info.Name}</strong></div>
+            <div class="info-card"><span>Identifier</span><strong>${device.info.Identifier}</strong></div>
+            <div class="info-card"><span>Vi Xử Lý</span><strong>${device.info.SoC}</strong></div>
+            <div class="info-card"><span>Kiến Trúc</span><strong>${device.info.Arch}</strong></div>
+            <div class="info-card"><span>Mã Bo Mạch</span><strong>${device.info.Board}</strong></div>
+            <div class="info-card"><span>Model</span><strong>${device.info.Model}</strong></div>
+        `;
+
+        // 2. Bảng Firmware
+        const tableBody = document.getElementById('firmwareTableBody');
+        tableBody.innerHTML = '';
+        if (device.firmwares) {
+            device.firmwares.forEach(fw => {
+                const signedBadge = fw.signed 
+                    ? '<span class="badge status-success"><span class="badge-dot"></span> Signed</span>' 
+                    : '<span class="badge status-danger"><span class="badge-dot"></span> Unsigned</span>';
+                
+                const jbBadge = fw.canJailbreak
+                    ? '<span class="badge status-success"><span class="badge-dot"></span> Có Hỗ Trợ</span>'
+                    : '<span class="badge status-danger"><span class="badge-dot"></span> Chưa Hỗ Trợ</span>';
+
+                const typeBadge = fw.type === "Beta"
+                    ? '<span style="color: var(--apple-orange); font-weight: 600;">Beta</span>'
+                    : '<span>Chính thức</span>';
+
+                tableBody.innerHTML += `
+                    <tr>
+                        <td><strong>${fw.osStr} ${fw.version}</strong></td>
+                        <td>${typeBadge}</td>
+                        <td><code>${fw.build}</code></td>
+                        <td>${signedBadge}</td>
+                        <td>${jbBadge}</td>
+                        <td>${fw.released}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // 3. Hiển thị tất cả hướng dẫn JB của máy khi chưa chọn iOS
+        renderJailbreakGuides(device.jailbreakGuides);
+
+        document.getElementById('deviceDetailsCard').style.display = 'block';
+        document.getElementById('jailbreakResultCard').style.display = 'none';
+    }
+
+    // Render danh sách công cụ Jailbreak (hiển thị nguyên văn dữ liệu gốc và ghép thêm tiền tố iOS)
+    function renderJailbreakGuides(guides, targetVersion = null) {
+        const guidesCard = document.getElementById('jailbreakGuidesCard');
+        const guidesContainer = document.getElementById('guidesContainer');
+        const title = document.getElementById('guidesCardTitle');
+
+        if (!guides || guides.length === 0) {
+            guidesCard.style.display = 'none';
+            return;
+        }
+
+        guidesCard.style.display = 'block';
+        title.innerText = targetVersion 
+            ? `Công Cụ Jailbreak Cho iOS ${targetVersion}` 
+            : `Tất Cả Công Cụ Jailbreak Dành Cho Thiết Bị`;
+
+        let html = '<div class="guide-grid">';
+        guides.forEach(guide => {
+            const cleanLink = (guide.linkUrl && typeof guide.linkUrl === 'string') 
+                ? guide.linkUrl.replace('[object Object]', '') 
+                : 'https://ios.cfw.guide/';
+
+            html += `
+                <div class="guide-item">
+                    <div>
+                        <div class="guide-name">${guide.name}</div>
+                        <div class="guide-type">Loại: ${guide.type || 'Semi-Untethered'}</div>
+                        <div class="guide-range">Hỗ trợ: iOS ${guide.from} &rarr; iOS ${guide.to}</div>
+                    </div>
+                    <a href="${cleanLink}" target="_blank" rel="noopener" class="guide-link">Xem Hướng Dẫn &rarr;</a>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        guidesContainer.innerHTML = html;
+    }
+
+    // Chuyển đổi phiên bản iOS thành chuỗi số để so sánh phạm vi từ/đến
+    function parseVersion(vStr) {
+        if (!vStr) return 0;
+        const clean = vStr.toString().toLowerCase().replace(/[^0-9.]/g, '');
+        const parts = clean.split('.').map(Number);
+        return (parts[0] || 0) * 10000 + (parts[1] || 0) * 100 + (parts[2] || 0);
+    }
+
+    // Kiểm tra phiên bản iOS có nằm trong khoảng from - to hay không
+    function isVersionInRange(targetVer, fromVer, toVer) {
+        if (fromVer === "Tất cả" || toVer === "Tất cả") return true;
+        const target = parseVersion(targetVer);
+        const from = parseVersion(fromVer);
+        const to = parseVersion(toVer);
+        return target >= from && target <= to;
+    }
+
+    function checkJailbreakStatus() {
+        const selectedBuild = document.getElementById('firmwareSelect').value;
+        const resultCard = document.getElementById('jailbreakResultCard');
+        const statusDiv = document.getElementById('jailbreakStatus');
+
+        if (!currentDevice || !selectedBuild) {
+            resultCard.style.display = 'none';
+            renderJailbreakGuides(currentDevice ? currentDevice.jailbreakGuides : []);
+            return;
+        }
+
+        const selectedFw = currentDevice.firmwares.find(f => f.build === selectedBuild);
+        if (!selectedFw) return;
+
+        resultCard.style.display = 'block';
+
+        const matchedGuides = (currentDevice.jailbreakGuides || []).filter(guide => 
+            isVersionInRange(selectedFw.version, guide.from, guide.to)
+        );
+
+        if (selectedFw.canJailbreak || matchedGuides.length > 0) {
+            statusDiv.innerHTML = `
+                <div class="badge status-success" style="font-size:15px; margin-bottom:12px;">
+                    <span class="badge-dot"></span> Có Thể Jailbreak
+                </div>
+                <p style="margin:0; font-size:15px; color:var(--text-secondary);">
+                    Thiết bị <strong>${currentDevice.info.Name}</strong> chạy <strong>${selectedFw.osStr} ${selectedFw.version}</strong> (Build ${selectedFw.build}) hỗ trợ Jailbreak.
+                </p>
+            `;
+            renderJailbreakGuides(matchedGuides, selectedFw.version);
+        } else {
+            statusDiv.innerHTML = `
+                <div class="badge status-danger" style="font-size:15px; margin-bottom:12px;">
+                    <span class="badge-dot"></span> Chưa Thể Jailbreak
+                </div>
+                <p style="margin:0; font-size:15px; color:var(--text-secondary);">
+                    Hiện chưa có công cụ Jailbreak công khai cho <strong>${selectedFw.osStr} ${selectedFw.version}</strong> trên vi xử lý <strong>${currentDevice.info.SoC} (${currentDevice.info.Identifier})</strong>.
+                </p>
+            `;
+            document.getElementById('jailbreakGuidesCard').style.display = 'none';
+        }
+    }
+
+    function resetViews() {
+        document.getElementById('deviceDetailsCard').style.display = 'none';
+        document.getElementById('jailbreakResultCard').style.display = 'none';
+        document.getElementById('jailbreakGuidesCard').style.display = 'none';
+        document.getElementById('firmwareSelect').innerHTML = '<option value="">-- Chọn Firmware (Không bắt buộc) --</option>';
+        currentDevice = null;
+    }
+</script>
+
+</body>
+</html>

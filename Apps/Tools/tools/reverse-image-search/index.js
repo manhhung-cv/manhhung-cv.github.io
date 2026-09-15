@@ -39,7 +39,7 @@ export const IslandKit = {
 };
 
 // =============================================================================
-// 2. TEMPLATE RENDERER (HUNQOS MINIMAL FLAT - TOUCH & WORKSPACE STANDARD)
+// 2. TEMPLATE RENDERER (HUNQOS MINIMAL PREMIUM)
 // =============================================================================
 export function template() {
     return `
@@ -98,7 +98,7 @@ export function template() {
                         <span class="text-[11px] font-mono tracking-wider font-semibold uppercase text-accent-theme">HunqOS Search</span>
                     </div>
                     <h1 class="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">Tìm Kiếm Hình Ảnh</h1>
-                    <p class="text-[12px] text-zinc-500 dark:text-zinc-400 font-normal">Truy xuất nguồn gốc hình ảnh đa nền tảng. Ảnh lưu tạm tự hủy hoàn toàn sau 5 phút.</p>
+                    <p class="text-[12px] text-zinc-500 dark:text-zinc-400 font-normal">Truy xuất nguồn gốc hình ảnh đa nền tảng. Hỗ trợ E2E Bảo mật & Cloud Vault tự hủy.</p>
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -115,6 +115,19 @@ export function template() {
                 <div class="lg:col-span-7 space-y-4">
                     <div class="rounded-[24px] bg-white dark:bg-[#161618] border border-black/[0.05] dark:border-white/[0.08] p-5 shadow-sm space-y-4">
                         
+                        <!-- ENGINE MODE SWITCHER BAR -->
+                        <div class="flex items-center justify-between bg-[#f2f2f7] dark:bg-black/40 p-1.5 rounded-[16px] border border-black/[0.04] dark:border-white/[0.06]">
+                            <span class="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 ml-2">Chế độ xử lý ảnh:</span>
+                            <div class="flex items-center gap-1 bg-white dark:bg-[#202023] p-1 rounded-[12px] shadow-sm border border-black/[0.04] dark:border-white/[0.06]">
+                                <button id="mode-e2e" class="px-3 py-1 rounded-[9px] text-[11px] font-bold transition-all text-white bg-accent-theme shadow-xs">
+                                    <i class="fas fa-shield-halved mr-1 text-[10px]"></i> E2E Local
+                                </button>
+                                <button id="mode-imgbb" class="px-3 py-1 rounded-[9px] text-[11px] font-bold transition-all text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
+                                    <i class="fas fa-cloud-arrow-up mr-1 text-[10px]"></i> ImgBB
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- DROPZONE VIEWPORT -->
                         <div id="ris-dropzone" class="relative w-full aspect-[4/3] sm:aspect-[16/9] bg-[#f2f2f7] dark:bg-black/40 rounded-[20px] border-2 border-dashed border-black/[0.08] dark:border-white/[0.12] flex flex-col items-center justify-center transition-all overflow-hidden group cursor-pointer">
                             <input type="file" id="ris-file-input" accept="image/*" class="hidden">
@@ -140,6 +153,11 @@ export function template() {
                                 <button id="ris-clear-img" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md flex items-center justify-center border border-white/20 active:scale-90 transition-all shadow-md" title="Hủy ảnh">
                                     <i class="fas fa-times text-xs"></i>
                                 </button>
+                                
+                                <!-- MODE BADGE -->
+                                <div id="ris-mode-badge" class="absolute bottom-3 left-3 bg-emerald-500/90 backdrop-blur-md text-white px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow-sm">
+                                    <i class="fas fa-shield-halved text-[9px]"></i> E2E Local Mode
+                                </div>
                             </div>
                         </div>
 
@@ -189,9 +207,9 @@ export function template() {
 
                         <div class="pt-2 border-t border-black/[0.05] dark:border-white/[0.08] flex items-center justify-between text-[11px] text-zinc-400">
                             <span class="flex items-center gap-1.5">
-                                <i class="fas fa-shield-halved text-accent-theme text-[10px]"></i> Tự hủy sau 5 phút
+                                <i class="fas fa-shield-halved text-accent-theme text-[10px]"></i> Tự hủy sau 5 phút (Cloud)
                             </span>
-                            <span class="font-mono text-[10px]">ImgBB Vault</span>
+                            <span class="font-mono text-[10px]">ImgBB / E2E Native</span>
                         </div>
 
                     </div>
@@ -205,7 +223,7 @@ export function template() {
 }
 
 // =============================================================================
-// 3. LOGIC HOOKS & EVENT DISPATCHING
+// 3. LOGIC HOOKS & EVENT DISPATCHING (DUAL ENGINE MODE)
 // =============================================================================
 export function init(hostElement) {
     const rootContainer = hostElement.querySelector('#ris-root-container') || hostElement;
@@ -221,7 +239,7 @@ export function init(hostElement) {
     };
     window.addEventListener('storage', storageHandler);
 
-    // Query Elements
+    // Elements
     const dropzone = hostElement.querySelector('#ris-dropzone');
     const fileInput = hostElement.querySelector('#ris-file-input');
     const idleView = hostElement.querySelector('#mz-idle');
@@ -229,7 +247,11 @@ export function init(hostElement) {
     const previewView = hostElement.querySelector('#mz-preview');
     const previewImg = hostElement.querySelector('#ris-preview-img');
     const clearImgBtn = hostElement.querySelector('#ris-clear-img');
+    const modeBadge = hostElement.querySelector('#ris-mode-badge');
     
+    const modeBtnE2E = hostElement.querySelector('#mode-e2e');
+    const modeBtnImgBB = hostElement.querySelector('#mode-imgbb');
+
     const urlInput = hostElement.querySelector('#ris-url-input');
     const urlBtn = hostElement.querySelector('#ris-url-btn');
     
@@ -240,7 +262,7 @@ export function init(hostElement) {
     const historyCount = hostElement.querySelector('#ris-history-count');
     const clearHistoryBtn = hostElement.querySelector('#ris-clear-history');
 
-    // Configs
+    // Configs & State
     const IMGBB_API_KEY = 'af19d1de11cd14d3d0363c9a2c95d6cf'; 
     const UPLOAD_LIFETIME = 5 * 60 * 1000;
     
@@ -251,12 +273,48 @@ export function init(hostElement) {
         tineye: 'https://tineye.com/search?url='
     };
 
-    let currentUrl = null;
-    let historyInterval = null;
-    let hasConsentedToUpload = false;
+    // Mode: 'e2e' | 'imgbb'
+    let currentMode = localStorage.getItem('hunqos_ris_mode') || 'e2e';
 
-    // State Controller
-    const setUIState = (state, imgUrl = '') => {
+    let activeState = {
+        type: null, // 'file' | 'url'
+        fileObj: null,
+        publicUrl: null,
+        previewUrl: null
+    };
+
+    let historyInterval = null;
+
+    // Mode Switcher Controller
+    const setMode = (mode) => {
+        currentMode = mode;
+        localStorage.setItem('hunqos_ris_mode', mode);
+
+        if (mode === 'e2e') {
+            modeBtnE2E.className = 'px-3 py-1 rounded-[9px] text-[11px] font-bold transition-all text-white bg-accent-theme shadow-xs';
+            modeBtnImgBB.className = 'px-3 py-1 rounded-[9px] text-[11px] font-bold transition-all text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white';
+            modeBadge.innerHTML = `<i class="fas fa-shield-halved text-[9px]"></i> E2E Local Mode`;
+            modeBadge.className = 'absolute bottom-3 left-3 bg-emerald-500/90 backdrop-blur-md text-white px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow-sm';
+        } else {
+            modeBtnImgBB.className = 'px-3 py-1 rounded-[9px] text-[11px] font-bold transition-all text-white bg-accent-theme shadow-xs';
+            modeBtnE2E.className = 'px-3 py-1 rounded-[9px] text-[11px] font-bold transition-all text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white';
+            modeBadge.innerHTML = `<i class="fas fa-cloud-arrow-up text-[9px]"></i> ImgBB Vault Mode`;
+            modeBadge.className = 'absolute bottom-3 left-3 bg-sky-500/90 backdrop-blur-md text-white px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow-sm';
+        }
+    };
+
+    modeBtnE2E?.addEventListener('click', () => {
+        setMode('e2e');
+        IslandKit.notify('Chế độ E2E Local', 'Ảnh chỉ lưu tại trình duyệt máy bạn, bảo mật tuyệt đối.', 'info');
+    });
+
+    modeBtnImgBB?.addEventListener('click', () => {
+        setMode('imgbb');
+        IslandKit.notify('Chế độ ImgBB Vault', 'Ảnh tải tự động lên Cloud tự hủy 5 phút để tìm đa nền tảng.', 'info');
+    });
+
+    // Reset Interface State
+    const setUIState = (state, data = {}) => {
         dropzone.dataset.state = state;
         
         idleView.classList.add('hidden');
@@ -268,7 +326,12 @@ export function init(hostElement) {
         if (state === 'idle') {
             idleView.classList.remove('hidden');
             idleView.classList.add('flex');
-            currentUrl = null;
+            
+            if (activeState.previewUrl && activeState.previewUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(activeState.previewUrl);
+            }
+            
+            activeState = { type: null, fileObj: null, publicUrl: null, previewUrl: null };
             previewImg.src = '';
             urlInput.value = '';
             actionGrid.classList.add('opacity-50', 'pointer-events-none');
@@ -279,17 +342,16 @@ export function init(hostElement) {
             loadingView.classList.add('flex');
             actionGrid.classList.add('opacity-50', 'pointer-events-none');
             dropzone.classList.remove('border-transparent');
-        } 
+        }
         else if (state === 'ready') {
             previewView.classList.remove('hidden');
-            currentUrl = imgUrl;
-            previewImg.src = imgUrl;
+            previewImg.src = data.previewUrl;
             actionGrid.classList.remove('opacity-50', 'pointer-events-none');
             dropzone.classList.add('border-transparent');
         }
     };
 
-    // Upload Pipe
+    // ImgBB Upload Pipeline
     const uploadToImgBB = async (file) => {
         setUIState('loading');
 
@@ -306,41 +368,105 @@ export function init(hostElement) {
             
             if (data.success) {
                 const publicUrl = data.data.url;
+                activeState.publicUrl = publicUrl;
                 addToHistory(publicUrl, file.name);
-                setUIState('ready', publicUrl);
-                IslandKit.notify('Thành công', 'Đã tải ảnh lên và sẵn sàng phân tích.', 'success');
+                setUIState('ready', activeState);
+                IslandKit.notify('Tải lên Cloud thành công', 'Ảnh đã sẵn sàng phân tích đa nền tảng.', 'success');
+                return publicUrl;
             } else {
                 throw new Error('Upload failed');
             }
         } catch (error) {
             setUIState('idle');
-            IslandKit.notify('Lỗi tải tệp', 'Không thể kết nối máy chủ phân tích ảnh.', 'error'); 
+            IslandKit.notify('Lỗi tải tệp', 'Không thể kết nối dịch vụ lưu trữ tạm ImgBB.', 'error');
+            return null;
         }
     };
 
+    // Process File Input based on Active Mode
     const processFileSelection = (file) => {
         if (!file || !file.type.startsWith('image/')) {
-            return IslandKit.notify('Định dạng sai', 'Chỉ chấp nhận các tệp hình ảnh (JPG, PNG, WebP).', 'warning');
+            return IslandKit.notify('Định dạng sai', 'Chỉ chấp nhận tệp hình ảnh (JPG, PNG, WebP).', 'warning');
         }
         if (file.size > 30 * 1024 * 1024) {
-            return IslandKit.notify('Kích thước quá lớn', 'Ảnh tải lên không được vượt quá 30MB.', 'warning');
+            return IslandKit.notify('Kích thước quá lớn', 'Tệp ảnh không vượt quá 30MB.', 'warning');
         }
 
-        if (!hasConsentedToUpload) {
-            UI.showConfirm(
-                'Bảo mật tải ảnh',
-                'Để phân tích, ảnh của bạn sẽ được tải lên máy chủ lưu tạm (ImgBB) và tự động hủy sau 5 phút. Bạn có muốn tiếp tục không?',
-                () => {
-                    hasConsentedToUpload = true;
-                    uploadToImgBB(file);
-                }
-            );
-        } else {
+        if (currentMode === 'imgbb') {
             uploadToImgBB(file);
+        } else {
+            // E2E Mode: Lưu Blob local
+            const localBlobUrl = URL.createObjectURL(file);
+            activeState = {
+                type: 'file',
+                fileObj: file,
+                publicUrl: null,
+                previewUrl: localBlobUrl
+            };
+            setUIState('ready', activeState);
+            IslandKit.notify('Sẵn sàng', 'Đã lưu ảnh trong bộ nhớ E2E Local.', 'success');
         }
     };
 
-    // Listeners
+    // E2E Submit Form to Google Lens
+    const executeE2EGoogleSearch = (file) => {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'https://lens.google.com/upload';
+        form.target = '_blank';
+        form.enctype = 'multipart/form-data';
+
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.name = 'encoded_image';
+        input.files = dataTransfer.files;
+
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+
+        IslandKit.notify('Đã gửi yêu cầu E2E', 'Đang chuyển hướng sang Google Lens.', 'info');
+    };
+
+    // Search Engine Executor Router
+    const executeSearch = async (engine) => {
+        if (activeState.type === 'url') {
+            window.open(engineUrls[engine] + encodeURIComponent(activeState.publicUrl), '_blank');
+            return;
+        }
+
+        if (activeState.type === 'file') {
+            // Đã được upload lên ImgBB trước đó
+            if (activeState.publicUrl) {
+                window.open(engineUrls[engine] + encodeURIComponent(activeState.publicUrl), '_blank');
+                return;
+            }
+
+            // Google Lens hỗ trợ E2E Direct Submit
+            if (engine === 'google') {
+                executeE2EGoogleSearch(activeState.fileObj);
+                return;
+            }
+
+            // Các Search Engine khác trong E2E Mode yêu cầu xin phép chuyển đổi Cloud ImgBB
+            UI.showConfirm(
+                'Yêu cầu Cloud Vault',
+                `Công cụ <b>${engine.toUpperCase()}</b> yêu cầu URL công khai.<br><br>Bạn có muốn đẩy tạm ảnh lên ImgBB (Tự hủy sau 5 phút) để tiếp tục không?`,
+                async () => {
+                    const uploadedUrl = await uploadToImgBB(activeState.fileObj);
+                    if (uploadedUrl) {
+                        window.open(engineUrls[engine] + encodeURIComponent(uploadedUrl), '_blank');
+                    }
+                }
+            );
+        }
+    };
+
+    // DOM Listeners
     dropzone.addEventListener('click', (e) => {
         if (e.target.closest('#ris-clear-img') || dropzone.dataset.state !== 'idle') return;
         fileInput.click();
@@ -381,10 +507,18 @@ export function init(hostElement) {
     const handleUrl = () => {
         const url = urlInput.value.trim();
         if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
-            return IslandKit.notify('URL không đúng', 'Vui lòng cung cấp link ảnh hợp lệ bắt đầu bằng http(s).', 'warning');
+            return IslandKit.notify('URL không đúng', 'Vui lòng nạp link ảnh chứa http(s).', 'warning');
         }
+
+        activeState = {
+            type: 'url',
+            fileObj: null,
+            publicUrl: url,
+            previewUrl: url
+        };
+
         addToHistory(url, 'Ảnh từ đường dẫn URL');
-        setUIState('ready', url);
+        setUIState('ready', activeState);
         urlInput.value = '';
         IslandKit.notify('Sẵn sàng', 'Đã nạp ảnh từ liên kết URL.', 'success');
     };
@@ -394,13 +528,12 @@ export function init(hostElement) {
 
     searchBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            if (!currentUrl) return; 
             const engine = btn.dataset.engine;
-            window.open(engineUrls[engine] + encodeURIComponent(currentUrl), '_blank');
+            executeSearch(engine);
         });
     });
 
-    // History Pipeline
+    // History Storage Pipeline
     const getHistory = () => JSON.parse(localStorage.getItem('ris_history')) || [];
     const saveHistory = (arr) => localStorage.setItem('ris_history', JSON.stringify(arr));
 
@@ -410,7 +543,7 @@ export function init(hostElement) {
         history.unshift({
             id: 'ris_' + now,
             url: url,
-            name: fileName || 'Ảnh tải lên',
+            name: fileName || 'Ảnh tra cứu',
             expiresAt: now + UPLOAD_LIFETIME
         });
         if (history.length > 8) history.pop(); 
@@ -487,15 +620,19 @@ export function init(hostElement) {
         });
     });
 
-    // Startup
+    // Startup Execution
+    setMode(currentMode);
     setUIState('idle');
     renderHistory();
     historyInterval = setInterval(updateTimers, 1000);
 
-    // Cleanup on unmount
+    // Unmount Lifecycle Cleanup
     return () => {
         clearInterval(historyInterval);
         document.removeEventListener('paste', pasteHandler);
         window.removeEventListener('storage', storageHandler);
+        if (activeState.previewUrl && activeState.previewUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(activeState.previewUrl);
+        }
     };
 }

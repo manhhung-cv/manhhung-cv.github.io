@@ -1430,7 +1430,7 @@ setInterval(updateOSClock, 1000);
 updateOSClock();
 
 if ('getBattery' in navigator) {
-    navigator.getBattery().then(battery => {
+    navigator.getBattery(). then(battery => {
         const update = () => {
             const el = document.getElementById('battery-percent');
             if (el) el.textContent = `${Math.round(battery.level * 100)}%`;

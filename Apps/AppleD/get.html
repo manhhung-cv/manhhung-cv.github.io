@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tra Cứu Thông Tin Apple & Jailbreak</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans p-4 md:p-8">
+
+  <div class="max-w-5xl mx-auto space-y-6">
+    
+    <!-- Header -->
+    <header class="text-center space-y-2">
+      <h1 class="text-3xl font-extrabold text-blue-400">Tra Cứu Thông Tin Apple & Jailbreak</h1>
+      <p class="text-slate-400 text-sm">Tích hợp sẵn danh sách iPhone, iPad & MacBook chính thức từ AppleDB</p>
+    </header>
+
+    <!-- TAB CHUYỂN ĐỔI CHẾ ĐỘ -->
+    <div class="flex border-b border-slate-700 font-semibold text-sm">
+      <button id="tab-single-btn" onclick="switchMode('single')" class="py-2.5 px-4 border-b-2 border-blue-500 text-blue-400 flex items-center gap-2">
+        <i class="fa-solid fa-mobile-screen"></i> Tra Cứu Đơn Thiết Bị
+      </button>
+      <button id="tab-auto-btn" onclick="switchMode('auto')" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
+        <i class="fa-solid fa-robot"></i> Chế Độ Cào Tự Động (Auto Batch)
+      </button>
+    </div>
+
+    <!-- KHU VỰC 1: TRA CỨU ĐƠN THIẾT BỊ -->
+    <div id="mode-single" class="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-xl border border-slate-700 space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <!-- Dropdown chọn nhanh iPhone/iPad -->
+        <div class="md:col-span-2">
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Chọn nhanh thiết bị từ danh sách tích hợp:</label>
+          <select id="device-select" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+            <option value="">-- Chọn thiết bị tích hợp sẵn --</option>
+            <optgroup label="--- DÒNG IPHONE ---" id="optgroup-iphone"></optgroup>
+            <optgroup label="--- DÒNG IPAD ---" id="optgroup-ipad"></optgroup>
+            <optgroup label="--- DÒNG MACBOOK ---" id="optgroup-macbook"></optgroup>
+          </select>
+        </div>
+
+        <!-- Ô nhập tùy chỉnh -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Hoặc nhập mã định danh tùy chỉnh:</label>
+          <input 
+            type="text" 
+            id="device-input" 
+            value="iPhone10,6" 
+            placeholder="Ví dụ: iPhone15,3, iPad13,1..." 
+            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+          >
+        </div>
+      </div>
+
+      <button 
+        id="btn-submit"
+        onclick="executeSingleFetch()"
+        class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+      >
+        <i class="fa-solid fa-download"></i>
+        <span>Tải Dữ Liệu Thiết Bị</span>
+      </button>
+    </div>
+
+    <!-- KHU VỰC 2: CHẾ ĐỘ CÀO TỰ ĐỘNG (AUTO BATCH SCRAPER) -->
+    <div id="mode-auto" class="bg-slate-800 p-4 sm:p-6 rounded-xl shadow-xl border border-slate-700 hidden space-y-4">
+      <div class="space-y-1">
+        <h3 class="font-bold text-sm text-slate-200">Cào Tự Động Hàng Loạt Thiết Bị (iPhone, iPad, MacBook)</h3>
+        <p class="text-xs text-slate-400">Nạp toàn bộ danh sách thiết bị có sẵn hoặc chỉnh sửa danh sách bên dưới:</p>
+      </div>
+
+      <!-- Nút nạp nhanh danh sách vào Textarea -->
+      <div class="flex flex-wrap gap-2 text-xs">
+        <button onclick="loadAllPreset('iphone')" class="bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 border border-blue-500/30 px-3 py-1.5 rounded font-medium">
+          <i class="fa-solid fa-mobile-button mr-1"></i> Nạp Toàn Bộ iPhone (40+)
+        </button>
+        <button onclick="loadAllPreset('ipad')" class="bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded font-medium">
+          <i class="fa-solid fa-tablet-screen-button mr-1"></i> Nạp Toàn Bộ iPad (40+)
+        </button>
+        <button onclick="loadAllPreset('all')" class="bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 border border-purple-500/30 px-3 py-1.5 rounded font-medium">
+          <i class="fa-solid fa-layer-group mr-1"></i> Nạp Tất Cả Thiết Bị
+        </button>
+      </div>
+
+      <textarea 
+        id="auto-device-list" 
+        rows="8" 
+        class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
+        placeholder="Danh sách các dòng máy sẽ xuất hiện ở đây..."
+      ></textarea>
+
+      <div class="flex items-center justify-between">
+        <button 
+          id="btn-start-auto" 
+          onclick="startAutoScrape()" 
+          class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all"
+        >
+          <i class="fa-solid fa-play"></i>
+          <span>Bắt Đầu Cào Tự Động</span>
+        </button>
+
+        <!-- Progress Bar -->
+        <div id="auto-progress" class="hidden text-xs font-mono text-emerald-400">
+          <i class="fa-solid fa-spinner fa-spin mr-1"></i> Tiến độ: <span id="progress-text">0/0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Khung hiển thị Trạng thái / Thông báo -->
+    <div id="status-message" class="hidden p-4 rounded-lg text-sm font-medium text-center"></div>
+
+    <!-- KHUNG XUẤT DỮ LIỆU (EXPORT OPTIONS) -->
+    <div id="export-wrapper" class="bg-slate-800 p-4 rounded-xl shadow-xl border border-slate-700 hidden">
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-file-export text-emerald-400 text-xl"></i>
+          <div>
+            <h3 class="font-bold text-sm text-slate-200">Xuất Dữ Liệu Tải Về (Export Data)</h3>
+            <p class="text-xs text-slate-400">Tải về dữ liệu vừa cào được dưới dạng file chuẩn.</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+          <button onclick="exportData('json')" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded-md flex items-center justify-center gap-1.5 transition-all">
+            <i class="fa-solid fa-file-code"></i> JSON
+          </button>
+          <button onclick="exportData('csv')" class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-2 rounded-md flex items-center justify-center gap-1.5 transition-all">
+            <i class="fa-solid fa-file-csv"></i> CSV
+          </button>
+          <button onclick="exportData('txt')" class="flex-1 sm:flex-none bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold px-3 py-2 rounded-md flex items-center justify-center gap-1.5 transition-all">
+            <i class="fa-solid fa-file-lines"></i> TXT
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Khung hiển thị Thông tin thiết bị & Hình ảnh -->
+    <div class="bg-slate-800 rounded-xl shadow-xl border border-slate-700 overflow-hidden hidden" id="info-wrapper">
+      <div class="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
+        <h2 class="font-bold text-lg text-slate-200" id="info-title">Thông Tin Thiết Bị</h2>
+        <span class="text-xs bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full font-mono">AppleDB API</span>
+      </div>
+
+      <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-slate-900/60 p-6 rounded-xl border border-slate-700/50 flex flex-col items-center justify-center space-y-4">
+          <div class="relative w-48 h-56 flex items-center justify-center">
+            <img id="device-image" src="" alt="Device Image" class="max-h-full max-w-full object-contain transition-all duration-300">
+          </div>
+          <div class="text-center">
+            <span id="current-color-name" class="text-xs font-semibold text-slate-300"></span>
+          </div>
+        </div>
+
+        <div id="info-grid" class="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+      </div>
+
+      <div class="px-6 pb-6 space-y-4">
+        <div class="bg-slate-900/60 p-4 rounded-lg border border-slate-700/50">
+          <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Tùy Chọn Màu Sắc</div>
+          <div id="colors-container" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <div class="bg-slate-900/60 p-4 rounded-lg border border-slate-700/50 space-y-4">
+          <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+            <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Danh Sách Firmware / OS Hỗ Trợ</div>
+            <span id="firmware-count" class="text-xs text-blue-400 font-mono">0 phiên bản</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-800 p-2.5 rounded-lg border border-slate-700">
+            <div class="relative">
+              <input 
+                type="text" 
+                id="filter-search" 
+                placeholder="Tìm phiên bản / build..." 
+                class="w-full bg-slate-900 border border-slate-700 text-xs rounded-md pl-7 pr-3 py-1.5 text-slate-200 focus:outline-none focus:border-blue-500"
+              >
+              <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-[10px] text-slate-400"></i>
+            </div>
+
+            <div>
+              <select id="filter-type" class="w-full bg-slate-900 border border-slate-700 text-xs rounded-md px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-blue-500">
+                <option value="all">Tất cả phiên bản</option>
+                <option value="release">Chỉ bản chính thức (Release)</option>
+                <option value="beta">Chỉ bản thử nghiệm (Beta/RC)</option>
+              </select>
+            </div>
+
+            <div>
+              <select id="filter-signed" class="w-full bg-slate-900 border border-slate-700 text-xs rounded-md px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-blue-500">
+                <option value="all">Tất cả trạng thái Signed</option>
+                <option value="signed">Chỉ bản cho phép cài (Signed)</option>
+                <option value="unsigned">Chỉ bản đã khóa (Unsigned)</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="firmware-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-80 overflow-y-auto p-1 custom-scrollbar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bảng kết quả Jailbreak -->
+    <div class="bg-slate-800 rounded-xl shadow-xl border border-slate-700 overflow-hidden hidden" id="table-wrapper">
+      <div class="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
+        <h2 class="font-bold text-lg text-slate-200" id="table-title">Bảng Hướng Dẫn Jailbreak</h2>
+        <span class="text-xs bg-blue-500/20 text-blue-300 px-2.5 py-1 rounded-full font-mono" id="row-count">0 hàng</span>
+      </div>
+      
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-900/60 text-slate-400 text-xs font-semibold uppercase tracking-wider border-b border-slate-700">
+              <th class="px-6 py-3">Phiên Bản iOS Hỗ Trợ</th>
+              <th class="px-6 py-3">Công Cụ Jailbreak</th>
+              <th class="px-6 py-3">Phân Loại Jailbreak</th>
+            </tr>
+          </thead>
+          <tbody id="data-tbody" class="divide-y divide-slate-700/50 text-sm"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let cachedJailbreakDB = null;
+    let cachedIosDB = null;
+
+    const BUILTIN_IPHONES = [
+      { name: 'iPhone 16 Pro Max', key: 'iPhone17,2' },
+      { name: 'iPhone 16 Pro', key: 'iPhone17,1' },
+      { name: 'iPhone 16 Plus', key: 'iPhone17,4' },
+      { name: 'iPhone 16', key: 'iPhone17,3' },
+      { name: 'iPhone 15 Pro Max', key: 'iPhone16,2' },
+      { name: 'iPhone 15 Pro', key: 'iPhone16,1' },
+      { name: 'iPhone 15 Plus', key: 'iPhone15,5' },
+      { name: 'iPhone 15', key: 'iPhone15,4' },
+      { name: 'iPhone 14 Pro Max', key: 'iPhone15,3' },
+      { name: 'iPhone 14 Pro', key: 'iPhone15,2' },
+      { name: 'iPhone 14 Plus', key: 'iPhone14,8' },
+      { name: 'iPhone 14', key: 'iPhone14,7' },
+      { name: 'iPhone 13 Pro Max', key: 'iPhone14,3' },
+      { name: 'iPhone 13 Pro', key: 'iPhone14,2' },
+      { name: 'iPhone 13', key: 'iPhone14,5' },
+      { name: 'iPhone 13 mini', key: 'iPhone14,4' },
+      { name: 'iPhone SE (3rd gen)', key: 'iPhone14,6' },
+      { name: 'iPhone 12 Pro Max', key: 'iPhone13,4' },
+      { name: 'iPhone 12 Pro', key: 'iPhone13,3' },
+      { name: 'iPhone 12', key: 'iPhone13,2' },
+      { name: 'iPhone 12 mini', key: 'iPhone13,1' },
+      { name: 'iPhone SE (2nd gen)', key: 'iPhone12,8' },
+      { name: 'iPhone 11 Pro Max', key: 'iPhone12,5' },
+      { name: 'iPhone 11 Pro', key: 'iPhone12,3' },
+      { name: 'iPhone 11', key: 'iPhone12,1' },
+      { name: 'iPhone XS Max', key: 'iPhone11,6' },
+      { name: 'iPhone XS', key: 'iPhone11,2' },
+      { name: 'iPhone XR', key: 'iPhone11,8' },
+      { name: 'iPhone X', key: 'iPhone10,6' },
+      { name: 'iPhone 8 Plus', key: 'iPhone10,5' },
+      { name: 'iPhone 8', key: 'iPhone10,4' },
+      { name: 'iPhone 7 Plus', key: 'iPhone9,4' },
+      { name: 'iPhone 7', key: 'iPhone9,3' },
+      { name: 'iPhone SE (1st gen)', key: 'iPhone8,4' },
+      { name: 'iPhone 6s Plus', key: 'iPhone8,2' },
+      { name: 'iPhone 6s', key: 'iPhone8,1' },
+      { name: 'iPhone 6 Plus', key: 'iPhone7,1' },
+      { name: 'iPhone 6', key: 'iPhone7,2' },
+      { name: 'iPhone 5s', key: 'iPhone6,2' }
+    ];
+
+    const BUILTIN_IPADS = [
+      { name: 'iPad Pro 13-inch (M4)', key: 'iPad16,6' },
+      { name: 'iPad Pro 11-inch (M4)', key: 'iPad16,4' },
+      { name: 'iPad Air 13-inch (M2)', key: 'iPad14,11' },
+      { name: 'iPad Air 11-inch (M2)', key: 'iPad14,9' },
+      { name: 'iPad mini (A17 Pro)', key: 'iPad16,2' },
+      { name: 'iPad Pro 12.9-inch (6th gen - M2)', key: 'iPad14,6' },
+      { name: 'iPad Pro 11-inch (4th gen - M2)', key: 'iPad14,4' },
+      { name: 'iPad Air (5th gen - M1)', key: 'iPad13,17' },
+      { name: 'iPad (10th gen)', key: 'iPad13,19' },
+      { name: 'iPad mini (6th gen)', key: 'iPad14,2' },
+      { name: 'iPad Pro 12.9-inch (5th gen - M1)', key: 'iPad13,10' },
+      { name: 'iPad Pro 11-inch (3rd gen - M1)', key: 'iPad13,6' },
+      { name: 'iPad Air (4th gen)', key: 'iPad13,2' },
+      { name: 'iPad (9th gen)', key: 'iPad12,2' },
+      { name: 'iPad (8th gen)', key: 'iPad11,7' },
+      { name: 'iPad mini (5th gen)', key: 'iPad11,2' },
+      { name: 'iPad Air (3rd gen)', key: 'iPad11,4' },
+      { name: 'iPad Pro 12.9-inch (4th gen)', key: 'iPad8,12' },
+      { name: 'iPad Pro 11-inch (2nd gen)', key: 'iPad8,10' },
+      { name: 'iPad Pro 12.9-inch (3rd gen)', key: 'iPad8,8' },
+      { name: 'iPad Pro 11-inch (1st gen)', key: 'iPad8,4' },
+      { name: 'iPad (7th gen)', key: 'iPad7,12' },
+      { name: 'iPad (6th gen)', key: 'iPad7,6' },
+      { name: 'iPad (5th gen)', key: 'iPad6,12' },
+      { name: 'iPad mini 4', key: 'iPad5,2' },
+      { name: 'iPad Air 2', key: 'iPad5,4' }
+    ];
+
+    const BUILTIN_MACBOOKS = [
+      { name: 'MacBook Air 13-inch (M3)', key: 'Mac15,12' },
+      { name: 'MacBook Air 15-inch (M3)', key: 'Mac15,13' },
+      { name: 'MacBook Pro 16-inch (M3 Max)', key: 'Mac15,11' },
+      { name: 'MacBook Pro 14-inch (M3 Pro/Max)', key: 'Mac15,6' },
+      { name: 'MacBook Air 15-inch (M2)', key: 'Mac14,15' },
+      { name: 'MacBook Air (M2, 2022)', key: 'Mac14,2' },
+      { name: 'MacBook Air (M1, 2020)', key: 'MacBookAir10,1' },
+      { name: 'MacBook Pro 13-inch (M1, 2020)', key: 'MacBookPro17,1' },
+      { name: 'MacBook Pro 14-inch (M1 Pro/Max)', key: 'MacBookPro18,3' },
+      { name: 'MacBook Pro 16-inch (M1 Pro/Max)', key: 'MacBookPro18,1' }
+    ];
+
+    const deviceSelect = document.getElementById('device-select');
+    const deviceInput = document.getElementById('device-input');
+    const btnSubmit = document.getElementById('btn-submit');
+    const statusMsg = document.getElementById('status-message');
+    const exportWrapper = document.getElementById('export-wrapper');
+
+    const infoWrapper = document.getElementById('info-wrapper');
+    const infoGrid = document.getElementById('info-grid');
+    const infoTitle = document.getElementById('info-title');
+    const deviceImg = document.getElementById('device-image');
+    const currentColorName = document.getElementById('current-color-name');
+    const colorsContainer = document.getElementById('colors-container');
+    const firmwareContainer = document.getElementById('firmware-container');
+    const firmwareCount = document.getElementById('firmware-count');
+
+    const filterSearch = document.getElementById('filter-search');
+    const filterType = document.getElementById('filter-type');
+    const filterSigned = document.getElementById('filter-signed');
+
+    const tableWrapper = document.getElementById('table-wrapper');
+    const dataTbody = document.getElementById('data-tbody');
+    const tableTitle = document.getElementById('table-title');
+    const rowCount = document.getElementById('row-count');
+
+    let globalExportData = [];
+    let currentFirmwares = [];
+
+    function populateDropdowns() {
+      const optGroupIphone = document.getElementById('optgroup-iphone');
+      const optGroupIpad = document.getElementById('optgroup-ipad');
+      const optGroupMacbook = document.getElementById('optgroup-macbook');
+
+      BUILTIN_IPHONES.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.key;
+        opt.textContent = `${item.name} (${item.key})`;
+        optGroupIphone.appendChild(opt);
+      });
+
+      BUILTIN_IPADS.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.key;
+        opt.textContent = `${item.name} (${item.key})`;
+        optGroupIpad.appendChild(opt);
+      });
+
+      BUILTIN_MACBOOKS.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.key;
+        opt.textContent = `${item.name} (${item.key})`;
+        optGroupMacbook.appendChild(opt);
+      });
+
+      deviceSelect.addEventListener('change', (e) => {
+        if (e.target.value) {
+          deviceInput.value = e.target.value;
+        }
+      });
+    }
+
+    populateDropdowns();
+
+    const TRANSLATIONS = {
+      "Identifier": "Mã Định Danh (Identifier)",
+      "SoC": "Chip Xử Lý (SoC)",
+      "Arch": "Kiến Trúc (Arch)",
+      "Model": "Mã Model",
+      "Board": "Mã Bo Mạch (Board)",
+      "Released": "Ngày Ra Mắt",
+      "Discontinued": "Trạng Thái Kinh Doanh"
+    };
+
+    function switchMode(mode) {
+      document.getElementById('mode-single').classList.toggle('hidden', mode !== 'single');
+      document.getElementById('mode-auto').classList.toggle('hidden', mode !== 'auto');
+      
+      const singleBtn = document.getElementById('tab-single-btn');
+      const autoBtn = document.getElementById('tab-auto-btn');
+
+      if (mode === 'single') {
+        singleBtn.className = 'py-2.5 px-4 border-b-2 border-blue-500 text-blue-400 flex items-center gap-2';
+        autoBtn.className = 'py-2.5 px-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2';
+      } else {
+        autoBtn.className = 'py-2.5 px-4 border-b-2 border-blue-500 text-blue-400 flex items-center gap-2';
+        singleBtn.className = 'py-2.5 px-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2';
+      }
+    }
+
+    function loadAllPreset(type) {
+      const textarea = document.getElementById('auto-device-list');
+      let list = [];
+      if (type === 'iphone') {
+        list = BUILTIN_IPHONES.map(i => i.key);
+      } else if (type === 'ipad') {
+        list = BUILTIN_IPADS.map(i => i.key);
+      } else {
+        list = [...BUILTIN_IPHONES.map(i => i.key), ...BUILTIN_IPADS.map(i => i.key), ...BUILTIN_MACBOOKS.map(i => i.key)];
+      }
+      textarea.value = list.join('\n');
+    }
+
+    function showStatus(text, type = 'info') {
+      statusMsg.className = `p-4 rounded-lg text-sm font-medium text-center block `;
+      if (type === 'error') {
+        statusMsg.className += 'bg-red-500/10 text-red-400 border border-red-500/20';
+      } else if (type === 'loading') {
+        statusMsg.className += 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+      } else {
+        statusMsg.className += 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+      }
+      statusMsg.innerHTML = text;
+    }
+
+    function compareVersions(v1, v2) {
+      const n1 = v1.toString().split('.').map(Number);
+      const n2 = v2.toString().split('.').map(Number);
+      const len = Math.max(n1.length, n2.length);
+      for (let i = 0; i < len; i++) {
+        const num1 = n1[i] || 0;
+        const num2 = n2[i] || 0;
+        if (num1 > num2) return -1;
+        if (num1 < num2) return 1;
+      }
+      return 0;
+    }
+
+    // Hàm quy đổi từ Build ID (ví dụ: 19A5261w) sang iOS Version (ví dụ: 15.0)
+    function resolveVersionFromBuild(val) {
+      if (!val || typeof val !== 'string') return val;
+      if (!cachedIosDB) return val;
+
+      const found = cachedIosDB.find(i => i.build === val || i.uniqueBuild === val);
+      if (found && found.version) {
+        return found.version;
+      }
+
+      const cleanVal = val.replace(/^iOS\s*/i, '').replace(/^iPadOS\s*/i, '');
+      return cleanVal;
+    }
+
+    async function fetchAppleDBInfo(deviceKey) {
+      const deviceNameFormatted = deviceKey.replace(/-/g, ' ');
+
+      if (!cachedIosDB) {
+        const resIos = await fetch(`https://api.appledb.dev/ios/main.json`);
+        cachedIosDB = resIos.ok ? await resIos.json() : [];
+      }
+
+      const resDevice = await fetch(`https://api.appledb.dev/device/main.json`);
+      if (!resDevice.ok) throw new Error('Không thể tải dữ liệu thiết bị từ AppleDB API');
+      
+      const devices = await resDevice.json();
+      const iosList = cachedIosDB || [];
+
+      const deviceData = devices.find(d => 
+        d.key?.toLowerCase() === deviceKey.toLowerCase() ||
+        d.name?.toLowerCase() === deviceNameFormatted.toLowerCase() ||
+        (Array.isArray(d.identifier) && d.identifier.some(id => id.toLowerCase() === deviceKey.toLowerCase()))
+      );
+
+      if (!deviceData) {
+        throw new Error(`Không tìm thấy thông tin thiết bị "${deviceKey}" trên AppleDB`);
+      }
+
+      let colorsList = [];
+      if (deviceData.colors && Array.isArray(deviceData.colors)) {
+        colorsList = deviceData.colors.map(c => {
+          const colorName = typeof c === 'object' ? (c.name || 'Không xác định') : c;
+          const hex = (typeof c === 'object' && c.hex) ? `#${c.hex}` : '#64748b';
+          const imgUrl = `https://img.appledb.dev/device@256/${deviceData.key}/${colorName.replace(/\s+/g, '')}.png`;
+          return { name: colorName, hex, imgUrl };
+        });
+      }
+
+      let firmwareVersions = [];
+      if (iosList.length > 0) {
+        const supportedFirmwares = iosList.filter(item => {
+          if (!item.deviceMap) return false;
+          return item.deviceMap.includes(deviceData.key) || 
+                 (Array.isArray(deviceData.identifier) && deviceData.identifier.some(id => item.deviceMap.includes(id)));
+        });
+
+        firmwareVersions = supportedFirmwares.map(f => {
+          let isSigned = false;
+          if (f.signed && Array.isArray(f.signed)) {
+            isSigned = f.signed.includes(deviceData.key) || 
+                       (Array.isArray(deviceData.identifier) && deviceData.identifier.some(id => f.signed.includes(id)));
+          } else if (typeof f.signed === 'boolean') {
+            isSigned = f.signed;
+          }
+
+          return {
+            osStr: f.osStr || 'OS',
+            version: f.version || '0.0',
+            build: f.build || 'N/A',
+            type: f.beta ? 'Beta' : (f.rc ? 'RC' : 'Release'),
+            signed: isSigned,
+            released: f.released || 'Không rõ'
+          };
+        });
+
+        firmwareVersions.sort((a, b) => {
+          const res = compareVersions(a.version, b.version);
+          if (res !== 0) return res;
+          return b.build.localeCompare(a.build);
+        });
+      }
+
+      let releasedFormatted = 'Không rõ';
+      if (deviceData.released) {
+        releasedFormatted = Array.isArray(deviceData.released) ? deviceData.released.join(', ') : deviceData.released;
+      }
+
+      const basicInfo = {
+        "Name": deviceData.name || deviceKey,
+        "Type": deviceData.type || 'Apple Device',
+        "Identifier": Array.isArray(deviceData.identifier) ? deviceData.identifier.join(', ') : (deviceData.identifier || 'Không có'),
+        "SoC": Array.isArray(deviceData.soc) ? deviceData.soc.join(', ') : (deviceData.soc || 'Không có'),
+        "Arch": deviceData.arch || 'Apple Silicon / ARM',
+        "Model": Array.isArray(deviceData.model) ? deviceData.model.join(', ') : (deviceData.model || 'Không có'),
+        "Board": Array.isArray(deviceData.board) ? deviceData.board.join(', ') : (deviceData.board || 'Không có'),
+        "Released": releasedFormatted,
+        "Discontinued": deviceData.discontinued ? (Array.isArray(deviceData.discontinued) ? deviceData.discontinued.join(', ') : deviceData.discontinued) : 'Đang kinh doanh'
+      };
+
+      const defaultImg = `https://img.appledb.dev/device@256/${deviceData.key}/0.png`;
+
+      return { basicInfo, colorsList, firmwareVersions, name: deviceData.name || deviceKey, defaultImg };
+    }
+
+    // KHẮC PHỤC LỖI QUY ĐỔI BUILD THÀNH PHIÊN BẢN IOS THỰC TẾ
+    async function scrapeJailbreak(deviceKey) {
+      try {
+        if (!cachedJailbreakDB) {
+          const response = await fetch('https://api.appledb.dev/jailbreak/main.json');
+          if (!response.ok) return [];
+          cachedJailbreakDB = await response.json();
+        }
+
+        if (!cachedIosDB) {
+          const resIos = await fetch(`https://api.appledb.dev/ios/main.json`);
+          cachedIosDB = resIos.ok ? await resIos.json() : [];
+        }
+
+        const guides = [];
+        cachedJailbreakDB.forEach(jb => {
+          if (!jb.compatibility) return;
+
+          const compatList = jb.compatibility.filter(c => 
+            c.devices && Array.isArray(c.devices) && c.devices.some(dKey => dKey.toLowerCase() === deviceKey.toLowerCase())
+          );
+
+          compatList.forEach(item => {
+            let rawFrom = 'Không rõ';
+            let rawTo = 'Không rõ';
+
+            if (item.firmwares && Array.isArray(item.firmwares) && item.firmwares.length > 0) {
+              rawFrom = item.firmwares[0];
+              rawTo = item.firmwares[item.firmwares.length - 1];
+            } else if (item.ios) {
+              if (Array.isArray(item.ios)) {
+                rawFrom = item.ios[0] || 'Không rõ';
+                rawTo = item.ios[item.ios.length - 1] || rawFrom;
+              } else {
+                rawFrom = item.ios;
+                rawTo = item.ios;
+              }
+            }
+
+            // Quy đổi Mã Build sang iOS Version
+            let fromVer = resolveVersionFromBuild(rawFrom);
+            let toVer = resolveVersionFromBuild(rawTo);
+
+            // Xử lý link hướng dẫn
+            let linkUrl = 'https://ios.cfw.guide';
+            if (jb.info && jb.info.guide) {
+              let guideObj = Array.isArray(jb.info.guide) ? jb.info.guide[0] : jb.info.guide;
+              if (typeof guideObj === 'string') {
+                linkUrl = `https://ios.cfw.guide/${guideObj}`;
+              } else if (typeof guideObj === 'object' && guideObj.url) {
+                linkUrl = guideObj.url.startsWith('http') ? guideObj.url : `https://ios.cfw.guide/${guideObj.url}`;
+              }
+            } else if (jb.info && jb.info.website) {
+              if (typeof jb.info.website === 'string') {
+                linkUrl = jb.info.website;
+              } else if (typeof jb.info.website === 'object' && jb.info.website.url) {
+                linkUrl = jb.info.website.url;
+              }
+            }
+
+            guides.push({
+              from: fromVer,
+              to: toVer,
+              name: jb.name || 'N/A',
+              type: jb.type || 'Semi-Untethered',
+              linkUrl: linkUrl
+            });
+          });
+        });
+
+        return guides;
+      } catch (e) {
+        return [];
+      }
+    }
+
+    async function executeSingleFetch() {
+      const device = deviceInput.value.trim();
+      if (!device) return;
+
+      tableWrapper.classList.add('hidden');
+      infoWrapper.classList.add('hidden');
+      exportWrapper.classList.add('hidden');
+      btnSubmit.disabled = true;
+      showStatus('<i class="fa-solid fa-spinner fa-spin mr-2"></i> Đang tải thông tin & dữ liệu...', 'loading');
+
+      try {
+        const [jbResult, dbResult] = await Promise.allSettled([
+          scrapeJailbreak(device),
+          fetchAppleDBInfo(device)
+        ]);
+
+        let hasData = false;
+        globalExportData = [];
+
+        const deviceEntry = {
+          deviceKey: device,
+          info: null,
+          firmwares: [],
+          jailbreakGuides: []
+        };
+
+        if (dbResult.status === 'fulfilled') {
+          renderDeviceInfo(dbResult.value);
+          deviceEntry.info = dbResult.value.basicInfo;
+          deviceEntry.firmwares = dbResult.value.firmwareVersions;
+          hasData = true;
+        }
+
+        if (jbResult.status === 'fulfilled' && jbResult.value.length > 0) {
+          renderJailbreakTable(jbResult.value, device);
+          deviceEntry.jailbreakGuides = jbResult.value;
+          hasData = true;
+        } else {
+          renderJailbreakTable([], device);
+        }
+
+        if (!hasData) {
+          throw new Error(`Không tìm thấy dữ liệu phù hợp cho thiết bị <b>${device}</b>.`);
+        }
+
+        globalExportData.push(deviceEntry);
+        exportWrapper.classList.remove('hidden');
+        showStatus(`<i class="fa-solid fa-circle-check mr-2"></i> Tải dữ liệu thành công cho <b>${device}</b>!`, 'success');
+
+      } catch (err) {
+        showStatus(`<i class="fa-solid fa-circle-exclamation mr-2"></i> Lỗi: ${err.message}`, 'error');
+      } finally {
+        btnSubmit.disabled = false;
+      }
+    }
+
+    async function startAutoScrape() {
+      const text = document.getElementById('auto-device-list').value;
+      const devices = text.split('\n').map(d => d.trim()).filter(d => d.length > 0);
+
+      if (devices.length === 0) {
+        showStatus('<i class="fa-solid fa-circle-exclamation mr-2"></i> Vui lòng nạp hoặc nhập ít nhất 1 thiết bị.', 'error');
+        return;
+      }
+
+      globalExportData = [];
+      const btnStart = document.getElementById('btn-start-auto');
+      const progressBox = document.getElementById('auto-progress');
+      const progressText = document.getElementById('progress-text');
+
+      btnStart.disabled = true;
+      progressBox.classList.remove('hidden');
+      showStatus('<i class="fa-solid fa-robot fa-spin mr-2"></i> Đang tự động cào dữ liệu hàng loạt...', 'loading');
+
+      let completed = 0;
+      for (const device of devices) {
+        progressText.textContent = `${completed}/${devices.length} (${device})`;
+
+        const [jbResult, dbResult] = await Promise.allSettled([
+          scrapeJailbreak(device),
+          fetchAppleDBInfo(device)
+        ]);
+
+        const deviceEntry = {
+          deviceKey: device,
+          info: dbResult.status === 'fulfilled' ? dbResult.value.basicInfo : null,
+          firmwares: dbResult.status === 'fulfilled' ? dbResult.value.firmwareVersions : [],
+          jailbreakGuides: jbResult.status === 'fulfilled' ? jbResult.value : []
+        };
+
+        globalExportData.push(deviceEntry);
+        completed++;
+      }
+
+      progressText.textContent = `${completed}/${devices.length} (Đã hoàn thành!)`;
+      btnStart.disabled = false;
+
+      if (globalExportData.length > 0 && globalExportData.some(d => d.info || d.firmwares.length > 0)) {
+        renderDeviceInfo(await fetchAppleDBInfo(devices[0]));
+        exportWrapper.classList.remove('hidden');
+        showStatus(`<i class="fa-solid fa-circle-check mr-2"></i> Đã cào thành công ${completed} thiết bị! Bạn có thể tải file bên dưới.`, 'success');
+      } else {
+        showStatus('<i class="fa-solid fa-circle-exclamation mr-2"></i> Thất bại, không thu thập được dữ liệu.', 'error');
+      }
+    }
+
+    function renderDeviceInfo(data) {
+      infoTitle.textContent = `Thông Tin Thiết Bị: ${data.name}`;
+      infoGrid.innerHTML = '';
+
+      for (const [key, value] of Object.entries(data.basicInfo)) {
+        if (key === 'Name') continue;
+        const labelVi = TRANSLATIONS[key] || key;
+        const itemCard = document.createElement('div');
+        itemCard.className = 'bg-slate-900/60 p-3 rounded-lg border border-slate-700/50 space-y-1';
+        itemCard.innerHTML = `
+          <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider">${labelVi}</div>
+          <div class="text-sm font-mono text-emerald-400 font-medium break-words">${value}</div>
+        `;
+        infoGrid.appendChild(itemCard);
+      }
+
+      deviceImg.src = data.colorsList.length > 0 ? data.colorsList[0].imgUrl : data.defaultImg;
+      deviceImg.onerror = () => { deviceImg.src = data.defaultImg; };
+      currentColorName.textContent = data.colorsList.length > 0 ? data.colorsList[0].name : '';
+
+      colorsContainer.innerHTML = '';
+      if (data.colorsList.length > 0) {
+        data.colorsList.forEach((color, index) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border ${index === 0 ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-700'} px-3 py-1.5 rounded-full text-xs text-slate-200 font-medium transition-all color-btn`;
+          btn.innerHTML = `
+            <span class="w-3.5 h-3.5 rounded-full border border-slate-500/50 shadow-sm" style="background-color: ${color.hex}"></span>
+            <span>${color.name}</span>
+          `;
+
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('border-blue-500', 'ring-2', 'ring-blue-500/30'));
+            btn.classList.add('border-blue-500', 'ring-2', 'ring-blue-500/30');
+            deviceImg.src = color.imgUrl;
+            currentColorName.textContent = color.name;
+          });
+
+          colorsContainer.appendChild(btn);
+        });
+      } else {
+        colorsContainer.innerHTML = '<span class="text-xs text-slate-500">Không có thông tin màu sắc</span>';
+      }
+
+      currentFirmwares = data.firmwareVersions || [];
+      filterSearch.value = '';
+      filterType.value = 'all';
+      filterSigned.value = 'all';
+
+      applyFirmwareFilter();
+      infoWrapper.classList.remove('hidden');
+    }
+
+    function applyFirmwareFilter() {
+      const searchVal = filterSearch.value.trim().toLowerCase();
+      const typeVal = filterType.value;
+      const signedVal = filterSigned.value;
+
+      const filtered = currentFirmwares.filter(fw => {
+        const matchSearch = fw.version.toLowerCase().includes(searchVal) || 
+                            fw.build.toLowerCase().includes(searchVal) ||
+                            fw.osStr.toLowerCase().includes(searchVal);
+
+        let matchType = true;
+        if (typeVal === 'release') {
+          matchType = fw.type === 'Release';
+        } else if (typeVal === 'beta') {
+          matchType = fw.type === 'Beta' || fw.type === 'RC';
+        }
+
+        let matchSigned = true;
+        if (signedVal === 'signed') {
+          matchSigned = fw.signed === true;
+        } else if (signedVal === 'unsigned') {
+          matchSigned = fw.signed === false;
+        }
+
+        return matchSearch && matchType && matchSigned;
+      });
+
+      renderFirmwareCards(filtered);
+    }
+
+    function renderFirmwareCards(list) {
+      firmwareContainer.innerHTML = '';
+      firmwareCount.textContent = `Hiển thị ${list.length} / ${currentFirmwares.length} phiên bản`;
+
+      if (list.length === 0) {
+        firmwareContainer.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-slate-400">Không tìm thấy phiên bản OS nào.</div>';
+        return;
+      }
+
+      list.forEach(fw => {
+        const card = document.createElement('div');
+        card.className = 'bg-slate-800 p-2.5 rounded-lg border border-slate-700/60 flex flex-col justify-between space-y-1.5 text-xs font-mono';
+        
+        let releaseBadge = '<span class="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-sans font-semibold">Release</span>';
+        if (fw.type === 'Beta') {
+          releaseBadge = '<span class="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-sans font-semibold">Beta</span>';
+        } else if (fw.type === 'RC') {
+          releaseBadge = '<span class="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] font-sans font-semibold">RC</span>';
+        }
+
+        let signedBadge = fw.signed 
+          ? '<span class="flex items-center gap-1 text-emerald-400 text-[10px] font-sans font-medium bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20"><i class="fa-solid fa-lock-open text-[9px]"></i> Signed</span>' 
+          : '<span class="flex items-center gap-1 text-slate-500 text-[10px] font-sans bg-slate-900/40 px-1.5 py-0.5 rounded border border-slate-700/50"><i class="fa-solid fa-lock text-[9px]"></i> Unsigned</span>';
+
+        card.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-1.5">
+                <span class="text-blue-300 font-bold text-sm">${fw.osStr} ${fw.version}</span>
+                ${releaseBadge}
+              </div>
+              <div class="text-[11px] text-slate-400">Build: ${fw.build}</div>
+            </div>
+            <div>${signedBadge}</div>
+          </div>
+          <div class="flex justify-between items-center text-[10px] text-slate-400 border-t border-slate-700/50 pt-1 mt-1 font-sans">
+            <span>Ngày phát hành:</span>
+            <span class="font-mono text-slate-300">${fw.released}</span>
+          </div>
+        `;
+        firmwareContainer.appendChild(card);
+      });
+    }
+
+    filterSearch.addEventListener('input', applyFirmwareFilter);
+    filterType.addEventListener('change', applyFirmwareFilter);
+    filterSigned.addEventListener('change', applyFirmwareFilter);
+
+    function renderJailbreakTable(data, device) {
+      dataTbody.innerHTML = '';
+      tableTitle.textContent = `Bảng Hướng Dẫn Jailbreak - ${device}`;
+      rowCount.textContent = `${data.length} hàng dữ liệu`;
+
+      if (data.length === 0) {
+        dataTbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-slate-400">Không có công cụ Jailbreak nào cho thiết bị này.</td></tr>';
+      } else {
+        data.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-700/30 transition-colors';
+          
+          let rangeText = item.from === item.to ? item.from : `${item.from} - ${item.to}`;
+
+          let toolHtml = item.linkUrl 
+            ? `<a href="${item.linkUrl}" target="_blank" class="text-blue-400 hover:text-blue-300 underline underline-offset-2 inline-flex items-center gap-1 font-medium">${item.name} <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>`
+            : `<span class="text-slate-500 font-mono">${item.name}</span>`;
+
+          tr.innerHTML = `
+            <td class="px-6 py-4 font-mono font-medium text-slate-200">${rangeText}</td>
+            <td class="px-6 py-4 font-bold text-blue-400">${toolHtml}</td>
+            <td class="px-6 py-4 text-emerald-400 font-mono">${item.type || 'N/A'}</td>
+          `;
+          dataTbody.appendChild(tr);
+        });
+      }
+
+      tableWrapper.classList.remove('hidden');
+    }
+
+    function exportData(format) {
+      if (globalExportData.length === 0) return;
+
+      const fileName = `apple_devices_export.${format}`;
+      let content = '';
+      let mimeType = 'text/plain';
+
+      if (format === 'json') {
+        content = JSON.stringify(globalExportData, null, 2);
+        mimeType = 'application/json';
+      } else if (format === 'csv') {
+        mimeType = 'text/csv';
+        globalExportData.forEach((deviceData, idx) => {
+          content += `=== THIẾT BỊ #${idx+1}: ${deviceData.deviceKey} ===\n`;
+          content += `--- THÔNG TIN THIẾT BỊ ---\nKey,Value\n`;
+          if (deviceData.info) {
+            for (const [k, v] of Object.entries(deviceData.info)) {
+              content += `"${k}","${v}"\n`;
+            }
+          }
+          content += `\n--- DANH SÁCH FIRMWARE / OS ---\nOS,Version,Build,Type,Signed,Released Date\n`;
+          deviceData.firmwares.forEach(f => {
+            content += `"${f.osStr}","${f.version}","${f.build}","${f.type}","${f.signed}","${f.released}"\n`;
+          });
+          content += `\n--- BẢNG JAILBREAK ---\nFrom iOS,To iOS,Tool Name,Type,Tool Link\n`;
+          deviceData.jailbreakGuides.forEach(j => {
+            content += `"${j.from}","${j.to}","${j.name}","${j.type || 'N/A'}","${j.linkUrl}"\n`;
+          });
+          content += `\n\n`;
+        });
+      } else if (format === 'txt') {
+        globalExportData.forEach((deviceData) => {
+          content += `==========================================\n`;
+          content += `THIẾT BỊ: ${deviceData.deviceKey}\n`;
+          content += `==========================================\n`;
+          if (deviceData.info) {
+            for (const [k, v] of Object.entries(deviceData.info)) {
+              content += `- ${k}: ${v}\n`;
+            }
+          }
+          content += `\n[DANH SÁCH FIRMWARE / OS (${deviceData.firmwares.length} bản)]\n`;
+          deviceData.firmwares.forEach(f => {
+            content += `- ${f.osStr} ${f.version} (Build: ${f.build}) | Type: ${f.type} | Signed: ${f.signed} | Released: ${f.released}\n`;
+          });
+          content += `\n[HƯỚNG DẪN JAILBREAK (${deviceData.jailbreakGuides.length} công cụ)]\n`;
+          deviceData.jailbreakGuides.forEach(j => {
+            content += `- ${j.name} (iOS ${j.from} -> ${j.to}) [${j.type || 'N/A'}]: ${j.linkUrl || 'No link'}\n`;
+          });
+          content += `\n\n`;
+        });
+      }
+
+      const blob = new Blob([content], { type: `${mimeType};charset=utf-8;` });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

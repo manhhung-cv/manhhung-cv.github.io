@@ -42,7 +42,7 @@ export const IslandKit = {
 // 2. EDGE TTS SERVICE CLIENT
 // =============================================================================
 const EdgeTTS = {
-    BASE_URL: 'https://be-api-service.vercel.app/api',
+    BASE_URL: 'https://hunq-tts.vercel.app/api',
     APP_KEY: 'TTS-Hunq',
 
     async fetchVoices() {

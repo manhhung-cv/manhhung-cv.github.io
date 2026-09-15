@@ -144,6 +144,16 @@ export const TOOLS = [
         desc: 'Chuyển đổi và tra cứu đối chiếu địa danh hành chính cũ - mới tại Việt Nam.',
         tags: ['địa chỉ', 'bản đồ', 'hành chính', 'tỉnh thành', 'quận huyện']
     },
+    {
+        id: 'short-link',
+        catId: 'utilities',
+        name: 'Tạo Link Ngắn',
+        icon: 'fas fa-link',
+        bgColor: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%)',
+        iconColor: '#ffffff',
+        desc: 'Tạo link ngắn từ các đường dẫn dài và theo dõi thống kê lượt truy cập.',
+        tags: ['link', 'ngắn', 'url', 'shorten']
+    },
 
     // ---------------------------------------------------------------------
     // TÍNH TOÁN & TÀI CHÍNH (calc)
