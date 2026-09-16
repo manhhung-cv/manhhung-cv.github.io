@@ -55,9 +55,12 @@
     }
 
     html, body {
-      overscroll-behavior-y: none;
-      -webkit-overflow-scrolling: touch;
+      position: fixed;
+      width: 100%;
       height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+      -webkit-overflow-scrolling: touch;
     }
 
     body {
@@ -67,21 +70,28 @@
       background-position: center;
       background-repeat: no-repeat;
       background-attachment: fixed;
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
-      padding-left: env(safe-area-inset-left);
-      padding-right: env(safe-area-inset-right);
     }
 
-    #appWrapper {
-      min-height: 100dvh;
+    /* Khung nhìn điều phối động neo theo Visual Viewport */
+    #viewportStage {
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 100%;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
+      padding: 0.5rem;
+      padding-top: max(0.5rem, env(safe-area-inset-top));
+      padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+      box-sizing: border-box;
+      z-index: 10;
+      transition: height 0.15s ease-out;
     }
 
     @media (min-width: 640px) {
-      #appWrapper {
+      #viewportStage {
         justify-content: center;
         padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
       }
@@ -116,20 +126,36 @@
     }
 
     /* =========================================================
-       THIẾT KẾ MỚI CHO KHU VỰC KẾT QUẢ KHÔNG GIAN (HOLOGRAM HUD)
+       CHẾ ĐỘ THU GỌN KHI BÀN PHÍM BẬT LÊN (.keyboard-open)
     ========================================================= */
+    .keyboard-open #mainPanel {
+      padding: 0.75rem 1rem !important;
+      border-radius: 1.5rem !important;
+      space-y: 0.5rem !important;
+    }
+
+    .keyboard-open #brandHeader,
+    .keyboard-open #historySection,
+    .keyboard-open #sheetHandle {
+      display: none !important;
+    }
+
+    .keyboard-open #lookupForm {
+      margin-top: 0 !important;
+    }
+
+    .keyboard-open #resultSection {
+      display: none !important; /* Tạm ẩn kết quả để nhường chỗ gõ phím */
+    }
+
+    /* Hologram Container */
     @keyframes levitateFloating {
-      0%, 100% {
-        transform: translateY(0px);
-      }
-      50% {
-        transform: translateY(-9px);
-      }
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-7px); }
     }
 
     .space-hologram-container {
-      background: radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.12), transparent 70%),
-                  rgba(5, 8, 15, 0.86);
+      background: radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.12), transparent 70%), rgba(5, 8, 15, 0.88);
       backdrop-filter: blur(32px);
       -webkit-backdrop-filter: blur(32px);
       border: 1px solid rgba(6, 182, 212, 0.35);
@@ -137,7 +163,6 @@
       position: relative;
     }
 
-    /* Lưới tọa độ không gian ẩn nhẹ phía sau */
     .space-hologram-container::after {
       content: '';
       position: absolute;
@@ -149,7 +174,6 @@
       border-radius: inherit;
     }
 
-    /* 4 Ngàm kim loại định vị HUD ở 4 góc */
     .corner-bracket {
       position: absolute;
       width: 10px;
@@ -162,18 +186,13 @@
     .cb-bl { bottom: -1px; left: -1px; border-bottom: 2px solid; border-left: 2px solid; border-bottom-left-radius: 1.2rem; }
     .cb-br { bottom: -1px; right: -1px; border-bottom: 2px solid; border-right: 2px solid; border-bottom-right-radius: 1.2rem; }
 
-    /* Thẻ lõi dữ liệu (Data Core Card) */
     .datacore-card {
       background: rgba(12, 16, 26, 0.75);
       border: 1px solid rgba(255, 255, 255, 0.08);
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
       position: relative;
     }
-    .datacore-card:hover {
-      border-color: rgba(6, 182, 212, 0.35);
-    }
 
-    /* Tia laser quét dữ liệu */
     .quantum-scanline {
       position: absolute;
       top: 0;
@@ -203,14 +222,8 @@
     }
 
     @keyframes resultSlideUp {
-      from {
-        opacity: 0;
-        transform: translateY(16px) scale(0.96);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
+      from { opacity: 0; transform: translateY(14px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
     .result-item-anim {
@@ -228,30 +241,25 @@
 </head>
 <body class="text-neutral-100 selection:bg-cyan-500 selection:text-black">
 
-  <!-- Bụi sao & Thiên thạch Canvas -->
+  <!-- Canvas hiệu ứng bụi không gian -->
   <canvas id="spaceCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
 
-  <div id="appWrapper" class="relative z-10 transition-[height] duration-150 p-2 sm:p-4">
+  <!-- Stage bao quát co giãn chuẩn xác theo bàn phím iOS -->
+  <div id="viewportStage">
 
-    <!-- =========================================================
-         KHU VỰC KẾT QUẢ BAY LƠ LỬNG TRÊN HUB (HOLOGRAM KHÔNG GIAN)
-    ========================================================= -->
-    <section id="resultSection" class="hidden w-full max-w-md mx-auto mb-3.5 z-20">
+    <!-- KHU VỰC KẾT QUẢ HOLOGRAM BAY LƠ LỬNG -->
+    <section id="resultSection" class="hidden w-full max-w-md mx-auto mb-2.5 z-20">
       <div class="space-hologram-container rounded-[2rem] p-4 sm:p-5 shadow-holo-glow space-y-3">
-        
-        <!-- 4 Ngàm góc định vị không gian -->
         <div class="corner-bracket cb-tl"></div>
         <div class="corner-bracket cb-tr"></div>
         <div class="corner-bracket cb-bl"></div>
         <div class="corner-bracket cb-br"></div>
 
-        <!-- Header HUD Hologram -->
-        <div class="flex items-center justify-between text-xs pb-2.5 border-b border-cyan-500/20 font-mono relative z-10">
+        <div class="flex items-center justify-between text-xs pb-2 border-b border-cyan-500/20 font-mono relative z-10">
           <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
-            <span class="text-neutral-400 text-[11px] uppercase tracking-wider">DỮ LIỆU GIẢI MÃ</span>
+            <span class="text-neutral-400 text-[10px] uppercase tracking-wider">KẾT QUẢ GIẢI MÃ</span>
           </div>
-          
           <div class="flex items-center gap-2">
             <span class="font-mono text-cyan-300 text-xs px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30">
               #<span id="displayOrderCode"></span>
@@ -262,106 +270,89 @@
           </div>
         </div>
 
-        <!-- Danh sách thẻ dữ liệu không gian lơ lửng -->
-        <div id="itemsContainer" class="space-y-3 max-h-[46vh] sm:max-h-[380px] overflow-y-auto pr-1 relative z-10"></div>
+        <div id="itemsContainer" class="space-y-3 max-h-[38vh] sm:max-h-[360px] overflow-y-auto pr-1 relative z-10"></div>
       </div>
     </section>
 
-    <!-- =========================================================
-         BẢNG ĐIỀU KHIỂN CHÍNH (HUB NẰM Ở ĐÁY)
-    ========================================================= -->
-    <main id="mainPanel" class="w-full max-w-md mx-auto space-hud-panel accretion-border rounded-t-[2.5rem] rounded-b-none sm:rounded-[2.2rem] p-5 sm:p-7 shadow-event-horizon space-y-4 transition-all duration-300" style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom));">
+    <!-- BẢNG ĐIỀU KHIỂN CHÍNH (HUB NEO ĐÁY MÀN HÌNH) -->
+    <main id="mainPanel" class="w-full max-w-md mx-auto space-hud-panel accretion-border rounded-t-[2.2rem] rounded-b-none sm:rounded-[2.2rem] p-4 sm:p-7 shadow-event-horizon space-y-3.5 transition-all duration-200">
       
-      <!-- Tia laser quét dữ liệu khi submit -->
       <div id="scanLine" class="quantum-scanline"></div>
+      <div id="sheetHandle" class="w-12 h-1 bg-amber-500/30 rounded-full mx-auto -mt-0.5 mb-1 sm:hidden"></div>
 
-      <!-- Thanh kéo trang trí -->
-      <div class="w-12 h-1 bg-amber-500/30 rounded-full mx-auto -mt-1 mb-1 sm:hidden"></div>
-
-      <!-- Đầu trang -->
-      <header class="flex items-center justify-between pb-3 border-b border-amber-500/20">
+      <!-- Header thương hiệu -->
+      <header id="brandHeader" class="flex items-center justify-between pb-2.5 border-b border-amber-500/20 transition-all">
         <div class="flex items-center gap-3">
-          <div id="reactorCore" class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-600 via-orange-500 to-yellow-400 text-black flex items-center justify-center shadow-accretion-glow transition-all duration-300">
-            <i id="reactorIcon" class="fa-solid fa-atom text-base animate-spin" style="animation-duration: 12s;"></i>
+          <div id="reactorCore" class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-500 to-yellow-400 text-black flex items-center justify-center shadow-accretion-glow transition-all duration-300">
+            <i id="reactorIcon" class="fa-solid fa-atom text-sm animate-spin" style="animation-duration: 12s;"></i>
           </div>
           <div>
-            <div class="flex items-center gap-2">
-              <h1 class="text-base font-bold tracking-wider uppercase text-amber-300 font-mono">Tra Cứu Tài Khoản</h1>
-            </div>
-            <p id="statusTag" class="text-[11px] text-neutral-400 font-mono tracking-tight flex items-center gap-1.5 transition-colors">
+            <h1 class="text-sm sm:text-base font-bold tracking-wider uppercase text-amber-300 font-mono">Tra Cứu Tài Khoản</h1>
+            <p id="statusTag" class="text-[10px] text-neutral-400 font-mono tracking-tight flex items-center gap-1.5">
               <span id="statusLed" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               <span>Cổng lượng tử sẵn sàng</span>
             </p>
           </div>
         </div>
 
-        <div class="w-8 h-8 rounded-full border border-amber-500/30 flex items-center justify-center text-amber-400/70 text-xs">
-          <i class="fa-solid fa-satellite-dish"></i>
+        <div class="w-7 h-7 rounded-full border border-amber-500/30 flex items-center justify-center text-amber-400/70 text-xs">
+          <i class="fa-solid fa-satellite-dish text-[10px]"></i>
         </div>
       </header>
 
-      <!-- Biểu mẫu tra cứu -->
-      <form id="lookupForm" class="space-y-3.5">
-        <div class="space-y-1.5">
-          <label class="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-amber-400/90 px-0.5">
-            <span><i class="fa-solid fa-fingerprint mr-1"></i> Mã Đơn Hàng</span>
-            <span class="text-[10px] text-neutral-400 lowercase">nhập chính xác</span>
-          </label>
-          
-          <div class="relative flex items-center">
-            <span class="absolute left-3.5 text-amber-500/60 pointer-events-none text-xs">
-              <i class="fa-solid fa-terminal"></i>
-            </span>
+      <!-- Form nhập mã -->
+      <form id="lookupForm" class="space-y-2.5">
+        <div class="relative flex items-center">
+          <span class="absolute left-3.5 text-amber-500/60 pointer-events-none text-xs">
+            <i class="fa-solid fa-terminal"></i>
+          </span>
 
-            <input 
-              type="text" 
-              id="orderCodeInput" 
-              required
-              autocomplete="off"
-              autocorrect="off"
-              autocapitalize="none"
-              spellcheck="false"
-              placeholder="Dán hoặc nhập mã đơn tại đây..." 
-              class="w-full h-12 pl-9 pr-14 rounded-2xl space-sub-box font-mono text-sm text-amber-100 placeholder:text-neutral-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/50 transition-all"
-            />
+          <input 
+            type="text" 
+            id="orderCodeInput" 
+            required
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="none"
+            spellcheck="false"
+            placeholder="Dán hoặc nhập mã đơn..." 
+            class="w-full h-11 sm:h-12 pl-9 pr-14 rounded-xl sm:rounded-2xl space-sub-box font-mono text-xs sm:text-sm text-amber-100 placeholder:text-neutral-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/50 transition-all"
+          />
 
-            <button 
-              type="button" 
-              id="pasteBtn"
-              class="absolute right-1.5 h-9 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-medium flex items-center gap-1 active:scale-95 transition-all"
-            >
-              <i class="fa-regular fa-paste"></i>
-              <span>Dán</span>
-            </button>
-          </div>
+          <button 
+            type="button" 
+            id="pasteBtn"
+            class="absolute right-1.5 h-8 sm:h-9 px-2.5 rounded-lg sm:rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-medium flex items-center gap-1 active:scale-95 transition-all"
+          >
+            <i class="fa-regular fa-paste"></i>
+            <span>Dán</span>
+          </button>
         </div>
 
         <button 
           type="submit" 
           id="submitBtn"
-          class="w-full h-12 rounded-2xl bg-gradient-to-r from-amber-600 via-orange-500 to-yellow-500 hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold tracking-wide uppercase shadow-accretion-glow transition-all flex items-center justify-center gap-2 font-mono"
+          class="w-full h-11 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-600 via-orange-500 to-yellow-500 hover:brightness-110 active:scale-[0.98] text-black text-xs sm:text-sm font-bold tracking-wide uppercase shadow-accretion-glow transition-all flex items-center justify-center gap-2 font-mono"
         >
           <i class="fa-solid fa-radar text-xs"></i>
           <span id="submitBtnText">Bắt đầu tra cứu</span>
         </button>
       </form>
 
-      <!-- Lịch sử tra cứu gần đây -->
-      <div id="historySection" class="hidden space-y-2">
-        <div class="flex items-center justify-between text-[11px] font-mono px-0.5">
+      <!-- Lịch sử tra cứu -->
+      <div id="historySection" class="hidden space-y-1.5 pt-0.5">
+        <div class="flex items-center justify-between text-[10px] font-mono px-0.5">
           <span class="text-neutral-400 uppercase tracking-wider flex items-center gap-1">
-            <i class="fa-solid fa-clock-rotate-left text-amber-500/70"></i> Đã tra cứu gần đây
+            <i class="fa-solid fa-clock-rotate-left text-amber-500/70"></i> Gần đây
           </span>
-          <button id="clearHistoryBtn" class="text-neutral-500 hover:text-rose-400 text-[10px] transition-colors">
-            <i class="fa-solid fa-trash-can mr-0.5"></i> Xóa
-          </button>
+          <button id="clearHistoryBtn" class="text-neutral-500 hover:text-rose-400 transition-colors">Xóa</button>
         </div>
-        <div id="historyList" class="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar"></div>
+        <div id="historyList" class="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar"></div>
       </div>
 
-      <!-- Thông báo lỗi -->
-      <div id="errorAlert" class="hidden p-3.5 rounded-2xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono leading-relaxed flex items-start gap-2.5">
-        <i class="fa-solid fa-triangle-exclamation mt-0.5 text-rose-400 text-sm"></i>
+      <!-- Hộp lỗi -->
+      <div id="errorAlert" class="hidden p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-[11px] font-mono leading-relaxed flex items-start gap-2">
+        <i class="fa-solid fa-triangle-exclamation mt-0.5 text-rose-400 text-xs"></i>
         <div id="errorMsgText" class="flex-1"></div>
       </div>
 
@@ -369,34 +360,29 @@
 
   </div>
 
-  <!-- Hộp thoại xác nhận báo lỗi -->
+  <!-- Modal xác nhận báo lỗi -->
   <div id="confirmModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-    <div class="w-full max-w-sm rounded-t-[2.5rem] sm:rounded-3xl space-hud-panel border border-amber-500/30 p-6 pb-9 sm:pb-6 space-y-4 animate-in slide-in-from-bottom duration-200">
-      <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto text-xl shadow-lg">
+    <div class="w-full max-w-sm rounded-t-[2.2rem] sm:rounded-3xl space-hud-panel border border-amber-500/30 p-5 pb-8 sm:pb-5 space-y-3.5 animate-in slide-in-from-bottom duration-200">
+      <div class="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto text-lg shadow-lg">
         <i class="fa-solid fa-radiation"></i>
       </div>
-      
       <div class="text-center space-y-1">
-        <h3 class="text-base font-bold text-neutral-100 font-mono tracking-wide">Yêu cầu bảo hành tài khoản</h3>
+        <h3 class="text-sm font-bold text-neutral-100 font-mono">Bảo hành tài khoản</h3>
         <p class="text-xs text-neutral-400 leading-relaxed px-2">
-          Bạn có chắc chắn muốn báo lỗi tài khoản này? Hệ thống sẽ gửi yêu cầu và tự động cấp tài khoản thay thế nếu đủ điều kiện.
+          Hệ thống sẽ gửi yêu cầu và tự động cấp tài khoản thay thế nếu đơn hàng hợp lệ.
         </p>
       </div>
-
-      <div class="grid grid-cols-2 gap-2.5 pt-2 font-mono">
-        <button id="modalCancelBtn" class="h-11 rounded-xl space-sub-box text-xs text-neutral-300 hover:text-white active:scale-95 transition-all">
-          Huỷ bỏ
-        </button>
-        <button id="modalOkBtn" class="h-11 rounded-xl bg-gradient-to-r from-rose-600 to-orange-600 hover:opacity-95 text-white text-xs font-semibold shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-paper-plane text-[10px]"></i>
+      <div class="grid grid-cols-2 gap-2 pt-1 font-mono">
+        <button id="modalCancelBtn" class="h-10 rounded-xl space-sub-box text-xs text-neutral-300 hover:text-white active:scale-95 transition-all">Huỷ</button>
+        <button id="modalOkBtn" class="h-10 rounded-xl bg-gradient-to-r from-rose-600 to-orange-600 text-white text-xs font-semibold shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5">
           <span>Xác nhận</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Toast phản hồi -->
-  <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-full space-hud-panel border border-cyan-400/40 text-cyan-300 text-xs font-mono font-semibold shadow-holo-glow opacity-0 pointer-events-none transition-all duration-200 flex items-center gap-2 z-50">
+  <!-- Toast -->
+  <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full space-hud-panel border border-cyan-400/40 text-cyan-300 text-xs font-mono font-semibold shadow-holo-glow opacity-0 pointer-events-none transition-all duration-200 flex items-center gap-2 z-50">
     <i class="fa-solid fa-circle-check text-cyan-400"></i>
     <span id="toastText">Đã sao chép</span>
   </div>
@@ -409,7 +395,6 @@
 
     const portalClient = {
       baseUrl: WORKER_ENDPOINT.replace(/\/$/, ""),
-
       async lookup(orderCode) {
         const res = await fetch(`${this.baseUrl}/api/lookup`, {
           method: "POST",
@@ -418,7 +403,6 @@
         });
         return await res.json();
       },
-
       async reportError(orderCode, item) {
         const res = await fetch(`${this.baseUrl}/api/report`, {
           method: "POST",
@@ -435,29 +419,49 @@
     };
 
     /* =========================================================
-       2. TỰ ĐỘNG ĐẨY HUB KHI MỞ BÀN PHÍM ẢO
+       2. TỰ ĐỘNG ĐẨY LÊN VÀ THU GỌN KHI MỞ BÀN PHÍM IPHONE
     ========================================================= */
-    const appWrapper = document.getElementById("appWrapper");
+    const viewportStage = document.getElementById("viewportStage");
     const orderCodeInput = document.getElementById("orderCodeInput");
 
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", () => {
-        appWrapper.style.height = `${window.visualViewport.height}px`;
-      });
-      
-      window.visualViewport.addEventListener("scroll", () => {
-        window.scrollTo(0, 0);
-      });
+    function syncViewport() {
+      if (window.visualViewport) {
+        // Đồng bộ chuẩn chiều cao khả dụng trên màn hình iOS
+        const vpHeight = window.visualViewport.height;
+        viewportStage.style.height = `${vpHeight}px`;
+
+        // Nếu chiều cao bị thu hẹp đáng kể (bàn phím đang mở)
+        if (vpHeight < window.innerHeight * 0.75) {
+          document.body.classList.add("keyboard-open");
+        } else {
+          document.body.classList.remove("keyboard-open");
+        }
+      }
     }
 
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", syncViewport);
+      window.visualViewport.addEventListener("scroll", () => window.scrollTo(0, 0));
+    }
+
+    // Xử lý sự kiện Focus / Blur trực tiếp trên ô nhập liệu
     orderCodeInput.addEventListener("focus", () => {
+      document.body.classList.add("keyboard-open");
       setTimeout(() => {
+        syncViewport();
         orderCodeInput.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 250);
+      }, 150);
+    });
+
+    orderCodeInput.addEventListener("blur", () => {
+      setTimeout(() => {
+        document.body.classList.remove("keyboard-open");
+        syncViewport();
+      }, 100);
     });
 
     /* =========================================================
-       3. ĐIỀU KHIỂN GIAO DIỆN & RENDER HOLOGRAM SCI-FI
+       3. ĐIỀU KHIỂN GIAO DIỆN & RENDER HOLOGRAM
     ========================================================= */
     const form = document.getElementById("lookupForm");
     const submitBtn = document.getElementById("submitBtn");
@@ -494,7 +498,7 @@
         reactorCore.classList.add("scale-110", "brightness-125");
         reactorIcon.style.animationDuration = "1.5s";
         statusLed.className = "w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping";
-        statusTag.querySelector("span:last-child").textContent = "Đang quét dữ liệu lượng tử...";
+        statusTag.querySelector("span:last-child").textContent = "Đang giải mã...";
         window.setDustSpeedMultiplier(5.0);
       } else {
         mainPanel.classList.remove("scanning-active");
@@ -528,17 +532,13 @@
 
     function escapeHtml(str) {
       if (!str) return "";
-      return String(str)
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
     function askConfirm() {
       return new Promise(resolve => {
         confirmModal.classList.remove("hidden");
         confirmModal.classList.add("flex");
-
         const cleanup = (result) => {
           confirmModal.classList.add("hidden");
           confirmModal.classList.remove("flex");
@@ -546,18 +546,13 @@
           modalCancelBtn.onclick = null;
           resolve(result);
         };
-
         modalOkBtn.onclick = () => cleanup(true);
         modalCancelBtn.onclick = () => cleanup(false);
       });
     }
 
     function getHistory() {
-      try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-      } catch {
-        return [];
-      }
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
     }
 
     function saveHistory(code) {
@@ -580,7 +575,7 @@
       list.forEach(code => {
         const chip = document.createElement("button");
         chip.type = "button";
-        chip.className = "flex-shrink-0 px-3 py-1.5 rounded-xl space-sub-box border border-amber-500/30 hover:border-amber-400/70 font-mono text-xs text-amber-200 active:scale-95 transition-all flex items-center gap-1.5";
+        chip.className = "flex-shrink-0 px-2.5 py-1 rounded-lg space-sub-box border border-amber-500/30 hover:border-amber-400/70 font-mono text-[11px] text-amber-200 active:scale-95 transition-all flex items-center gap-1.5";
         chip.innerHTML = `<i class="fa-solid fa-tag text-[9px] opacity-60"></i> ${code}`;
         chip.addEventListener("click", () => {
           orderCodeInput.value = code;
@@ -614,16 +609,13 @@
       orderCodeInput.blur();
       errorAlert.classList.add("hidden");
       submitBtn.disabled = true;
-      submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-xs"></i><span>Đang phân tích...</span>`;
+      submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-xs"></i><span>Đang giải mã...</span>`;
       
       setScanningState(true);
 
       try {
         const data = await portalClient.lookup(orderCode);
-
-        if (!data.success) {
-          throw new Error(data.error || "Không tìm thấy dữ liệu cho mã đơn này.");
-        }
+        if (!data.success) throw new Error(data.error || "Không tìm thấy dữ liệu cho mã đơn này.");
 
         saveHistory(orderCode);
         renderResults(data, orderCode);
@@ -643,9 +635,8 @@
       if (!confirmed) return;
 
       try {
-        showToast("Đang phát tín hiệu báo lỗi...", "fa-paper-plane");
+        showToast("Đang gửi báo lỗi...", "fa-paper-plane");
         const data = await portalClient.reportError(orderCode, item);
-
         if (!data.success) {
           showToast(data.error || "Gửi báo lỗi thất bại.", "fa-triangle-exclamation");
           return;
@@ -656,29 +647,23 @@
         } else {
           showToast("Đã gửi báo lỗi tới quản trị viên!");
         }
-
         await executeLookup(orderCode);
       } catch (err) {
         showToast("Lỗi kết nối máy chủ.", "fa-triangle-exclamation");
       }
     }
 
-    /* RENDER KẾT QUẢ THEO PHONG CÁCH HOLOGRAM / SCI-FI */
     function renderResults(data, orderCode) {
       itemsContainer.innerHTML = "";
       displayOrderCode.textContent = orderCode;
       resultSection.classList.remove("hidden");
-
-      setTimeout(() => {
-        resultSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }, 150);
 
       const items = data.items || [];
       let hasOtp = false;
 
       items.forEach((item, index) => {
         const card = document.createElement("div");
-        card.className = "datacore-card p-4 rounded-2xl space-y-3 result-item-anim";
+        card.className = "datacore-card p-3.5 rounded-2xl space-y-2.5 result-item-anim";
         card.style.animationDelay = `${index * 80}ms`;
 
         const group = escapeHtml(item.group);
@@ -695,10 +680,10 @@
               <span class="font-bold text-neutral-300 text-xs tracking-wide flex items-center gap-1.5">
                 <i class="fa-solid fa-circle-xmark text-rose-500"></i> ${group}
               </span>
-              <span class="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/30 text-[10px]">Hết hiệu lực</span>
+              <span class="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/30 text-[10px]">Hết hạn</span>
             </div>
             <div class="text-[11px] text-neutral-400 font-mono flex items-center gap-1.5 bg-black/40 p-2 rounded-xl border border-white/5">
-              <i class="fa-regular fa-clock text-rose-400/70"></i> <span>Thời hạn: ${exp}</span>
+              <i class="fa-regular fa-clock text-rose-400/70"></i> <span>Hạn: ${exp}</span>
             </div>
           `;
         } else if (item.type === "account") {
@@ -708,59 +693,56 @@
           if (reportStatus === "pending") {
             card.innerHTML = `
               <div class="flex justify-between items-center font-mono">
-                <span class="font-bold text-amber-300 text-xs tracking-wide flex items-center gap-1.5">
+                <span class="font-bold text-amber-300 text-xs flex items-center gap-1.5">
                   <i class="fa-solid fa-spinner fa-spin text-amber-400"></i> ${group}
                 </span>
                 <span class="text-[10px] text-neutral-400">${exp}</span>
               </div>
-              <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2 font-mono">
-                <i class="fa-solid fa-shield-virus text-base text-amber-400"></i>
-                <span class="leading-relaxed">Tài khoản đang trong tiến trình bảo hành hệ thống...</span>
+              <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2 font-mono">
+                <i class="fa-solid fa-shield-virus text-sm text-amber-400"></i>
+                <span>Tài khoản đang trong tiến trình bảo hành...</span>
               </div>
             `;
           } else {
             card.innerHTML = `
-              <!-- Header thẻ dữ liệu -->
               <div class="flex justify-between items-center font-mono">
-                <div class="flex items-center gap-2">
-                  <div class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#06b6d4]"></div>
-                  <span class="font-bold text-neutral-100 text-xs tracking-wide">${group}</span>
+                <div class="flex items-center gap-1.5">
+                  <div class="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#06b6d4]"></div>
+                  <span class="font-bold text-neutral-100 text-xs">${group}</span>
                 </div>
                 <span class="text-[10px] font-mono text-cyan-400/70 px-1.5 py-0.5 rounded bg-cyan-950/40 border border-cyan-500/20">${exp}</span>
               </div>
 
-              <!-- Khối hiển thị TK / MK chuẩn HUD -->
-              <div class="p-3 rounded-xl bg-black/60 border border-cyan-500/20 font-mono space-y-2 select-all shadow-inner">
+              <div class="p-2.5 rounded-xl bg-black/60 border border-cyan-500/20 font-mono space-y-1.5 select-all shadow-inner">
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-400 text-[10px] uppercase tracking-wider flex items-center gap-1">
-                    <i class="fa-solid fa-user-astronaut text-cyan-500"></i> TÀI KHOẢN
+                    <i class="fa-solid fa-user-astronaut text-cyan-500"></i> TK
                   </span>
-                  <span class="font-bold text-cyan-300 text-xs tracking-wide">${user}</span>
+                  <span class="font-bold text-cyan-300 text-xs">${user}</span>
                 </div>
-                <div class="flex items-center justify-between border-t border-white/5 pt-2">
+                <div class="flex items-center justify-between border-t border-white/5 pt-1.5">
                   <span class="text-neutral-400 text-[10px] uppercase tracking-wider flex items-center gap-1">
-                    <i class="fa-solid fa-fingerprint text-amber-500"></i> MẬT KHẨU
+                    <i class="fa-solid fa-fingerprint text-amber-500"></i> MK
                   </span>
-                  <span class="font-bold text-amber-300 text-xs tracking-wide">${pass}</span>
+                  <span class="font-bold text-amber-300 text-xs">${pass}</span>
                 </div>
               </div>
 
-              <!-- Nút bấm dạng bảng điều khiển phi thuyền -->
               <div class="flex gap-2 pt-0.5 font-mono">
-                <button class="btn-copy-user flex-1 h-9 rounded-xl bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/30 text-cyan-300 font-semibold active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
-                  <i class="fa-regular fa-clone"></i> Sao chép TK
+                <button class="btn-copy-user flex-1 h-8 rounded-xl bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/30 text-cyan-300 text-[11px] font-semibold active:scale-95 transition-all flex items-center justify-center gap-1.5">
+                  <i class="fa-regular fa-clone"></i> Copy TK
                 </button>
-                <button class="btn-copy-pass flex-1 h-9 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 border border-amber-500/30 text-amber-300 font-semibold active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.15)]">
-                  <i class="fa-solid fa-key"></i> Sao chép MK
+                <button class="btn-copy-pass flex-1 h-8 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 border border-amber-500/30 text-amber-300 text-[11px] font-semibold active:scale-95 transition-all flex items-center justify-center gap-1.5">
+                  <i class="fa-solid fa-key"></i> Copy MK
                 </button>
               </div>
 
               <div class="pt-0.5 font-mono">
                 ${reportStatus === "cooldown" 
-                  ? `<button disabled class="w-full h-8 rounded-xl bg-neutral-900/80 text-neutral-500 border border-neutral-800 opacity-60 cursor-not-allowed text-[11px] flex items-center justify-center gap-1.5">
+                  ? `<button disabled class="w-full h-7 rounded-xl bg-neutral-900/80 text-neutral-500 border border-neutral-800 opacity-60 cursor-not-allowed text-[10px] flex items-center justify-center gap-1.5">
                       <i class="fa-solid fa-hourglass-half"></i> Khóa bảo hành (${cooldownText})
                     </button>`
-                  : `<button class="btn-report-acc w-full h-8 rounded-xl bg-rose-950/30 hover:bg-rose-900/40 border border-rose-500/30 text-rose-400 font-semibold active:scale-98 transition-all flex items-center justify-center gap-1.5">
+                  : `<button class="btn-report-acc w-full h-7 rounded-xl bg-rose-950/30 hover:bg-rose-900/40 border border-rose-500/30 text-rose-400 text-[10px] font-semibold active:scale-98 transition-all flex items-center justify-center gap-1.5">
                       <i class="fa-solid fa-triangle-exclamation"></i> Báo lỗi tài khoản
                     </button>`}
               </div>
@@ -777,21 +759,21 @@
 
           card.innerHTML = `
             <div class="flex justify-between items-center font-mono">
-              <div class="flex items-center gap-2">
-                <div class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]"></div>
-                <span class="font-bold text-neutral-100 text-xs tracking-wide">${group}</span>
+              <div class="flex items-center gap-1.5">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]"></div>
+                <span class="font-bold text-neutral-100 text-xs">${group}</span>
               </div>
               <span class="text-[10px] font-mono text-emerald-400/70 px-1.5 py-0.5 rounded bg-emerald-950/40 border border-emerald-500/20">${exp}</span>
             </div>
 
-            <div class="flex items-center justify-between p-3.5 rounded-xl bg-gradient-to-r from-emerald-950/40 via-emerald-900/20 to-black/60 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
-              <span class="text-neutral-400 text-[10px] font-mono uppercase tracking-widest flex items-center gap-1.5">
-                <i class="fa-solid fa-shield-halved text-emerald-400"></i> MÃ XÁC THỰC
+            <div class="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-emerald-950/40 via-emerald-900/20 to-black/60 border border-emerald-500/30">
+              <span class="text-neutral-400 text-[10px] font-mono uppercase tracking-wider flex items-center gap-1">
+                <i class="fa-solid fa-shield-halved text-emerald-400"></i> OTP
               </span>
-              <span class="text-xl font-bold font-mono tracking-widest text-emerald-300 select-all">${code}</span>
+              <span class="text-lg font-bold font-mono tracking-widest text-emerald-300 select-all">${code}</span>
             </div>
 
-            <button class="btn-copy-otp w-full h-10 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:brightness-110 text-black font-bold font-mono shadow-[0_0_20px_rgba(16,185,129,0.4)] active:scale-98 transition-all flex items-center justify-center gap-2">
+            <button class="btn-copy-otp w-full h-9 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:brightness-110 text-black font-bold font-mono text-xs shadow-md active:scale-98 transition-all flex items-center justify-center gap-1.5">
               <i class="fa-regular fa-copy"></i> Sao chép mã OTP
             </button>
           `;
@@ -841,28 +823,15 @@
       let targetMultiplier = 1;
       const dpr = window.devicePixelRatio || 1;
 
-      window.setDustSpeedMultiplier = (mult) => {
-        targetMultiplier = mult;
-      };
+      window.setDustSpeedMultiplier = (mult) => { targetMultiplier = mult; };
 
       const touchPoint = { x: null, y: null, radius: 110 };
 
-      window.addEventListener('mousemove', (e) => {
-        touchPoint.x = e.clientX;
-        touchPoint.y = e.clientY;
-      });
-
+      window.addEventListener('mousemove', (e) => { touchPoint.x = e.clientX; touchPoint.y = e.clientY; });
       window.addEventListener('touchmove', (e) => {
-        if (e.touches.length > 0) {
-          touchPoint.x = e.touches[0].clientX;
-          touchPoint.y = e.touches[0].clientY;
-        }
+        if (e.touches.length > 0) { touchPoint.x = e.touches[0].clientX; touchPoint.y = e.touches[0].clientY; }
       });
-
-      window.addEventListener('touchend', () => {
-        touchPoint.x = null;
-        touchPoint.y = null;
-      });
+      window.addEventListener('touchend', () => { touchPoint.x = null; touchPoint.y = null; });
 
       function resize() {
         canvas.width = window.innerWidth * dpr;
@@ -873,10 +842,7 @@
       resize();
 
       function getGravityCenter() {
-        return {
-          x: window.innerWidth * 0.5,
-          y: window.innerHeight * 0.32
-        };
+        return { x: window.innerWidth * 0.5, y: window.innerHeight * 0.32 };
       }
 
       const dustCount = Math.min(180, Math.floor(window.innerWidth / 2.2));
@@ -896,9 +862,7 @@
       for (let i = 0; i < meteorCount; i++) {
         const sides = Math.floor(Math.random() * 2) + 4;
         const shapeOffsets = [];
-        for (let s = 0; s < sides; s++) {
-          shapeOffsets.push(Math.random() * 0.5 + 0.75);
-        }
+        for (let s = 0; s < sides; s++) shapeOffsets.push(Math.random() * 0.5 + 0.75);
 
         meteorites.push({
           angle: Math.random() * Math.PI * 2,
@@ -918,13 +882,11 @@
       function draw() {
         ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         const center = getGravityCenter();
-
         speedMultiplier += (targetMultiplier - speedMultiplier) * 0.06;
 
         for (let i = 0; i < darkDust.length; i++) {
           const p = darkDust[i];
           p.angle += p.orbitSpeed * speedMultiplier;
-
           let curX = center.x + Math.cos(p.angle) * p.distance;
           let curY = center.y + Math.sin(p.angle) * (p.distance * 0.52);
 
@@ -955,7 +917,6 @@
           const m = meteorites[i];
           m.angle += m.orbitSpeed * speedMultiplier;
           m.rotation += m.rotSpeed * speedMultiplier;
-
           let curX = center.x + Math.cos(m.angle) * m.distance;
           let curY = center.y + Math.sin(m.angle) * (m.distance * 0.52);
 
@@ -984,7 +945,6 @@
             else ctx.lineTo(px, py);
           }
           ctx.closePath();
-
           ctx.fillStyle = `rgba(18, 20, 26, ${m.opacity})`;
           ctx.fill();
 
@@ -997,7 +957,6 @@
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
-
           ctx.restore();
 
           m.distance -= (m.radialSpeed * 0.14) * speedMultiplier;
@@ -1013,5 +972,4 @@
     })();
   </script>
 </body>
-<script src="/Asset/Extend/AddIcon.js"></script>
 </html>
