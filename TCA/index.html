@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  
+  <!-- Cấu hình Viewport chống zoom và hỗ trợ viền cong/Dynamic Island -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  
+  <title>Tra Cứu Tài Khoản — Cổng Không Gian</title>
+
+  <!-- ==========================================
+       CẤU HÌNH WEB APP CHO IPHONE / IPAD (PWA iOS)
+  =========================================== -->
+  <!-- Cho phép cài đặt toàn màn hình (Standalone) -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- Màu thanh trạng thái tai thỏ / Dynamic Island (đen tuyền) -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#030407" />
+
+  <!-- Tên ứng dụng hiển thị dưới icon trên màn hình chính iPhone -->
+  <meta name="apple-mobile-web-app-title" content="Tra Cứu" />
+
+  <!-- Icon ứng dụng khi thêm vào màn hình chính iPhone -->
+  <link rel="apple-touch-icon" href="./icon.png" />
+  <link rel="icon" type="image/png" href="./icon.png" />
+
+  <!-- Font Awesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', 'sans-serif'],
+            mono: ['"SF Mono"', '"JetBrains Mono"', 'Menlo', 'monospace'],
+          },
+          colors: {
+            singularity: {
+              gold: '#f59e0b',
+              amber: '#d97706',
+              flare: '#fbbf24',
+              void: '#030407'
+            }
+          },
+          boxShadow: {
+            'event-horizon': '0 0 50px -10px rgba(245, 158, 11, 0.3)',
+            'accretion-glow': '0 0 25px rgba(217, 119, 6, 0.4)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --bg-image: url('./bg.png');
+    }
+
+    /* Khóa thanh cuộn nảy của iOS Safari */
+    html, body {
+      overscroll-behavior-y: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body {
+      background-color: #030407;
+      background-image: var(--bg-image);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      /* Tự động bù khoảng cách viền trên/dưới cho Dynamic Island và Home Bar */
+      padding-top: max(0.875rem, env(safe-area-inset-top));
+      padding-bottom: max(0.875rem, env(safe-area-inset-bottom));
+      padding-left: max(0.875rem, env(safe-area-inset-left));
+      padding-right: max(0.875rem, env(safe-area-inset-right));
+    }
+
+    /* Bảng điều khiển HUD không gian mờ */
+    .space-hud-panel {
+      background: rgba(8, 10, 16, 0.72);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(245, 158, 11, 0.22);
+      box-shadow: 0 0 60px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(245, 158, 11, 0.05);
+    }
+
+    .space-sub-box {
+      background: rgba(18, 22, 34, 0.6);
+      border: 1px solid rgba(245, 158, 11, 0.15);
+    }
+
+    /* Viền sáng chân trời sự kiện */
+    .accretion-border {
+      position: relative;
+    }
+    .accretion-border::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.6), transparent 60%, rgba(217, 119, 6, 0.4));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    /* Triệt tiêu độ trễ chạm 300ms và bóng xám mặc định của iOS */
+    input, button {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.3); border-radius: 99px; }
+  </style>
+</head>
+<body class="text-neutral-100 min-h-[100dvh] flex flex-col justify-between selection:bg-amber-500 selection:text-black">
+
+  <!-- Bụi sao Canvas chuẩn hóa màn hình Retina -->
+  <canvas id="spaceCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
+  <!-- Bảng điều khiển chính -->
+  <main class="w-full max-w-md mx-auto my-auto space-hud-panel accretion-border rounded-[2.2rem] p-5 sm:p-7 shadow-event-horizon z-10 relative space-y-5">
+    
+    <!-- Đầu trang -->
+    <header class="flex items-center justify-between pb-3 border-b border-amber-500/20">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-600 via-orange-500 to-yellow-400 text-black flex items-center justify-center shadow-accretion-glow">
+          <i class="fa-solid fa-atom text-base animate-spin" style="animation-duration: 12s;"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base font-bold tracking-wider uppercase text-amber-300 font-mono">Tra Cứu Tài Khoản</h1>
+          </div>
+          <p class="text-[11px] text-neutral-400 font-mono tracking-tight flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            Kết nối máy chủ an toàn
+          </p>
+        </div>
+      </div>
+
+      <div class="w-8 h-8 rounded-full border border-amber-500/30 flex items-center justify-center text-amber-400/70 text-xs">
+        <i class="fa-solid fa-satellite-dish"></i>
+      </div>
+    </header>
+
+    <!-- Biểu mẫu tra cứu -->
+    <form id="lookupForm" class="space-y-3.5">
+      <div class="space-y-1.5">
+        <label class="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-amber-400/90 px-0.5">
+          <span><i class="fa-solid fa-fingerprint mr-1"></i> Mã Đơn Hàng</span>
+          <span class="text-[10px] text-neutral-400 lowercase">cần tra cứu</span>
+        </label>
+        
+        <div class="relative flex items-center">
+          <span class="absolute left-3.5 text-amber-500/60 pointer-events-none text-xs">
+            <i class="fa-solid fa-terminal"></i>
+          </span>
+
+          <input 
+            type="text" 
+            id="orderCodeInput" 
+            required
+            autocomplete="off"
+            autocapitalize="characters"
+            placeholder="Dán hoặc nhập mã đơn tại đây..." 
+            class="w-full h-12 pl-9 pr-14 rounded-2xl space-sub-box font-mono text-sm text-amber-100 placeholder:text-neutral-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/50 transition-all"
+          />
+
+          <button 
+            type="button" 
+            id="pasteBtn"
+            class="absolute right-1.5 h-9 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-medium flex items-center gap-1 active:scale-95 transition-all"
+          >
+            <i class="fa-regular fa-paste"></i>
+            <span>Dán</span>
+          </button>
+        </div>
+      </div>
+
+      <button 
+        type="submit" 
+        id="submitBtn"
+        class="w-full h-12 rounded-2xl bg-gradient-to-r from-amber-600 via-orange-500 to-yellow-500 hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold tracking-wide uppercase shadow-accretion-glow transition-all flex items-center justify-center gap-2"
+      >
+        <i class="fa-solid fa-radar text-xs"></i>
+        <span>Bắt đầu tra cứu</span>
+      </button>
+    </form>
+
+    <!-- Lịch sử tra cứu gần đây -->
+    <div id="historySection" class="hidden space-y-2">
+      <div class="flex items-center justify-between text-[11px] font-mono px-0.5">
+        <span class="text-neutral-400 uppercase tracking-wider flex items-center gap-1">
+          <i class="fa-solid fa-clock-rotate-left text-amber-500/70"></i> Đã tra cứu gần đây
+        </span>
+        <button id="clearHistoryBtn" class="text-neutral-500 hover:text-rose-400 text-[10px] transition-colors">
+          <i class="fa-solid fa-trash-can mr-0.5"></i> Xóa
+        </button>
+      </div>
+      <div id="historyList" class="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar"></div>
+    </div>
+
+    <!-- Thông báo lỗi -->
+    <div id="errorAlert" class="hidden p-3.5 rounded-2xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono leading-relaxed flex items-start gap-2.5">
+      <i class="fa-solid fa-triangle-exclamation mt-0.5 text-rose-400 text-sm"></i>
+      <div id="errorMsgText" class="flex-1"></div>
+    </div>
+
+    <!-- Khu vực hiển thị kết quả -->
+    <section id="resultSection" class="hidden space-y-3 pt-1">
+      <div class="flex items-center justify-between text-xs px-1 pb-2 border-b border-amber-500/20 font-mono">
+        <div class="flex items-center gap-1.5 text-neutral-400">
+          <i class="fa-solid fa-circle-nodes text-amber-400"></i>
+          <span>Mã đơn: <b id="displayOrderCode" class="text-amber-300"></b></span>
+        </div>
+        <span id="countdownBadge" class="hidden text-[11px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold flex items-center gap-1">
+          <i class="fa-solid fa-arrows-rotate fa-spin text-[10px]"></i> Đổi sau <span id="timeLeft">30</span>s
+        </span>
+      </div>
+
+      <div id="itemsContainer" class="space-y-3 max-h-[360px] overflow-y-auto pr-0.5"></div>
+    </section>
+
+  </main>
+
+  <!-- Hộp thoại xác nhận báo lỗi chuẩn Bottom Sheet cho ngón cái -->
+  <div id="confirmModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+    <div class="w-full max-w-sm rounded-t-[2.5rem] sm:rounded-3xl space-hud-panel border border-amber-500/30 p-6 pb-9 sm:pb-6 space-y-4 animate-in slide-in-from-bottom duration-200">
+      <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto text-xl shadow-lg">
+        <i class="fa-solid fa-radiation"></i>
+      </div>
+      
+      <div class="text-center space-y-1">
+        <h3 class="text-base font-bold text-neutral-100 font-mono tracking-wide">Yêu cầu bảo hành tài khoản</h3>
+        <p class="text-xs text-neutral-400 leading-relaxed px-2">
+          Bạn có chắc chắn muốn báo lỗi tài khoản này? Hệ thống sẽ gửi yêu cầu và tự động cấp tài khoản thay thế nếu đủ điều kiện.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2.5 pt-2 font-mono">
+        <button id="modalCancelBtn" class="h-11 rounded-xl space-sub-box text-xs text-neutral-300 hover:text-white active:scale-95 transition-all">
+          Huỷ bỏ
+        </button>
+        <button id="modalOkBtn" class="h-11 rounded-xl bg-gradient-to-r from-rose-600 to-orange-600 hover:opacity-95 text-white text-xs font-semibold shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-paper-plane text-[10px]"></i>
+          <span>Xác nhận</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Thông báo nổi (Toast) -->
+  <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-full space-hud-panel border border-amber-400/40 text-amber-300 text-xs font-mono font-semibold shadow-accretion-glow opacity-0 pointer-events-none transition-all duration-200 flex items-center gap-2 z-50">
+    <i class="fa-solid fa-circle-check text-amber-400"></i>
+    <span id="toastText">Đã sao chép</span>
+  </div>
+
+  <footer class="text-center py-2 text-[10px] text-amber-500/50 font-mono tracking-widest uppercase">
+    Tra Cứu Tài Khoản • Hệ Thống Xác Thực Tự Động
+  </footer>
+
+  <script>
+    /* =========================================================
+       1. CẤU HÌNH WORKER BACKEND
+    ========================================================= */
+    const WORKER_ENDPOINT = "https://lucky-proxy-api.year-tucking-0v.workers.dev";
+
+    const portalClient = {
+      baseUrl: WORKER_ENDPOINT.replace(/\/$/, ""),
+
+      async lookup(orderCode) {
+        const res = await fetch(`${this.baseUrl}/api/lookup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order_code: orderCode })
+        });
+        return await res.json();
+      },
+
+      async reportError(orderCode, item) {
+        const res = await fetch(`${this.baseUrl}/api/report`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            order_code: orderCode,
+            group: item.group,
+            name: item.name,
+            item_index: item.item_index
+          })
+        });
+        return await res.json();
+      }
+    };
+
+    /* =========================================================
+       2. ĐIỀU KHIỂN GIAO DIỆN
+    ========================================================= */
+    const form = document.getElementById("lookupForm");
+    const orderCodeInput = document.getElementById("orderCodeInput");
+    const submitBtn = document.getElementById("submitBtn");
+    const errorAlert = document.getElementById("errorAlert");
+    const errorMsgText = document.getElementById("errorMsgText");
+    const resultSection = document.getElementById("resultSection");
+    const itemsContainer = document.getElementById("itemsContainer");
+    const displayOrderCode = document.getElementById("displayOrderCode");
+    const countdownBadge = document.getElementById("countdownBadge");
+    const timeLeft = document.getElementById("timeLeft");
+    const pasteBtn = document.getElementById("pasteBtn");
+    const toast = document.getElementById("toast");
+    const toastText = document.getElementById("toastText");
+    const historySection = document.getElementById("historySection");
+    const historyList = document.getElementById("historyList");
+    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+    const confirmModal = document.getElementById("confirmModal");
+    const modalCancelBtn = document.getElementById("modalCancelBtn");
+    const modalOkBtn = document.getElementById("modalOkBtn");
+
+    let timerInterval = null;
+    let currentSeconds = 0;
+    const STORAGE_KEY = "tra_cuu_tai_khoan_lich_su";
+
+    // Phản hồi rung nhẹ (Haptic feedback) cho thiết bị hỗ trợ
+    function triggerHaptic() {
+      if ('vibrate' in navigator) navigator.vibrate(12);
+    }
+
+    function showToast(msg, icon = "fa-circle-check") {
+      triggerHaptic();
+      toastText.textContent = msg;
+      toast.querySelector("i").className = "fa-solid " + icon + " text-amber-400";
+      toast.classList.remove("opacity-0", "-translate-y-2");
+      toast.classList.add("translate-y-0");
+      setTimeout(() => {
+        toast.classList.add("opacity-0", "-translate-y-2");
+        toast.classList.remove("translate-y-0");
+      }, 1500);
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(() => showToast(`Đã sao chép: ${text}`));
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function askConfirm() {
+      return new Promise(resolve => {
+        confirmModal.classList.remove("hidden");
+        confirmModal.classList.add("flex");
+
+        const cleanup = (result) => {
+          confirmModal.classList.add("hidden");
+          confirmModal.classList.remove("flex");
+          modalOkBtn.onclick = null;
+          modalCancelBtn.onclick = null;
+          resolve(result);
+        };
+
+        modalOkBtn.onclick = () => cleanup(true);
+        modalCancelBtn.onclick = () => cleanup(false);
+      });
+    }
+
+    function getHistory() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveHistory(code) {
+      let list = getHistory().filter(c => c !== code);
+      list.unshift(code);
+      if (list.length > 6) list.pop();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const list = getHistory();
+      if (!list.length) {
+        historySection.classList.add("hidden");
+        return;
+      }
+      historySection.classList.remove("hidden");
+      historyList.innerHTML = "";
+
+      list.forEach(code => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "flex-shrink-0 px-3 py-1.5 rounded-xl space-sub-box border border-amber-500/30 hover:border-amber-400/70 font-mono text-xs text-amber-200 active:scale-95 transition-all flex items-center gap-1.5";
+        chip.innerHTML = `<i class="fa-solid fa-tag text-[9px] opacity-60"></i> ${code}`;
+        chip.addEventListener("click", () => {
+          orderCodeInput.value = code;
+          executeLookup(code);
+        });
+        historyList.appendChild(chip);
+      });
+    }
+
+    clearHistoryBtn.addEventListener("click", () => {
+      localStorage.removeItem(STORAGE_KEY);
+      renderHistory();
+    });
+
+    pasteBtn.addEventListener("click", async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          orderCodeInput.value = text.trim();
+          showToast("Đã dán mã đơn");
+        }
+      } catch {
+        showToast("Chưa cấp quyền clipboard", "fa-triangle-exclamation");
+      }
+    });
+
+    async function executeLookup(targetCode = null) {
+      const orderCode = (targetCode || orderCodeInput.value).trim();
+      if (!orderCode) return;
+
+      errorAlert.classList.add("hidden");
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Đang tra cứu dữ liệu...</span>`;
+
+      try {
+        const data = await portalClient.lookup(orderCode);
+
+        if (!data.success) {
+          throw new Error(data.error || "Không tìm thấy dữ liệu cho mã đơn này.");
+        }
+
+        saveHistory(orderCode);
+        renderResults(data, orderCode);
+      } catch (err) {
+        errorMsgText.textContent = err.message || "Lỗi kết nối máy chủ.";
+        errorAlert.classList.remove("hidden");
+        resultSection.classList.add("hidden");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i class="fa-solid fa-radar text-xs"></i><span>Bắt đầu tra cứu</span>`;
+      }
+    }
+
+    async function handleReportError(orderCode, item) {
+      const confirmed = await askConfirm();
+      if (!confirmed) return;
+
+      try {
+        showToast("Đang gửi yêu cầu...", "fa-paper-plane");
+        const data = await portalClient.reportError(orderCode, item);
+
+        if (!data.success) {
+          showToast(data.error || "Gửi báo lỗi thất bại.", "fa-triangle-exclamation");
+          return;
+        }
+
+        if (data.auto_fulfilled) {
+          showToast("Đã tự động đổi tài khoản mới!");
+        } else {
+          showToast("Đã gửi báo lỗi tới quản trị viên!");
+        }
+
+        await executeLookup(orderCode);
+      } catch (err) {
+        showToast("Lỗi kết nối máy chủ.", "fa-triangle-exclamation");
+      }
+    }
+
+    function renderResults(data, orderCode) {
+      itemsContainer.innerHTML = "";
+      displayOrderCode.textContent = orderCode;
+      resultSection.classList.remove("hidden");
+
+      const items = data.items || [];
+      let hasOtp = false;
+
+      items.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "p-4 rounded-2xl space-sub-box text-xs space-y-3 border border-amber-500/20";
+
+        const group = escapeHtml(item.group);
+        const exp = escapeHtml(item.expires_at_str);
+        const reportStatus = item.report_status || "none";
+        const cooldownRemaining = Math.max(0, Number(item.report_cooldown_remaining || 0));
+        const cooldownMin = Math.floor(cooldownRemaining / 60);
+        const cooldownSec = cooldownRemaining % 60;
+        const cooldownText = `${String(cooldownMin).padStart(2, "0")}:${String(cooldownSec).padStart(2, "0")}`;
+
+        if (item.expired) {
+          card.innerHTML = `
+            <div class="flex justify-between items-start font-mono">
+              <span class="font-bold text-neutral-200">${group}</span>
+              <span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px]">Đã hết hạn</span>
+            </div>
+            <div class="text-neutral-400 font-mono flex items-center gap-1.5"><i class="fa-regular fa-clock"></i> Thời hạn: ${exp}</div>
+          `;
+        } else if (item.type === "account") {
+          const user = escapeHtml(item.account_user || item.name);
+          const pass = escapeHtml(item.account_pass || "");
+
+          if (reportStatus === "pending") {
+            card.innerHTML = `
+              <div class="flex justify-between items-start font-mono">
+                <span class="font-bold text-neutral-200">${group}</span>
+                <span class="text-[10px] text-neutral-400">${exp}</span>
+              </div>
+              <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2 font-mono">
+                <i class="fa-solid fa-clock-rotate-left text-base text-amber-400"></i>
+                <span>Tài khoản đang trong quá trình bảo hành.</span>
+              </div>
+            `;
+          } else {
+            card.innerHTML = `
+              <div class="flex justify-between items-start font-mono">
+                <span class="font-bold text-amber-300 flex items-center gap-1.5">
+                  <i class="fa-solid fa-shield-cat text-amber-400"></i> ${group}
+                </span>
+                <span class="text-[10px] text-neutral-400">${exp}</span>
+              </div>
+
+              <div class="p-3 rounded-xl bg-black/50 border border-amber-500/20 font-mono space-y-2 select-all">
+                <div class="flex items-center justify-between">
+                  <span class="text-neutral-500 text-[11px]">Tài khoản:</span>
+                  <span class="font-bold text-amber-200 text-sm tracking-wide">${user}</span>
+                </div>
+                <div class="flex items-center justify-between border-t border-amber-500/10 pt-1.5">
+                  <span class="text-neutral-500 text-[11px]">Mật khẩu:</span>
+                  <span class="font-bold text-amber-200 text-sm tracking-wide">${pass}</span>
+                </div>
+              </div>
+
+              <div class="flex gap-2 pt-0.5 font-mono">
+                <button class="btn-copy-user flex-1 h-9 rounded-xl space-sub-box border border-amber-500/30 hover:border-amber-400 text-amber-200 font-semibold active:scale-95 transition-all flex items-center justify-center gap-1.5">
+                  <i class="fa-regular fa-user"></i> Sao chép TK
+                </button>
+                <button class="btn-copy-pass flex-1 h-9 rounded-xl space-sub-box border border-amber-500/30 hover:border-amber-400 text-amber-200 font-semibold active:scale-95 transition-all flex items-center justify-center gap-1.5">
+                  <i class="fa-solid fa-key"></i> Sao chép MK
+                </button>
+              </div>
+
+              <div class="pt-0.5 font-mono">
+                ${reportStatus === "cooldown" 
+                  ? `<button disabled class="w-full h-9 rounded-xl bg-neutral-900/60 text-neutral-500 border border-neutral-800 opacity-60 cursor-not-allowed text-[11px] flex items-center justify-center gap-1.5">
+                      <i class="fa-solid fa-hourglass-half"></i> Báo lỗi lại sau (${cooldownText})
+                    </button>`
+                  : `<button class="btn-report-acc w-full h-9 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 font-semibold active:scale-98 transition-all flex items-center justify-center gap-1.5">
+                      <i class="fa-solid fa-triangle-exclamation"></i> Báo lỗi tài khoản
+                    </button>`}
+              </div>
+            `;
+
+            card.querySelector(".btn-copy-user")?.addEventListener("click", () => copyText(item.account_user || item.name));
+            card.querySelector(".btn-copy-pass")?.addEventListener("click", () => copyText(item.account_pass || ""));
+            card.querySelector(".btn-report-acc")?.addEventListener("click", () => handleReportError(orderCode, item));
+          }
+
+        } else {
+          hasOtp = true;
+          const code = escapeHtml(item.code);
+
+          card.innerHTML = `
+            <div class="flex justify-between items-start font-mono">
+              <span class="font-bold text-amber-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-key text-amber-400"></i> ${group}
+              </span>
+              <span class="text-[10px] text-neutral-400">${exp}</span>
+            </div>
+
+            <div class="flex items-center justify-between p-3.5 rounded-xl bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/30">
+              <span class="text-neutral-400 text-xs font-mono flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved text-amber-400"></i> Mã OTP
+              </span>
+              <span class="text-xl font-bold font-mono tracking-widest text-amber-300 select-all">${code}</span>
+            </div>
+
+            <button class="btn-copy-otp w-full h-10 rounded-xl bg-gradient-to-r from-amber-600 to-orange-500 hover:brightness-110 text-black font-bold font-mono shadow-accretion-glow active:scale-98 transition-all flex items-center justify-center gap-2">
+              <i class="fa-regular fa-copy"></i> Sao chép OTP
+            </button>
+          `;
+
+          card.querySelector(".btn-copy-otp")?.addEventListener("click", () => copyText(item.code));
+        }
+
+        itemsContainer.appendChild(card);
+      });
+
+      if (timerInterval) clearInterval(timerInterval);
+      if (hasOtp) {
+        currentSeconds = data.time_left || 30;
+        countdownBadge.classList.remove("hidden");
+        timeLeft.textContent = currentSeconds;
+
+        timerInterval = setInterval(() => {
+          currentSeconds--;
+          if (currentSeconds <= 0) {
+            clearInterval(timerInterval);
+            executeLookup(orderCode);
+          } else {
+            timeLeft.textContent = currentSeconds;
+          }
+        }, 1000);
+      } else {
+        countdownBadge.classList.add("hidden");
+      }
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      executeLookup();
+    });
+
+    renderHistory();
+
+    /* =========================================================
+       3. HIỆU ỨNG BỤI SAO RETINA (RETINA READY CANVAS FX)
+    ========================================================= */
+    (function initCosmicDust() {
+      const canvas = document.getElementById('spaceCanvas');
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+      const dpr = window.devicePixelRatio || 1;
+
+      function resize() {
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        ctx.scale(dpr, dpr);
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      for (let i = 0; i < 40; i++) {
+        particles.push({
+          x: Math.random() * window.innerWidth,
+          y: Math.random() * window.innerHeight,
+          radius: Math.random() * 1.5 + 0.5,
+          speedY: Math.random() * 0.25 + 0.1,
+          speedX: (Math.random() - 0.5) * 0.15,
+          opacity: Math.random() * 0.6 + 0.2
+        });
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        particles.forEach(p => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(251, 191, 36, ${p.opacity})`;
+          ctx.fill();
+
+          p.y -= p.speedY;
+          p.x += p.speedX;
+
+          if (p.y < 0) {
+            p.y = window.innerHeight;
+            p.x = Math.random() * window.innerWidth;
+          }
+        });
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+  </script>
+</body>
+</html>
