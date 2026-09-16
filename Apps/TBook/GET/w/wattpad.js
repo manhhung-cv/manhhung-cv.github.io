@@ -1,117 +1,163 @@
-export default {
+const WattpadScraper = {
   name: "Wattpad",
 
-  match(cleanUrl) {
-    if (!/wattpad\.com/i.test(cleanUrl)) return null;
+  // 1. Nhận diện URL dạng tác phẩm hoặc chương của Wattpad
+  match(url) {
+    const storyRegex = /wattpad\.com\/story\/(\d+)/i;
+    const partRegex = /wattpad\.com\/(\d+)(?:-[^/?#]+)?/i;
 
-    // 1. Link trang bìa: wattpad.com/story/123456789...
-    const storyMatch = cleanUrl.match(/wattpad\.com\/story\/(\d+)/i);
+    const storyMatch = url.match(storyRegex);
     if (storyMatch) {
-      return { type: 'story', id: storyMatch[1], originalUrl: cleanUrl };
+      return { type: 'story', id: storyMatch[1], originalUrl: url };
     }
 
-    // 2. Link chương: wattpad.com/1617603187...
-    const partMatch = cleanUrl.match(/wattpad\.com\/(\d+)/i);
+    const partMatch = url.match(partRegex);
     if (partMatch) {
-      return { type: 'part', id: partMatch[1], originalUrl: cleanUrl };
+      return { type: 'part', id: partMatch[1], originalUrl: url };
     }
 
     return null;
   },
 
-  async resolveStoryIdFromPart(partId, originalUrl, fetchProxy) {
-    const targetUrl = originalUrl || `https://www.wattpad.com/${partId}`;
-    
-    // Tải mã nguồn HTML của chương
-    const html = await fetchProxy(targetUrl, false);
+  // 2. Tra cứu metadata và lấy ảnh bìa từ HTML thực tế
+  async inspect(info, context) {
+    const { fetchProxy, parseDom, signal } = context;
+    let storyId = info.id;
 
-    // BƯỚC 1: Quét thẻ window.prefetched chứa toàn bộ State của Wattpad
-    const prefetchedMatch = html.match(/window\.prefetched\s*=\s*(\{[\s\S]*?\});<\/script>/i) ||
-                            html.match(/window\.prefetched\s*=\s*(\{[\s\S]*?\});/i);
-    
-    if (prefetchedMatch && prefetchedMatch[1]) {
+    // Nếu người dùng dán link chapter lẻ, lấy storyId qua part API
+    if (info.type === 'part') {
       try {
-        const prefetchedData = JSON.parse(prefetchedMatch[1]);
-        // Tìm key chứa thông tin chương hoặc story
-        for (const key of Object.keys(prefetchedData)) {
-          const item = prefetchedData[key];
-          if (item && item.data) {
-            // Trường hợp dữ liệu là part
-            if (item.data.groupId) return String(item.data.groupId);
-            if (item.data.storyId) return String(item.data.storyId);
-            // Trường hợp dữ liệu là story
-            if (item.data.id && item.data.parts) return String(item.data.id);
-          }
-          if (item && item.groupId) return String(item.groupId);
+        const partApiUrl = `https://www.wattpad.com/v4/parts/${info.id}?fields=id,groupId`;
+        const partData = await fetchProxy(partApiUrl, true, signal);
+        if (partData && partData.groupId) {
+          storyId = partData.groupId;
         }
       } catch (e) {
-        console.warn("Lỗi parse window.prefetched, chuyển sang regex regex dự phòng:", e);
+        console.warn("Không lấy được groupId từ part API:", e);
       }
     }
 
-    // BƯỚC 2: Quét Regex chuỗi JSON trực tiếp trong HTML
-    const patterns = [
-      /"groupId":\s*"?(\d+)"?/i,
-      /"group_id":\s*"?(\d+)"?/i,
-      /"storyId":\s*"?(\d+)"?/i,
-      /data-group-id=["'](\d+)["']/i,
-      /wattpad\.com\/story\/(\d+)/i,
-      /\/story\/(\d+)/i
-    ];
+    // Tải mã nguồn HTML của trang tác phẩm
+    const storyUrl = `https://www.wattpad.com/story/${storyId}`;
+    const htmlText = await fetchProxy(storyUrl, false, signal);
 
-    for (const reg of patterns) {
-      const match = html.match(reg);
-      if (match && match[1]) {
-        return match[1];
-      }
+    if (!htmlText) {
+      throw new Error("Không thể tải mã nguồn trang tác phẩm từ Wattpad.");
     }
 
-    // BƯỚC 3: Quét qua API v3 Parts (dự phòng trường hợp endpoint mở lại)
+    let title = "";
+    let author = "";
+    let coverUrl = "";
+    let description = "";
+    let genres = "Wattpad";
+    let chapters = [];
+
+    // Cách 1: Bóc tách từ thẻ JSON-LD schema
     try {
-      const partData = await fetchProxy(`https://www.wattpad.com/api/v3/parts/${partId}?fields=id,groupId`, true);
-      if (partData && (partData.groupId || partData.group_id)) {
-        return String(partData.groupId || partData.group_id);
+      const ldMatch = htmlText.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/i);
+      if (ldMatch && ldMatch[1]) {
+        const ld = JSON.parse(ldMatch[1]);
+        title = ld.headline || ld.name || "";
+        if (ld.author) author = ld.author.name || "";
+        coverUrl = ld.image || ld.thumbnailUrl || "";
+        description = ld.description || "";
+        if (ld.about) genres = ld.about;
       }
-    } catch {
-      // Bỏ qua lỗi nếu API v3 bị 403/404
+    } catch (e) {
+      console.warn("Lỗi đọc JSON-LD:", e);
     }
 
-    throw new Error(`Không thể tìm thấy bộ truyện gốc từ chương ID (${partId}). Hãy thử kiểm tra lại liên kết.`);
-  },
+    // Cách 2: Bóc tách từ window.__remixContext (chứa đầy đủ 10 chương và dữ liệu chi tiết)
+    try {
+      const remixMatch = htmlText.match(/window\.__remixContext\s*=\s*(\{[\s\S]*?\});\s*<\/script>/i);
+      if (remixMatch && remixMatch[1]) {
+        const remix = JSON.parse(remixMatch[1]);
+        const storyObj = remix?.state?.loaderData?.['routes/story.$storyid']?.story;
 
-  async inspect(info, { fetchProxy }) {
-    let storyId = info.id;
-    if (info.type === 'part') {
-      storyId = await this.resolveStoryIdFromPart(info.id, info.originalUrl, fetchProxy);
+        if (storyObj) {
+          if (!title) title = storyObj.title || "";
+          if (!author && storyObj.user) author = storyObj.user.name || "";
+          if (!coverUrl && storyObj.cover) coverUrl = storyObj.cover || "";
+          if (!description && storyObj.description) description = storyObj.description || "";
+          
+          if (Array.isArray(storyObj.parts) && storyObj.parts.length > 0) {
+            chapters = storyObj.parts.map((p, idx) => ({
+              index: idx + 1,
+              id: p.id,
+              title: p.title || `Chương ${idx + 1}`,
+              url: p.url || `https://www.wattpad.com/${p.id}`,
+              fetchUrl: `https://www.wattpad.com/apiv2/storytext?id=${p.id}`
+            }));
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Lỗi đọc __remixContext:", e);
     }
 
-    const storyData = await fetchProxy(`https://www.wattpad.com/api/v3/stories/${storyId}`);
-    if (!storyData || !storyData.title) {
-      throw new Error("Không thể tải thông tin truyện.");
+    // Cách 3: Fallback qua DOM Parser nếu thiếu thông tin
+    const doc = parseDom(htmlText);
+    if (!title) {
+      title = doc.querySelector('h1[data-testid="title"]')?.innerText?.trim() ||
+              doc.querySelector('title')?.innerText?.split('-')[0]?.trim() ||
+              "Tác phẩm Wattpad";
+    }
+    if (!author) {
+      author = doc.querySelector('.Sz3nA .fn6OH')?.innerText?.trim() ||
+               doc.querySelector('.author-info a')?.innerText?.trim() ||
+               "Tác giả";
+    }
+    if (!coverUrl) {
+      const imgEl = doc.querySelector('img.cover__BlyZa') || doc.querySelector('[data-testid="cover"] img');
+      if (imgEl && imgEl.src) coverUrl = imgEl.src;
     }
 
-    const parts = storyData.parts || [];
-    if (parts.length === 0) throw new Error("Truyện không có chương khả dụng nào.");
+    // Nâng độ phân giải ảnh bìa nếu có bản 512px
+    if (coverUrl) {
+      coverUrl = coverUrl.trim();
+      if (coverUrl.includes('-256-')) {
+        coverUrl = coverUrl.replace('-256-', '-512-');
+      }
+    }
 
-    const chaptersList = parts.map(p => ({
-      title: p.title,
-      fetchUrl: `https://www.wattpad.com/apiv2/storytext?id=${p.id}`
-    }));
-
-    // Bóc tách tags/thể loại từ Wattpad
-    const genres = (storyData.tags || []).join(", ") || storyData.categories?.join(", ") || "Đang cập nhật";
+    // Nếu không lấy được danh sách chương qua Remix Context, fallback lấy qua DOM hoặc API v4
+    if (chapters.length === 0) {
+      try {
+        const v4Data = await fetchProxy(`https://api.wattpad.com/v4/stories/${storyId}?fields=parts(id,title,url)`, true, signal);
+        if (v4Data && Array.isArray(v4Data.parts)) {
+          chapters = v4Data.parts.map((p, idx) => ({
+            index: idx + 1,
+            id: p.id,
+            title: p.title || `Chương ${idx + 1}`,
+            url: p.url || `https://www.wattpad.com/${p.id}`,
+            fetchUrl: `https://www.wattpad.com/apiv2/storytext?id=${p.id}`
+          }));
+        }
+      } catch (err) {
+        console.warn("Lỗi fetch API v4 parts:", err);
+      }
+    }
 
     return {
-      sourceName: this.name,
-      title: storyData.title || "Wattpad Story",
-      author: storyData.user ? (storyData.user.name || storyData.user.username) : "Wattpad",
-      genres,
-      description: storyData.description || "",
-      chaptersList
+      id: storyId,
+      title: title,
+      author: author,
+      sourceName: "Wattpad",
+      cover: coverUrl,
+      genres: genres,
+      description: description,
+      expectedTotal: chapters.length,
+      chaptersList: chapters
     };
   },
 
-  async fetchChapterContent(chapterItem, { fetchProxy, signal }) {
-    return await fetchProxy(chapterItem.fetchUrl, false, signal);
+  // 3. Fallback lấy nội dung chương đơn lẻ
+  async fetchChapterContent(chapterItem, context) {
+    const { fetchProxy, signal } = context;
+    const rawText = await fetchProxy(chapterItem.fetchUrl, false, signal);
+    if (!rawText) return "<p>[Nội dung chương trống]</p>";
+    return rawText;
   }
 };
+
+export default WattpadScraper;

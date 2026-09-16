@@ -454,7 +454,57 @@ export function init(hostElement) {
     });
 
     // =========================================================================
-    // 2. KEYBOARD LOGIC
+    // 2. CHECK ACTIVE TOOL STATUS (TRÁNH CHIẾM QUYỀN TOÀN CỤC)
+    // =========================================================================
+    const isToolActive = (e) => {
+        // 1. Nếu đang focus vào ô input, textarea hoặc contenteditable -> Không chiếm quyền phím
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
+            return false;
+        }
+
+        // 2. Nếu Spotlight đang mở -> Nhường quyền nhập liệu cho Spotlight
+        const cmdPalette = document.getElementById('cmd-palette');
+        if (cmdPalette && cmdPalette.classList.contains('spotlight-active')) {
+            return false;
+        }
+
+        // 3. Nếu Modal Cài đặt hoặc Switcher đang mở -> Nhường quyền
+        const settingsModal = document.getElementById('settings-modal');
+        if (settingsModal && settingsModal.classList.contains('active')) {
+            return false;
+        }
+        const appSwitcher = document.getElementById('app-switcher');
+        if (appSwitcher && !appSwitcher.classList.contains('pointer-events-none')) {
+            return false;
+        }
+
+        // 4. Nếu đang ở Launcher (Home) hoặc Pure Minimal Viewport -> Không chiếm quyền
+        const homescreen = document.getElementById('homescreen-launcher');
+        if (homescreen && !homescreen.classList.contains('hidden') && window.getComputedStyle(homescreen).display !== 'none') {
+            return false;
+        }
+        const minimalView = document.getElementById('minimal-pure-viewport');
+        if (minimalView && !minimalView.classList.contains('hidden') && window.getComputedStyle(minimalView).display !== 'none') {
+            return false;
+        }
+
+        // 5. Kiểm tra chính Pane chứa Tool này: nếu pane không active hoặc bị ẩn -> Bỏ qua
+        const viewPane = hostElement.closest('.view-pane');
+        if (viewPane && !viewPane.classList.contains('active')) {
+            return false;
+        }
+
+        const tabContainer = document.getElementById('tab-contents-container');
+        if (tabContainer && (tabContainer.classList.contains('hidden') || window.getComputedStyle(tabContainer).display === 'none')) {
+            return false;
+        }
+
+        return true;
+    };
+
+    // =========================================================================
+    // 3. KEYBOARD LOGIC
     // =========================================================================
     const elGhosting = _('#ghosting-count');
     const elInfoKey = _('#info-key');
@@ -502,6 +552,16 @@ export function init(hostElement) {
     };
 
     const onKeyDown = (e) => {
+        // Nếu tool không active hoặc người dùng đang gõ văn bản ở chỗ khác -> Bỏ qua
+        if (!isToolActive(e)) {
+            if (pressedKeys.size > 0) {
+                pressedKeys.forEach(code => toggleKeyVisual(code, false));
+                pressedKeys.clear();
+                if (elGhosting) elGhosting.textContent = '0';
+            }
+            return;
+        }
+
         if (e.isComposing || e.keyCode === 229) {
             pressedKeys.forEach(code => toggleKeyVisual(code, false));
             pressedKeys.clear();
@@ -515,7 +575,7 @@ export function init(hostElement) {
         }
 
         if (e.code && !e.code.includes('Mouse')) {
-            e.preventDefault(); 
+            e.preventDefault(); // Chỉ chặn phím khi tool thực sự đang được người dùng tương tác trực tiếp
             pressedKeys.add(e.code);
             if (elGhosting) elGhosting.textContent = pressedKeys.size;
             testedKeys.add(e.code);
@@ -528,6 +588,8 @@ export function init(hostElement) {
     };
 
     const onKeyUp = (e) => {
+        if (!isToolActive(e) && pressedKeys.size === 0) return;
+
         if (e.code) {
             pressedKeys.delete(e.code);
             if (elGhosting) elGhosting.textContent = pressedKeys.size;
@@ -562,7 +624,7 @@ export function init(hostElement) {
     });
 
     // =========================================================================
-    // 3. MOUSE TESTER LOGIC
+    // 4. MOUSE TESTER LOGIC
     // =========================================================================
     const mouseLeft = _('#mouse-left');
     const mouseMid = _('#mouse-mid');
@@ -573,10 +635,13 @@ export function init(hostElement) {
     const mousePosInfo = _('#mouse-pos-info');
 
     const onMouseMove = (e) => {
+        if (!isToolActive(e)) return;
         if (mousePosInfo) mousePosInfo.textContent = `X: ${e.clientX}, Y: ${e.clientY}`;
     };
 
     const onMouseDown = (e) => {
+        if (!isToolActive(e)) return;
+
         if (e.button === 0 && mouseLeft) {
             mouseLeft.classList.add('mouse-active-left');
             if (mouseBtnInfo) {
@@ -614,6 +679,8 @@ export function init(hostElement) {
 
     let scrollTimeout;
     const onWheel = (e) => {
+        if (!isToolActive(e)) return;
+
         if (e.target.closest('#mouse-tester-area')) {
             e.preventDefault();
         }
@@ -645,7 +712,7 @@ export function init(hostElement) {
     };
 
     const onContextMenu = (e) => {
-        if (e.target.closest('#mouse-tester-area') || e.target.closest('#keyboard-render-area')) {
+        if (isToolActive(e) && (e.target.closest('#mouse-tester-area') || e.target.closest('#keyboard-render-area'))) {
             e.preventDefault();
         }
     };

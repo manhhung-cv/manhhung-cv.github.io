@@ -6,9 +6,6 @@ import { UI } from './ui.js';
 // ==========================================
 const contentsContainer = document.getElementById('tab-contents-container');
 const singleAppHost = document.getElementById('single-app-host');
-const multiSplitHost = document.getElementById('multi-split-host');
-const splitGridContainer = document.getElementById('split-grid-container');
-const windowWorkspaceHost = document.getElementById('window-workspace-host');
 const appSwitcher = document.getElementById('app-switcher');
 const switcherCardsWrapper = document.getElementById('switcher-cards-wrapper');
 const wallpaperLayer = document.getElementById('wallpaper-layer');
@@ -20,12 +17,7 @@ let currentLoadingToolId = null;
 // ==========================================
 const state = {
     tabs: [{ tabId: 'tab-1', toolId: 'home' }],
-    activeTabId: 'tab-1',
-    isSplitActive: false,
-    splitGridCount: 2,
-    splitToolIds: [],
-    isWindowModeEnabled: localStorage.getItem('hunqos_window_mode') !== 'false',
-    openWindows: []
+    activeTabId: 'tab-1'
 };
 
 // ==========================================
@@ -82,15 +74,16 @@ window.setForcedDeviceMode = (mode) => {
 
 function getGridColumns() {
     const mode = detectDeviceMode();
-    if (mode === 'desktop') return 8; // DexUI Grid
-    if (mode === 'tablet') return 6;  // TabUI Grid
-    return 4; // MobUI Grid
+    if (mode === 'desktop') return 8;
+    if (mode === 'tablet') return 6;
+    return 4;
 }
 
 // ==========================================
-// CHẾ ĐỘ PURE MINIMAL (ZEN DASHBOARD)
+// CHẾ ĐỘ PURE MINIMAL (MINIMAL FLAT UTILITY HUB)
 // ==========================================
 let isPureMinimal = localStorage.getItem('hunqos_pure_minimal') === 'true';
+let minimalSelectedCategory = 'all';
 
 function applyPureMinimalMode(enable) {
     isPureMinimal = enable;
@@ -98,6 +91,7 @@ function applyPureMinimalMode(enable) {
     const toggleBtn = document.getElementById('toggle-minimal-setting');
     toggleBtn?.classList.toggle('active', enable);
     if (enable) {
+        renderPureMinimalCategories();
         renderPureMinimalAppList();
         updatePureMinimalClock();
     }
@@ -107,7 +101,7 @@ document.getElementById('toggle-minimal-setting')?.addEventListener('click', () 
     isPureMinimal = !isPureMinimal;
     localStorage.setItem('hunqos_pure_minimal', isPureMinimal);
     applyPureMinimalMode(isPureMinimal);
-    UI.showAlert('Pure Minimal', isPureMinimal ? 'Đã bật chế độ Zen Minimalist.' : 'Đã trở lại giao diện chuẩn.', 'info');
+    UI.showAlert('Pure Minimal', isPureMinimal ? 'Đã bật chế độ Minimal Flat Utility.' : 'Đã trở lại giao diện chuẩn.', 'info');
 });
 
 function updatePureMinimalClock() {
@@ -121,43 +115,90 @@ function updatePureMinimalClock() {
     }
 }
 
+function renderPureMinimalCategories() {
+    const tabContainer = document.getElementById('minimal-category-tabs');
+    if (!tabContainer) return;
+
+    const allCats = [{ id: 'all', name: 'Tất cả', icon: 'fas fa-border-all' }, ...CONFIG_CATEGORIES];
+
+    tabContainer.innerHTML = allCats.map(cat => {
+        const isActive = minimalSelectedCategory === cat.id;
+        return `
+            <button onclick="window.filterMinimalCategory('${cat.id}')" 
+                    class="flat-category-chip ${isActive ? 'active' : ''}">
+                <i class="${cat.icon || 'fas fa-folder'} mr-1.5 text-[11px]"></i>
+                <span>${cat.name}</span>
+            </button>
+        `;
+    }).join('');
+}
+
+window.filterMinimalCategory = (catId) => {
+    minimalSelectedCategory = catId;
+    renderPureMinimalCategories();
+    const searchInput = document.getElementById('minimal-search-input');
+    renderPureMinimalAppList(searchInput ? searchInput.value : '');
+};
+
 function renderPureMinimalAppList(filterText = '') {
     const listEl = document.getElementById('minimal-app-list');
+    const countBadge = document.getElementById('minimal-count-badge');
+    const titleEl = document.getElementById('minimal-section-title');
     if (!listEl) return;
-    const query = filterText.trim().toLowerCase();
-    const filtered = TOOLS.filter(t => !query || t.name.toLowerCase().includes(query) || (t.desc && t.desc.toLowerCase().includes(query)));
 
-    listEl.innerHTML = filtered.map(tool => `
-        <div class="zen-app-card" onclick="window.openToolGlobal('${tool.id}')">
-            <div class="zen-app-icon">
-                <i class="${tool.icon}"></i>
+    const query = filterText.trim().toLowerCase();
+    let filtered = TOOLS.filter(t => {
+        const matchesQuery = !query || t.name.toLowerCase().includes(query) || (t.desc && t.desc.toLowerCase().includes(query));
+        const matchesCategory = minimalSelectedCategory === 'all' || t.catId === minimalSelectedCategory;
+        return matchesQuery && matchesCategory;
+    });
+
+    if (countBadge) countBadge.textContent = filtered.length;
+    if (titleEl) {
+        if (minimalSelectedCategory === 'all') {
+            titleEl.textContent = query ? `Kết quả tìm kiếm ("${query}")` : 'Tất cả tiện ích';
+        } else {
+            const currentCat = CONFIG_CATEGORIES.find(c => c.id === minimalSelectedCategory);
+            titleEl.textContent = currentCat ? currentCat.name : 'Danh mục tiện ích';
+        }
+    }
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = `
+            <div class="col-span-full py-16 text-center text-zinc-500 text-xs flex flex-col items-center justify-center gap-2">
+                <i class="fas fa-inbox text-2xl opacity-40"></i>
+                <span>Không tìm thấy tiện ích phù hợp</span>
             </div>
-            <div class="flex-1 min-w-0">
-                <div class="zen-app-name truncate">${tool.name}</div>
-                <div class="zen-app-desc">${tool.desc || 'Tiện ích hệ thống'}</div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = filtered.map(tool => {
+        const { bgStyle, iconStyle, iconClass } = computeIconStyles(tool);
+        const catInfo = CONFIG_CATEGORIES.find(c => c.id === tool.catId);
+        const catName = catInfo ? catInfo.name : 'Tiện ích';
+
+        return `
+            <div class="flat-tool-card" onclick="window.openToolGlobal('${tool.id}')">
+                <div class="flat-tool-icon" style="${bgStyle}">
+                    <i class="${tool.icon} ${iconClass}" style="${iconStyle}"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-1.5 mb-1">
+                        <div class="text-xs font-semibold text-zinc-100 truncate">${tool.name}</div>
+                        <span class="flat-tool-badge">${catName}</span>
+                    </div>
+                    <div class="text-[11px] text-zinc-400 truncate leading-relaxed">${tool.desc || 'Mở công cụ'}</div>
+                </div>
+                <i class="fas fa-arrow-up-right-from-square text-[10px] text-zinc-600 shrink-0 ml-1"></i>
             </div>
-            <i class="fas fa-chevron-right text-[10px] text-zinc-700"></i>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 document.getElementById('minimal-search-input')?.addEventListener('input', (e) => {
     renderPureMinimalAppList(e.target.value);
 });
-
-// ==========================================
-// CÀI ĐẶT: BẬT/TẮT CỬA SỔ & BỘ NHỚ
-// ==========================================
-const windowModeToggle = document.getElementById('toggle-windowmode-setting');
-if (windowModeToggle) {
-    windowModeToggle.classList.toggle('active', state.isWindowModeEnabled);
-    windowModeToggle.addEventListener('click', () => {
-        state.isWindowModeEnabled = !state.isWindowModeEnabled;
-        localStorage.setItem('hunqos_window_mode', state.isWindowModeEnabled);
-        windowModeToggle.classList.toggle('active', state.isWindowModeEnabled);
-        UI.showAlert('Quản lý cửa sổ', state.isWindowModeEnabled ? 'Đã bật chế độ cửa sổ nổi.' : 'Đã tắt chế độ cửa sổ nổi (mở ứng dụng toàn màn hình).', 'info');
-    });
-}
 
 async function updateStorageInfo() {
     const storageEl = document.getElementById('system-storage-info');
@@ -222,8 +263,9 @@ function pushRecentTool(toolId) {
 }
 
 // ==========================================
-// QUẢN LÝ HÌNH NỀN
+// QUẢN LÝ HÌNH NỀN (MẶC ĐỊNH: ./bg/bg.png)
 // ==========================================
+const DEFAULT_WALLPAPER = './bg/bg.png';
 const DB_NAME = 'HunqOS_DB';
 const DB_STORE = 'settings';
 let dbInstance = null;
@@ -279,20 +321,20 @@ async function syncWallpaperDisplay() {
     if (currentCustomWallpaper === null) {
         currentCustomWallpaper = await getWallpaperFromDB();
     }
-    if (currentCustomWallpaper && !currentCustomWallpaper.startsWith('radial-gradient') && !currentCustomWallpaper.startsWith('linear-gradient')) {
+    if (currentCustomWallpaper) {
         wallpaperLayer.style.backgroundImage = `url('${currentCustomWallpaper}')`;
     } else {
-        wallpaperLayer.style.backgroundImage = '';
+        wallpaperLayer.style.backgroundImage = `url('${DEFAULT_WALLPAPER}')`;
     }
 }
 
 function applyWallpaper(wp) {
     currentCustomWallpaper = wp;
     if (!wallpaperLayer) return;
-    if (wp && !wp.startsWith('radial-gradient') && !wp.startsWith('linear-gradient')) {
+    if (wp) {
         wallpaperLayer.style.backgroundImage = `url('${wp}')`;
     } else {
-        wallpaperLayer.style.backgroundImage = '';
+        wallpaperLayer.style.backgroundImage = `url('${DEFAULT_WALLPAPER}')`;
     }
 }
 
@@ -301,7 +343,7 @@ window.resetWallpaper = async () => {
     await saveWallpaperToDB(null);
     localStorage.removeItem('hunqos_custom_wp');
     applyWallpaper(null);
-    UI.showAlert('Hình nền', 'Đã khôi phục nền mặc định.', 'info');
+    UI.showAlert('Hình nền', 'Đã khôi phục nền mặc định (./bg/bg.png).', 'info');
 };
 
 const wallpaperFileInput = document.getElementById('wallpaper-file-input');
@@ -339,8 +381,10 @@ function computeIconStyles(tool) {
 }
 
 // ==========================================
-// QUẢN LÝ BỐ CỤC THEO DANH MỤC CATID
+// QUẢN LÝ BỐ CỤC THEO DANH MỤC CATID & CHẾ ĐỘ GOM GỌN
 // ==========================================
+let isCompactGridMode = localStorage.getItem('hunqos_compact_grid') === 'true';
+
 function createLayoutFromCategories() {
     const layout = {};
     let pageIdx = 0;
@@ -386,8 +430,23 @@ function savePageLayout() {
 }
 
 function getPageCount() {
+    if (isCompactGridMode) return 1;
     const keys = Object.keys(pageLayout).map(Number);
     return Math.max(1, keys.length > 0 ? Math.max(...keys) + 1 : 1);
+}
+
+// Toggle chế độ gom gọn
+const compactToggleBtn = document.getElementById('toggle-compact-setting');
+if (compactToggleBtn) {
+    compactToggleBtn.classList.toggle('active', isCompactGridMode);
+    compactToggleBtn.addEventListener('click', () => {
+        isCompactGridMode = !isCompactGridMode;
+        localStorage.setItem('hunqos_compact_grid', isCompactGridMode);
+        compactToggleBtn.classList.toggle('active', isCompactGridMode);
+        currentPageIndex = 0;
+        initHomescreenPages();
+        UI.showAlert('Bố cục Launcher', isCompactGridMode ? 'Đã bật chế độ gom gọn toàn bộ app.' : 'Đã phân trang riêng theo từng danh mục.', 'info');
+    });
 }
 
 window.autoOrganizeByCategories = () => {
@@ -499,10 +558,81 @@ function initHomescreenPages() {
     const pagesSlider = document.getElementById('launcher-pages-slider');
     if (!pagesSlider) return;
 
-    const rawPageCount = getPageCount();
-    totalPages = 1 + rawPageCount;
     const cols = getGridColumns();
     pagesSlider.innerHTML = '';
+
+    // NẾU BẬT CHẾ ĐỘ GOM GỌN: Gộp toàn bộ vào 1 luồng duy nhất (Trang 0 gợi ý + tất cả các mục cuộn dọc)
+    if (isCompactGridMode) {
+        totalPages = 1;
+        const pageEl = document.createElement('div');
+        pageEl.className = 'launcher-page no-scrollbar space-y-6';
+
+        const recentIds = getRecentToolIds();
+        const recentTools = recentIds.map(id => getToolData(id)).filter(Boolean);
+
+        let html = '';
+        if (recentTools.length > 0) {
+            html += `
+                <div class="w-full max-w-4xl">
+                    <div class="suggestion-section-title">
+                        <span><i class="fas fa-history mr-1 text-accent-theme"></i> Đã dùng gần đây</span>
+                    </div>
+                    <div class="grid-layer-container mb-4" style="grid-template-columns: repeat(${cols}, 1fr)">
+                        ${recentTools.map(tool => {
+                            const { bgStyle, iconStyle, iconClass } = computeIconStyles(tool);
+                            return `
+                                <div class="home-item" onclick="window.openToolGlobal('${tool.id}')">
+                                    <div class="app-icon-box" style="${bgStyle}">
+                                        <i class="${tool.icon} ${iconClass}" style="${iconStyle}"></i>
+                                    </div>
+                                    <span class="app-icon-label">${tool.name}</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        CONFIG_CATEGORIES.forEach(cat => {
+            const catTools = TOOLS.filter(t => t.catId === cat.id);
+            if (catTools.length === 0) return;
+            html += `
+                <div class="w-full max-w-4xl">
+                    <div class="page-category-header">
+                        <div class="page-category-badge">
+                            <i class="${cat.icon || 'fas fa-cube'}"></i>
+                            <span>${cat.name}</span>
+                        </div>
+                        <span class="page-category-count">${catTools.length} ứng dụng</span>
+                    </div>
+                    <div class="grid-layer-container" style="grid-template-columns: repeat(${cols}, 1fr)">
+                        ${catTools.map(tool => {
+                            const { bgStyle, iconStyle, iconClass } = computeIconStyles(tool);
+                            return `
+                                <div class="home-item" onclick="window.openToolGlobal('${tool.id}')">
+                                    <div class="app-icon-box" style="${bgStyle}">
+                                        <i class="${tool.icon} ${iconClass}" style="${iconStyle}"></i>
+                                    </div>
+                                    <span class="app-icon-label">${tool.name}</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        });
+
+        pageEl.innerHTML = html;
+        pagesSlider.appendChild(pageEl);
+        renderPageDots();
+        renderPageOrganizer();
+        return;
+    }
+
+    // NẾU Ở CHẾ ĐỘ PHÂN TRANG DANH MỤC:
+    const rawPageCount = getPageCount();
+    totalPages = 1 + rawPageCount;
 
     // TRANG 0: GỢI Ý & GẦN ĐÂY
     const pageZeroEl = document.createElement('div');
@@ -515,7 +645,7 @@ function initHomescreenPages() {
     let p0Html = `
         <div class="page-category-header">
             <div class="page-category-badge">
-                <i class="fas fa-sparkles text-amber-400"></i>
+                <i class="fas fa-house text-amber-400"></i>
                 <span>Gợi ý & Gần đây</span>
             </div>
             <span class="page-category-count">${recentTools.length + suggestedTools.length} ứng dụng</span>
@@ -602,6 +732,35 @@ function initHomescreenPages() {
     renderPageOrganizer();
 }
 
+// ==========================================
+// XỬ LÝ COLLAPSIBLE PAGE DOTS THÔNG MINH
+// ==========================================
+const pageDotsWrapper = document.getElementById('page-dots-wrapper');
+let dotsCollapseTimeout = null;
+
+function expandPageDots() {
+    if (!pageDotsWrapper) return;
+    pageDotsWrapper.classList.add('expanded');
+    clearTimeout(dotsCollapseTimeout);
+    dotsCollapseTimeout = setTimeout(() => {
+        pageDotsWrapper.classList.remove('expanded');
+    }, 3500);
+}
+
+if (pageDotsWrapper) {
+    // Chạm vào để bung icon trên điện thoại / tablet
+    pageDotsWrapper.addEventListener('touchstart', () => {
+        expandPageDots();
+    }, { passive: true });
+
+    // Thu nhỏ lại khi click hoặc chạm ra ngoài
+    document.addEventListener('touchstart', (e) => {
+        if (!pageDotsWrapper.contains(e.target)) {
+            pageDotsWrapper.classList.remove('expanded');
+        }
+    }, { passive: true });
+}
+
 function renderPageDots() {
     const pageDotsContainer = document.getElementById('page-dots');
     if (!pageDotsContainer) return;
@@ -609,9 +768,34 @@ function renderPageDots() {
 
     for (let i = 0; i < totalPages; i++) {
         const dot = document.createElement('button');
-        dot.className = `page-dot-btn ${i === currentPageIndex ? 'active' : 'inactive'}`;
-        dot.title = i === 0 ? 'Gợi ý & Gần đây' : (pageLayout[i - 1]?.title || `Trang ${i}`);
-        dot.onclick = () => goToPage(i);
+        const isActive = i === currentPageIndex;
+        dot.className = `page-dot-btn ${isActive ? 'active' : 'inactive'}`;
+
+        let iconClass = 'fas fa-house';
+        let labelTitle = 'Gợi ý & Gần đây';
+
+        if (isCompactGridMode) {
+            iconClass = 'fas fa-border-all';
+            labelTitle = 'Toàn bộ ứng dụng';
+        } else if (i > 0) {
+            const pageData = pageLayout[i - 1];
+            iconClass = pageData?.icon || 'fas fa-cube';
+            labelTitle = pageData?.title || `Trang ${i}`;
+        }
+
+        dot.title = labelTitle;
+        dot.innerHTML = `<i class="${iconClass}"></i>`;
+        
+        dot.onclick = (e) => {
+            // Nếu đang thu gọn trên màn hình cảm ứng, chạm lần đầu sẽ mở rộng, chạm lần 2/khi đã mở sẽ chuyển trang
+            const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+            if (isTouch && pageDotsWrapper && !pageDotsWrapper.classList.contains('expanded')) {
+                e.stopPropagation();
+                expandPageDots();
+                return;
+            }
+            goToPage(i);
+        };
         pageDotsContainer.appendChild(dot);
     }
 }
@@ -831,14 +1015,12 @@ function isHomeScreenVisible() {
 window.goHome = () => {
     window.closeMultitasking();
 
-    // NẾU ĐÃ Ở MÀN HÌNH CHÍNH -> BẤM TIẾP SẼ VỀ TRANG 1
     if (isHomeScreenVisible()) {
-        const targetHomeIndex = totalPages > 1 ? 1 : 0;
+        const targetHomeIndex = (!isCompactGridMode && totalPages > 1) ? 1 : 0;
         goToPage(targetHomeIndex);
         return;
     }
 
-    if (state.isSplitActive) window.exitSplitView();
     state.activeTabId = 'tab-1';
     showHomescreen();
 };
@@ -870,7 +1052,7 @@ function hideHomescreen() {
 }
 
 // ==========================================
-// QUẢN LÝ APP: DEXUI CỬA SỔ / TABUI CHIA LƯỚI / MOBUI
+// QUẢN LÝ APP TOÀN MÀN HÌNH
 // ==========================================
 async function openTool(toolId) {
     if (toolId === 'home') {
@@ -879,17 +1061,7 @@ async function openTool(toolId) {
     }
 
     pushRecentTool(toolId);
-    const mode = detectDeviceMode();
-
-    // 1. NẾU BẬT CỬA SỔ NỔI TRÊN DEXUI HOẶC TABUI -> MỞ CỬA SỔ
-    if (state.isWindowModeEnabled && (mode === 'desktop' || mode === 'tablet')) {
-        openToolInFloatingWindow(toolId);
-        return;
-    }
-
-    // 2. MỞ DẠNG SINGLE APP
     hideHomescreen();
-    if (state.isSplitActive) window.exitSplitView();
 
     let pane = document.getElementById(`pane-${toolId}`);
     if (!pane) {
@@ -900,7 +1072,7 @@ async function openTool(toolId) {
 
         try {
             currentLoadingToolId = toolId;
-            const module = await import(`../tools/${toolId}/index.js`);
+            const module = await import(`./tools/${toolId}/index.js`).catch(() => import(`../tools/${toolId}/index.js`));
             if (module.template) pane.innerHTML = module.template();
             if (module.init) module.init(pane);
         } catch (e) {
@@ -912,6 +1084,7 @@ async function openTool(toolId) {
 
     document.querySelectorAll('#single-app-host .view-pane').forEach(p => p.classList.remove('active'));
     pane.classList.add('active');
+    singleAppHost.classList.remove('hidden');
     state.activeTabId = toolId;
 
     if (!state.tabs.some(t => t.toolId === toolId)) {
@@ -920,264 +1093,6 @@ async function openTool(toolId) {
     renderDesktopTabs();
 }
 window.openToolGlobal = openTool;
-
-// ==========================================
-// CỬA SỔ NỔI TỰ DO (KÉO RÊ & CHỈNH KÍCH THƯỚC)
-// ==========================================
-let windowZIndex = 100;
-
-function openToolInFloatingWindow(toolId) {
-    hideHomescreen();
-    singleAppHost.classList.add('hidden');
-    multiSplitHost.classList.add('hidden');
-    windowWorkspaceHost.classList.remove('hidden');
-
-    const winId = `float-win-${toolId}`;
-    let winEl = document.getElementById(winId);
-    const tool = getToolData(toolId);
-
-    if (winEl) {
-        winEl.style.zIndex = ++windowZIndex;
-        winEl.classList.add('active-window');
-        return;
-    }
-
-    winEl = document.createElement('div');
-    winEl.id = winId;
-    winEl.className = 'os-floating-window active-window';
-    winEl.style.top = `${50 + (state.openWindows.length % 6) * 28}px`;
-    winEl.style.left = `${60 + (state.openWindows.length % 6) * 28}px`;
-    winEl.style.width = '680px';
-    winEl.style.height = '480px';
-    winEl.style.zIndex = ++windowZIndex;
-
-    winEl.innerHTML = `
-        <div class="os-window-header" id="${winId}-header">
-            <div class="os-traffic-lights">
-                <div class="traffic-btn traffic-btn-close" onclick="window.closeFloatingWindow('${toolId}')" title="Đóng">
-                    <i class="fas fa-times"></i>
-                </div>
-                <div class="traffic-btn traffic-btn-min" onclick="window.minimizeFloatingWindow('${toolId}')" title="Thu nhỏ">
-                    <i class="fas fa-minus"></i>
-                </div>
-                <div class="traffic-btn traffic-btn-max" onclick="window.maximizeFloatingWindow('${toolId}')" title="Phóng to">
-                    <i class="fas fa-expand-alt"></i>
-                </div>
-            </div>
-            <div class="os-window-title">
-                <i class="${tool.icon} text-accent-theme"></i>
-                <span>${tool.name}</span>
-            </div>
-            <div class="w-12"></div>
-        </div>
-        <div class="os-window-content no-scrollbar" id="${winId}-content">
-            <div class="m-auto text-xs text-white/40 p-6"><i class="fas fa-spinner fa-spin mr-1.5"></i> Đang tải...</div>
-        </div>
-        <div class="window-resize-handle" id="${winId}-resizer" title="Kéo để chỉnh kích thước">
-            <i class="fas fa-arrows-up-down-left-right"></i>
-        </div>
-    `;
-
-    windowWorkspaceHost.appendChild(winEl);
-    state.openWindows.push(toolId);
-    if (!state.tabs.some(t => t.toolId === toolId)) {
-        state.tabs.push({ tabId: toolId, toolId: toolId });
-    }
-
-    makeFloatingWindowInteractive(winEl, document.getElementById(`${winId}-header`), document.getElementById(`${winId}-resizer`));
-    renderDesktopTabs();
-
-    import(`../tools/${toolId}/index.js`).then(mod => {
-        const contentEl = document.getElementById(`${winId}-content`);
-        if (!contentEl) return;
-        if (mod.template) contentEl.innerHTML = mod.template();
-        if (mod.init) mod.init(contentEl);
-    });
-}
-
-function makeFloatingWindowInteractive(winEl, headerEl, resizerEl) {
-    let offsetX = 0, offsetY = 0, isDragging = false;
-    let isResizing = false, startW = 0, startH = 0, startX = 0, startY = 0;
-
-    // Kéo di chuyển cửa sổ
-    headerEl.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.traffic-btn')) return;
-        isDragging = true;
-        winEl.style.zIndex = ++windowZIndex;
-        document.querySelectorAll('.os-floating-window').forEach(w => w.classList.remove('active-window'));
-        winEl.classList.add('active-window');
-        offsetX = e.clientX - winEl.offsetLeft;
-        offsetY = e.clientY - winEl.offsetTop;
-    });
-
-    // Kéo chỉnh kích thước cửa sổ
-    resizerEl.addEventListener('mousedown', (e) => {
-        e.stopPropagation();
-        isResizing = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        startW = parseInt(document.defaultView.getComputedStyle(winEl).width, 10);
-        startH = parseInt(document.defaultView.getComputedStyle(winEl).height, 10);
-        document.body.style.userSelect = 'none';
-    });
-
-    window.addEventListener('mousemove', (e) => {
-        if (isDragging) {
-            winEl.style.left = `${Math.max(0, e.clientX - offsetX)}px`;
-            winEl.style.top = `${Math.max(42, e.clientY - offsetY)}px`;
-        }
-        if (isResizing) {
-            const newW = Math.max(320, startW + (e.clientX - startX));
-            const newH = Math.max(220, startH + (e.clientY - startY));
-            winEl.style.width = `${newW}px`;
-            winEl.style.height = `${newH}px`;
-        }
-    });
-
-    window.addEventListener('mouseup', () => {
-        isDragging = false;
-        if (isResizing) {
-            isResizing = false;
-            document.body.style.userSelect = '';
-        }
-    });
-
-    winEl.addEventListener('mousedown', () => {
-        winEl.style.zIndex = ++windowZIndex;
-        document.querySelectorAll('.os-floating-window').forEach(w => w.classList.remove('active-window'));
-        winEl.classList.add('active-window');
-    });
-}
-
-window.closeFloatingWindow = (toolId) => {
-    document.getElementById(`float-win-${toolId}`)?.remove();
-    state.openWindows = state.openWindows.filter(id => id !== toolId);
-    state.tabs = state.tabs.filter(t => t.toolId !== toolId);
-    renderDesktopTabs();
-    if (state.openWindows.length === 0) window.goHome();
-};
-
-window.minimizeFloatingWindow = (toolId) => {
-    const winEl = document.getElementById(`float-win-${toolId}`);
-    if (winEl) winEl.style.display = 'none';
-};
-
-window.maximizeFloatingWindow = (toolId) => {
-    const winEl = document.getElementById(`float-win-${toolId}`);
-    if (!winEl) return;
-    if (winEl.dataset.maximized === 'true') {
-        winEl.style.top = winEl.dataset.prevTop;
-        winEl.style.left = winEl.dataset.prevLeft;
-        winEl.style.width = winEl.dataset.prevWidth;
-        winEl.style.height = winEl.dataset.prevHeight;
-        winEl.dataset.maximized = 'false';
-    } else {
-        winEl.dataset.prevTop = winEl.style.top;
-        winEl.dataset.prevLeft = winEl.style.left;
-        winEl.dataset.prevWidth = winEl.style.width;
-        winEl.dataset.prevHeight = winEl.style.height;
-        winEl.style.top = '42px';
-        winEl.style.left = '0px';
-        winEl.style.width = '100vw';
-        winEl.style.height = 'calc(100vh - 42px - 72px)';
-        winEl.dataset.maximized = 'true';
-    }
-};
-
-// ==========================================
-// ĐA NHIỆM LƯỚI MỞ RỘNG (CHIA 2, 3, 4)
-// ==========================================
-const layoutPickerModal = document.getElementById('layout-picker-modal');
-
-window.openLayoutSelector = () => {
-    layoutPickerModal?.classList.remove('pointer-events-none', 'opacity-0');
-    layoutPickerModal?.classList.add('opacity-100');
-};
-
-window.closeLayoutSelector = () => {
-    layoutPickerModal?.classList.add('pointer-events-none', 'opacity-0');
-    layoutPickerModal?.classList.remove('opacity-100');
-};
-
-window.setSplitLayoutMode = (count) => {
-    window.closeLayoutSelector();
-    state.splitGridCount = count;
-
-    // Lấy danh sách app đang chạy hoặc lấy app mẫu từ TOOLS
-    const runningTools = state.tabs.filter(t => t.toolId !== 'home').map(t => t.toolId);
-    const chosenTools = [...runningTools];
-    while (chosenTools.length < count) {
-        const next = TOOLS.find(t => !chosenTools.includes(t.id));
-        if (next) chosenTools.push(next.id);
-        else break;
-    }
-
-    startMultiSplitView(chosenTools.slice(0, count));
-};
-
-async function startMultiSplitView(toolIds) {
-    hideHomescreen();
-    state.isSplitActive = true;
-    state.splitToolIds = toolIds;
-
-    singleAppHost.classList.add('hidden');
-    windowWorkspaceHost.classList.add('hidden');
-    multiSplitHost.classList.remove('hidden');
-
-    const count = toolIds.length;
-    splitGridContainer.className = 'w-full h-full grid gap-2 p-2';
-
-    if (count === 2) {
-        splitGridContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
-        splitGridContainer.style.gridTemplateRows = '1fr';
-    } else if (count === 3) {
-        splitGridContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
-        splitGridContainer.style.gridTemplateRows = 'repeat(2, 1fr)';
-    } else {
-        splitGridContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
-        splitGridContainer.style.gridTemplateRows = 'repeat(2, 1fr)';
-    }
-
-    splitGridContainer.innerHTML = toolIds.map((id, idx) => {
-        const tool = getToolData(id);
-        const isSpanned = (count === 3 && idx === 0) ? 'row-span-2' : '';
-        return `
-            <div class="split-pane-card ${isSpanned}" id="pane-split-${id}">
-                <div class="split-pane-header">
-                    <span class="text-xs font-semibold text-white truncate flex items-center gap-1.5">
-                        <i class="${tool.icon} text-accent-theme"></i> ${tool.name}
-                    </span>
-                    <button onclick="window.exitSplitView()" class="text-white/40 hover:text-rose-400 text-xs">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="flex-1 overflow-auto no-scrollbar relative" id="pane-content-${id}">
-                    <div class="m-auto text-xs text-white/40 p-4"><i class="fas fa-spinner fa-spin mr-1"></i> Đang tải...</div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    for (const id of toolIds) {
-        try {
-            const mod = await import(`../tools/${id}/index.js`);
-            const targetEl = document.getElementById(`pane-content-${id}`);
-            if (targetEl) {
-                if (mod.template) targetEl.innerHTML = mod.template();
-                if (mod.init) mod.init(targetEl);
-            }
-        } catch (e) {}
-    }
-
-    UI.showAlert('Đa nhiệm lưới', `Đang chia màn hình cho ${count} ứng dụng.`, 'info');
-}
-
-window.exitSplitView = () => {
-    state.isSplitActive = false;
-    multiSplitHost.classList.add('hidden');
-    singleAppHost.classList.remove('hidden');
-    splitGridContainer.innerHTML = '';
-};
 
 // ==========================================
 // ĐA NHIỆM SWITCHER & SPOTLIGHT
@@ -1189,7 +1104,7 @@ window.openMultitasking = () => {
     switcherCardsWrapper.innerHTML = running.length ? running.map(tab => {
         const tool = getToolData(tab.toolId);
         return `
-            <div class="w-[220px] h-[280px] rounded-2xl bg-zinc-900 border border-white/15 p-4 flex flex-col justify-between shrink-0 cursor-pointer active:scale-95 transition-transform"
+            <div class="w-[220px] h-[260px] rounded-2xl bg-zinc-900 border border-white/15 p-4 flex flex-col justify-between shrink-0 cursor-pointer active:scale-98 transition-transform"
                  onclick="window.openToolGlobal('${tab.toolId}'); window.closeMultitasking();">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2 truncate">
@@ -1198,11 +1113,8 @@ window.openMultitasking = () => {
                     </div>
                 </div>
                 <div class="text-[11px] text-zinc-500 text-center">Bấm để mở lại</div>
-                <div class="pt-2 border-t border-white/10 flex gap-2">
-                    <button onclick="event.stopPropagation(); window.setSplitLayoutMode(2)"
-                        class="flex-1 py-1.5 rounded-lg bg-accent-theme/20 border border-accent-theme/40 text-accent-theme text-xs font-semibold">
-                        <i class="fas fa-columns mr-1"></i> Ghép đôi
-                    </button>
+                <div class="text-center text-[10px] text-white/40 py-1 bg-white/5 rounded-lg border border-white/5">
+                    Đang chạy
                 </div>
             </div>
         `;
@@ -1220,12 +1132,9 @@ window.closeMultitasking = () => {
 document.getElementById('close-switcher-btn')?.addEventListener('click', window.closeMultitasking);
 
 window.closeAllTabs = () => {
-    if (state.isSplitActive) window.exitSplitView();
     state.tabs = [{ tabId: 'tab-1', toolId: 'home' }];
     state.activeTabId = 'tab-1';
     singleAppHost.innerHTML = '';
-    windowWorkspaceHost.innerHTML = '';
-    state.openWindows = [];
     showHomescreen();
     window.closeMultitasking();
     renderDesktopTabs();
@@ -1247,7 +1156,7 @@ function renderDesktopTabs() {
     }).join('');
 }
 
-// Spotlight Search
+// Spotlight Search & Phím tắt (Cmd+F / Cmd+K / Ctrl+F / Ctrl+K)
 const cmdPalette = document.getElementById('cmd-palette');
 const cmdInput = document.getElementById('cmd-input');
 const cmdResults = document.getElementById('cmd-results');
@@ -1266,6 +1175,28 @@ window.closeSpotlight = () => {
     cmdPalette.classList.remove('spotlight-active');
     cmdInput.blur();
 };
+
+// Lắng nghe phím tắt toàn hệ thống: Cmd+F, Cmd+K (macOS) và Ctrl+F, Ctrl+K (Windows/Linux)
+window.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+
+    if (isCmdOrCtrl && (key === 'f' || key === 'k')) {
+        // Nếu người dùng đang tập trung gõ trong input khác ngoài spotlight, bỏ qua để họ tìm kiếm nội dung nếu cần
+        const active = document.activeElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') && active !== cmdInput) {
+            return;
+        }
+        e.preventDefault();
+        if (cmdPalette?.classList.contains('spotlight-active')) {
+            window.closeSpotlight();
+        } else {
+            window.openSpotlight();
+        }
+    } else if (e.key === 'Escape' && cmdPalette?.classList.contains('spotlight-active')) {
+        window.closeSpotlight();
+    }
+});
 
 function renderSpotlightResults(list, isSuggestion = false) {
     if (!cmdResults) return;
@@ -1430,7 +1361,7 @@ setInterval(updateOSClock, 1000);
 updateOSClock();
 
 if ('getBattery' in navigator) {
-    navigator.getBattery(). then(battery => {
+    navigator.getBattery().then(battery => {
         const update = () => {
             const el = document.getElementById('battery-percent');
             if (el) el.textContent = `${Math.round(battery.level * 100)}%`;

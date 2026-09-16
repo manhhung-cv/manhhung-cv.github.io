@@ -20,7 +20,7 @@ const SOURCE_PROFILES = {
   },
   sstruyen: {
     batchSize: 6,       // Bó 6 chương/lần: tốc độ tối ưu dưới ngưỡng kiểm duyệt của WAF SSTruyen
-    delayMs: 200       // Nhịp thở 200ms giữa các mẻ
+    delayMs: 200        // Nhịp thở 200ms giữa các mẻ
   },
   default: {
     batchSize: 10,
@@ -31,6 +31,7 @@ const SOURCE_PROFILES = {
 let activeScraper = null;
 let currentStoryMeta = null;
 let abortController = null;
+let inspectAbortController = null;
 let pendingResolve = null;
 
 // Hàm delay hỗ trợ ngắt tức thì khi người dùng bấm Hủy
@@ -133,72 +134,224 @@ async function loadScraperByKey(key, cleanUrl) {
   return { scraper, info: { originalUrl: cleanUrl } };
 }
 
+// ==================== ANIMATION ENGINE: PHÂN RÃ HẠT & NỔ COVER ====================
+
+// Pha 1: HUB tan rã -> xoay nhanh dần -> tụ về tâm trên đỉnh HUB -> hiện lại HUB
+function playDisintegrationOnly() {
+  return new Promise((resolve) => {
+    const canvas = document.getElementById('noiseCanvas');
+    const term = document.getElementById('mainTerminal');
+
+    if (!canvas || !term) {
+      resolve();
+      return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    const rect = term.getBoundingClientRect();
+
+    // 1. Làm mờ và thu nhỏ nhẹ HUB
+    term.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+    term.style.opacity = '0';
+    term.style.transform = 'scale(0.96)';
+    term.style.pointerEvents = 'none';
+
+    // Tâm tụ hạt: chuẩn tâm ngang và ngay trên nóc HUB (khớp vị trí coverWrapper)
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top - 140;
+
+    const burstParticles = [];
+    const count = 350;
+
+    for (let i = 0; i < count; i++) {
+      const startX = rect.left + Math.random() * rect.width;
+      const startY = rect.top + Math.random() * rect.height;
+      const angle = Math.atan2(startY - centerY, startX - centerX);
+      const dist = Math.hypot(startX - centerX, startY - centerY);
+
+      burstParticles.push({
+        x: startX,
+        y: startY,
+        angle: angle,
+        dist: dist,
+        orbitRadius: Math.random() * 160 + 50,
+        spinSpeed: (Math.random() * 0.04 + 0.03) * (Math.random() > 0.5 ? 1 : -1),
+        size: Math.random() * 2.2 + 1,
+        color: Math.random() > 0.35 ? '#fb923c' : '#ffffff'
+      });
+    }
+
+    let phase = 'accelerate';
+    let timer = 0;
+
+    function renderAnim() {
+      if (phase === 'accelerate') {
+        timer += 0.035;
+        burstParticles.forEach((p) => {
+          p.angle += p.spinSpeed * (1 + timer * 3);
+          p.dist = p.dist * 0.93 + p.orbitRadius * 0.07;
+          p.x = centerX + Math.cos(p.angle) * p.dist;
+          p.y = centerY + Math.sin(p.angle) * (p.dist * 0.65);
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = p.color;
+          ctx.fill();
+        });
+
+        if (timer >= 1.0) phase = 'implode';
+        requestAnimationFrame(renderAnim);
+
+      } else if (phase === 'implode') {
+        let reachedCenter = true;
+
+        burstParticles.forEach((p) => {
+          // Hút dồn hạt cực mạnh vào tâm
+          p.x += (centerX - p.x) * 0.32;
+          p.y += (centerY - p.y) * 0.32;
+          p.size = Math.max(0.2, p.size * 0.85);
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = '#fdba74';
+          ctx.fill();
+
+          if (Math.hypot(centerX - p.x, centerY - p.y) > 6) reachedCenter = false;
+        });
+
+        if (!reachedCenter) {
+          requestAnimationFrame(renderAnim);
+        } else {
+          // Khôi phục HUB để hiện trạng thái đang quét
+          term.style.opacity = '1';
+          term.style.transform = 'scale(1)';
+          term.style.pointerEvents = 'auto';
+          term.classList.add('terminal-restoring');
+          setTimeout(() => term.classList.remove('terminal-restoring'), 400);
+          resolve();
+        }
+      }
+    }
+
+    renderAnim();
+  });
+}
+
+// Pha 2: Nổ bung coverWrapper lơ lửng khi lấy dữ liệu thành công
+function playCoverBurst() {
+  const coverWrapper = document.getElementById('coverWrapper');
+  if (coverWrapper) {
+    coverWrapper.classList.remove('hidden');
+    coverWrapper.classList.remove('cover-burst-float');
+    void coverWrapper.offsetWidth; // Trigger DOM reflow để kích hoạt lại keyframes
+    coverWrapper.classList.add('cover-burst-float');
+  }
+}
+
 // ==================== BƯỚC 1: TRA CỨU THÔNG TIN (INSPECT) ====================
+
+// Hủy bỏ tiến trình tra cứu khi người dùng bấm nút HỦY
+window.abortInspection = function() {
+  if (inspectAbortController) {
+    inspectAbortController.abort();
+    inspectAbortController = null;
+  }
+  window.resetToSearch();
+};
+
 window.inspectStoryUrl = async function() {
   const urlInput = document.getElementById('storyUrl').value.trim();
-  const btnInspect = document.getElementById('btnInspect');
 
   if (!urlInput) {
     alert("Vui lòng dán liên kết truyện hoặc chương cần tải!");
     return;
   }
 
-  const cleanUrl = urlInput.split('?')[0].replace(/\/+$/, '');
-  let resolved = await resolveScraper(cleanUrl);
+  // 1. Chạy ngay hiệu ứng Hub phân rã thành bụi hạt bất kể link gì
+  await playDisintegrationOnly();
 
-  if (!resolved) {
-    const chosenKey = await askUserForSource();
-    if (!chosenKey) return;
-    resolved = await loadScraperByKey(chosenKey, cleanUrl);
-  }
+  // 2. Chuyển sang màn hình đang quét kèm nút HỦY
+  document.getElementById('stepInput').classList.add('hidden');
+  document.getElementById('stepInspecting').classList.remove('hidden');
 
-  if (!resolved || !resolved.scraper) {
-    alert("Không tìm thấy bộ phân tích dữ liệu phù hợp!");
-    return;
-  }
-
-  activeScraper = resolved.scraper;
-  const info = resolved.info;
-
-  btnInspect.disabled = true;
-  btnInspect.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i><span>Đang tra cứu dữ liệu...</span>`;
+  inspectAbortController = new AbortController();
+  const signal = inspectAbortController.signal;
 
   try {
-    const metadata = await activeScraper.inspect(info, scraperContext);
+    const cleanUrl = urlInput.split('?')[0].replace(/\/+$/, '');
+    if (signal.aborted) throw new DOMException("Đã hủy tra cứu.", "AbortError");
+
+    let resolved = await resolveScraper(cleanUrl);
+
+    if (!resolved) {
+      const chosenKey = await askUserForSource();
+      if (!chosenKey || signal.aborted) {
+        window.resetToSearch();
+        return;
+      }
+      resolved = await loadScraperByKey(chosenKey, cleanUrl);
+    }
+
+    if (!resolved || !resolved.scraper) {
+      throw new Error("Không tìm thấy bộ phân tích dữ liệu phù hợp với liên kết!");
+    }
+
+    activeScraper = resolved.scraper;
+    const info = resolved.info;
+
+    // Gửi signal ngắt kèm theo scraperContext
+    const metadata = await activeScraper.inspect(info, { ...scraperContext, signal });
     if (!metadata) throw new Error("Không lấy được dữ liệu tác phẩm.");
+    if (signal.aborted) throw new DOMException("Đã hủy tra cứu.", "AbortError");
 
     currentStoryMeta = metadata;
 
-    // Hiển thị thông tin an toàn
+    // Cập nhật ảnh bìa
+    const coverImg = document.getElementById('previewCoverImg');
+    if (coverImg) {
+      if (metadata.cover) {
+        // Dùng PROXY_SINGLE để bypass kiểm duyệt Referer của Wattpad
+        coverImg.src = `${PROXY_SINGLE}${encodeURIComponent(metadata.cover)}`;
+      } else {
+        coverImg.src = './bg.png';
+      }
+    }
+    // 3. Nổ bung bìa truyện coverWrapper lơ lửng ngay trên HUB
+    playCoverBurst();
+
+    // Điền dữ liệu vào giao diện Preview
     document.getElementById('previewTitle').innerText = metadata.title;
     document.getElementById('previewSource').innerText = metadata.sourceName;
     document.getElementById('previewAuthor').innerText = metadata.author;
-    
+
     const genresEl = document.getElementById('previewGenres');
-    if (genresEl) {
-      genresEl.innerText = metadata.genres || "Chưa phân loại";
-    }
+    if (genresEl) genresEl.innerText = metadata.genres || "Chưa phân loại";
 
     const totalCount = metadata.expectedTotal || 
                        metadata.totalChaptersCount || 
                        (metadata.chaptersList ? metadata.chaptersList.length : 0);
-                       
+
     const extraInfo = metadata.latestChapName ? ` (${metadata.latestChapName})` : '';
     document.getElementById('previewChapterCount').innerText = `${totalCount} chương${extraInfo}`;
-    
     document.getElementById('previewDesc').innerText = metadata.description || "Tác phẩm không có phần tóm tắt.";
 
-    document.getElementById('stepInput').classList.add('hidden');
+    // Chuyển sang bước Preview
+    document.getElementById('stepInspecting').classList.add('hidden');
     document.getElementById('stepPreview').classList.remove('hidden');
 
+    if (typeof parseCustomChaptersInput === 'function') {
+      parseCustomChaptersInput();
+    }
+
   } catch (err) {
-    alert("Lỗi tra cứu: " + err.message);
-    console.error(err);
+    if (err.name !== 'AbortError') {
+      alert("Lỗi tra cứu: " + err.message);
+      console.error(err);
+    }
+    window.resetToSearch();
   } finally {
-    btnInspect.disabled = false;
-    btnInspect.innerHTML = `<i class="fa-solid fa-magnifying-glass"></i><span>Tra cứu thông tin</span>`;
+    inspectAbortController = null;
   }
-  
 };
 
 // ==================== BƯỚC 2: TẢI BATCH & ĐÓNG GÓI TẬP TIN ====================
@@ -211,11 +364,16 @@ window.startExecutionDownload = async function() {
   document.getElementById('stepPreview').classList.add('hidden');
   document.getElementById('stepProgress').classList.remove('hidden');
 
+  // KÍCH HOẠT HIỆU ỨNG TĂNG TỐC QUAY HẠT KHÔNG GIAN
+  if (typeof window.setCosmicDustSpeed === 'function') {
+    window.setCosmicDustSpeed(28.0); // Tăng tốc độ quay cực nhanh
+  }
+
   const { title, author, genres, description, sourceName } = currentStoryMeta;
   let chaptersList = currentStoryMeta.chaptersList;
 
   try {
-    // 1. Nạp đầy đủ danh sách chương thật (qua hàm loadAllChapters nếu có)
+    // 1. Nạp danh sách chương đầy đủ nếu có
     if (typeof activeScraper.loadAllChapters === 'function') {
       updateProgress(2, "Đang lấy danh mục chương thật...");
       chaptersList = await activeScraper.loadAllChapters(currentStoryMeta, {
@@ -230,15 +388,24 @@ window.startExecutionDownload = async function() {
       throw new Error("Không tìm thấy chương nào để tải!");
     }
 
+    // Lọc theo tùy biến nếu người dùng chọn mode custom
+    if (typeof activeChapterMode !== 'undefined' && activeChapterMode === 'custom') {
+      const inputVal = document.getElementById('customChaptersInput')?.value;
+      const totalCount = chaptersList.length;
+      if (typeof parseCustomSelection === 'function') {
+        const allowedSet = parseCustomSelection(inputVal, totalCount);
+        chaptersList = chaptersList.filter((_, idx) => allowedSet.has(idx + 1));
+      }
+    }
+
     const total = chaptersList.length;
     const downloadedParts = [];
 
-    // Chọn profile tốc độ phù hợp theo từng nguồn
     const sourceKey = activeScraper.key || activeScraper.name?.toLowerCase() || 'default';
     const profile = SOURCE_PROFILES[sourceKey] || SOURCE_PROFILES.default;
     const BATCH_SIZE = profile.batchSize;
 
-    // 2. Chạy tải Batch siêu tốc
+    // 2. Tải Batch đa luồng
     for (let i = 0; i < total; i += BATCH_SIZE) {
       if (abortController.signal.aborted) {
         throw new DOMException("Người dùng đã hủy quá trình tải.", "AbortError");
@@ -249,10 +416,8 @@ window.startExecutionDownload = async function() {
       const pct = 5 + Math.round((toIndex / total) * 85);
       updateProgress(pct, `Đang tải: [${toIndex}/${total}] chương...`);
 
-      // Gửi danh sách URLs lên Edge Worker
       const batchResults = await fetchBatch(chunk.map(c => c.fetchUrl), abortController.signal);
 
-      // Ghép kết quả trả về từ Edge
       for (let j = 0; j < chunk.length; j++) {
         const item = chunk[j];
         const res = batchResults[j];
@@ -263,7 +428,6 @@ window.startExecutionDownload = async function() {
             content: res.content
           });
         } else {
-          // Chỉ fallback fetch đơn lẻ khi batch gặp trục trặc
           try {
             await delay(profile.delayMs, abortController.signal);
             const fallbackContent = await activeScraper.fetchChapterContent(item, {
@@ -277,11 +441,10 @@ window.startExecutionDownload = async function() {
         }
       }
 
-      // Khoảng nghỉ an toàn giữa các đợt batch
       await delay(profile.delayMs, abortController.signal);
     }
 
-    // 3. Đóng gói tập tin theo định dạng
+    // 3. Đóng gói file
     updateProgress(95, `Đang đóng gói file ${format.toUpperCase()}...`);
     const safeTitle = title.replace(/[/\\?%*:|"<>]/g, '_').trim();
 
@@ -315,9 +478,14 @@ window.startExecutionDownload = async function() {
     }
     window.resetToSearch();
   } finally {
+    // TRẢ LẠI TỐC ĐỘ QUAY BÌNH THƯỜNG
+    if (typeof window.setCosmicDustSpeed === 'function') {
+      window.setCosmicDustSpeed(1.0);
+    }
     abortController = null;
   }
 };
+
 
 // ==================== CÁC HÀM UI & MODAL ====================
 function askUserForSource() {
@@ -351,17 +519,38 @@ window.abortCurrentDownload = function() {
 };
 
 window.resetToSearch = function() {
-  document.getElementById('stepProgress').classList.add('hidden');
-  document.getElementById('stepSuccess').classList.add('hidden');
-  document.getElementById('stepPreview').classList.add('hidden');
-  document.getElementById('stepInput').classList.remove('hidden');
+  // Trả lại tốc độ quay bình thường
+  if (typeof window.setCosmicDustSpeed === 'function') {
+    window.setCosmicDustSpeed(1.0);
+  }
+  document.getElementById('stepInspecting')?.classList.add('hidden');
+  document.getElementById('stepProgress')?.classList.add('hidden');
+  document.getElementById('stepSuccess')?.classList.add('hidden');
+  document.getElementById('stepPreview')?.classList.add('hidden');
+  document.getElementById('stepInput')?.classList.remove('hidden');
+
+  const coverWrapper = document.getElementById('coverWrapper');
+  if (coverWrapper) {
+    coverWrapper.classList.add('hidden');
+    coverWrapper.classList.remove('cover-burst-float');
+  }
+
+  const term = document.getElementById('mainTerminal');
+  if (term) {
+    term.style.opacity = '1';
+    term.style.transform = 'scale(1)';
+    term.style.pointerEvents = 'auto';
+  }
+
   updateProgress(0, '');
 };
+
 
 window.resetAllForm = function() {
   currentStoryMeta = null;
   activeScraper = null;
-  document.getElementById('storyUrl').value = '';
+  const urlInput = document.getElementById('storyUrl');
+  if (urlInput) urlInput.value = '';
   window.resetToSearch();
 };
 
@@ -376,7 +565,8 @@ window.handlePasteUrl = async function() {
 };
 
 window.handleClearUrl = function() {
-  document.getElementById('storyUrl').value = '';
+  const urlInput = document.getElementById('storyUrl');
+  if (urlInput) urlInput.value = '';
 };
 
 window.toggleLegalDetails = function() {
@@ -408,33 +598,6 @@ function downloadBlob(blob, filename) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
-
-// ==================== CHẾ ĐỘ DARK MODE ====================
-function initDarkMode() {
-  const savedTheme = localStorage.getItem('theme');
-  const isDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  applyTheme(isDark);
-}
-
-function applyTheme(isDark) {
-  const icon = document.getElementById('themeIcon');
-  if (isDark) {
-    document.documentElement.classList.add('dark');
-    if (icon) icon.className = 'fa-solid fa-sun';
-  } else {
-    document.documentElement.classList.remove('dark');
-    if (icon) icon.className = 'fa-solid fa-moon';
-  }
-}
-
-window.toggleDarkMode = function() {
-  const isCurrentlyDark = document.documentElement.classList.contains('dark');
-  const nextState = !isCurrentlyDark;
-  localStorage.setItem('theme', nextState ? 'dark' : 'light');
-  applyTheme(nextState);
-};
-
-document.addEventListener('DOMContentLoaded', initDarkMode);
 
 // ==================== BỘ XUẤT TẬP TIN (EXPORTERS) ====================
 function generateHtmlDocument(title, author, genres, source, description, parts) {

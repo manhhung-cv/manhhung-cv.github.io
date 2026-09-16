@@ -532,6 +532,16 @@ export const TOOLS = [
         desc: 'Thư viện tổng hợp nút bấm, form nhập liệu và các thành phần giao diện mẫu.',
         tags: ['ui', 'kit', 'components', 'giao diện']
     },
+    {
+        id: 'device-tester',
+        catId: 'system',
+        name: 'Kiểm Tra Phần Cứng',
+        icon: 'fas fa-microphone-alt',
+        bgColor: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%)',
+        iconColor: '#ffffff',
+        desc: 'Kiểm tra webcam, micro, loa và các thiết bị đầu vào khác.',
+        tags: ['thiết bị', 'kiểm tra', 'hiệu suất', 'trạng thái']
+    },
 
     // ---------------------------------------------------------------------
     // GIẢI TRÍ & TIỆN ÍCH KHÁC (entertainment)

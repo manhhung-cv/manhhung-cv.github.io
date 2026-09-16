@@ -1,158 +1,216 @@
-export default {
+const SSTruyenScraper = {
   name: "SSTruyen",
 
-  match(cleanUrl) {
-    if (!/sstruyen\./i.test(cleanUrl)) return null;
-    const storyUrl = cleanUrl.replace(/\/(?:chuong-\d+|page\/\d+).*$/i, '').replace(/\/+$/, '');
-    return { originalUrl: storyUrl };
+  // 1. Nhận diện URL dạng tác phẩm hoặc chương của SSTruyen
+  match(url) {
+    const isSST = /sstruyen\.(?:vn|net|com)/i.test(url);
+    if (!isSST) return null;
+
+    const chapMatch = url.match(/\/truyen\/([^/?#]+)\/chuong-(\d+)/i);
+    if (chapMatch) {
+      return { type: 'chapter', slug: chapMatch[1], chapNum: chapMatch[2], originalUrl: url };
+    }
+
+    const storyMatch = url.match(/\/truyen\/([^/?#]+)/i);
+    if (storyMatch) {
+      return { type: 'story', slug: storyMatch[1], originalUrl: url };
+    }
+
+    return null;
   },
 
-  parseChaps(dom, baseUrl) {
-    const items = [];
-    const container = dom.querySelector('#list-chapter') || dom;
-    const links = container.querySelectorAll('.list-chapter li a');
-    links.forEach(a => {
-      const href = a.getAttribute('href');
-      const text = a.querySelector('.chapter-text')?.innerText.trim() || a.innerText.trim();
-      if (href && text && !href.includes('#')) {
-        items.push({
-          title: text,
-          fetchUrl: href.startsWith('http') ? href : `${baseUrl}${href}`
-        });
+  // 2. Tra cứu metadata, lấy ảnh bìa (Cover) và danh mục chương
+  async inspect(info, context) {
+    const { fetchProxy, parseDom, signal } = context;
+    const cleanSlug = info.slug.replace(/\/page\/\d+$/, '');
+    const storyUrl = `https://sstruyen.net/truyen/${cleanSlug}`;
+
+    const htmlText = await fetchProxy(storyUrl, false, signal);
+    if (!htmlText) {
+      throw new Error("Không thể tải dữ liệu trang truyện từ SSTruyen.");
+    }
+
+    const doc = parseDom(htmlText);
+
+    // Tiêu đề
+    let title = doc.querySelector('h1.story-title')?.innerText?.trim() ||
+                doc.querySelector('meta[property="og:title"]')?.getAttribute('content')?.split('-')[0]?.trim() ||
+                "Truyện SSTruyen";
+
+    // Tác giả
+    let author = doc.querySelector('span[itemprop="author"] a')?.innerText?.trim() || "Khuyết danh";
+
+    // Bóc tách ảnh bìa (Cover) chuẩn xác
+    let coverUrl = "";
+
+    // Ưu tiên 1: Lấy trực tiếp từ thẻ img[itemprop="image"]
+    const coverImgEl = doc.querySelector('img[itemprop="image"]') || doc.querySelector('.book img');
+    if (coverImgEl) {
+      coverUrl = coverImgEl.getAttribute('src') || "";
+      // Nếu src rỗng, lấy link 300w từ srcset
+      if (!coverUrl && coverImgEl.getAttribute('srcset')) {
+        const srcsetParts = coverImgEl.getAttribute('srcset').split(',');
+        const lastSrc = srcsetParts[srcsetParts.length - 1].trim().split(' ')[0];
+        coverUrl = lastSrc;
       }
+    }
+
+    // Ưu tiên 2: Fallback qua thẻ meta og:image hoặc twitter:image
+    if (!coverUrl) {
+      coverUrl = doc.querySelector('meta[property="og:image"]')?.getAttribute('content') ||
+                 doc.querySelector('meta[name="twitter:image"]')?.getAttribute('content') || "";
+    }
+
+    // Ưu tiên 3: Schema JSON-LD
+    if (!coverUrl) {
+      try {
+        const ldEl = doc.querySelector('script[type="application/ld+json"]');
+        if (ldEl) {
+          const ld = JSON.parse(ldEl.textContent);
+          if (ld.image) coverUrl = ld.image;
+        }
+      } catch (e) {}
+    }
+
+    // Chuẩn hóa đường dẫn tuyệt đối cho ảnh bìa
+    if (coverUrl) {
+      coverUrl = coverUrl.trim();
+      if (coverUrl.startsWith('//')) {
+        coverUrl = 'https:' + coverUrl;
+      } else if (coverUrl.startsWith('/')) {
+        coverUrl = 'https://sstruyen.net' + coverUrl;
+      }
+      // Đảm bảo không lấy nhầm bản thumbnail nhỏ (-small.webp hoặc -medium.webp)
+      coverUrl = coverUrl.replace(/-small\.webp/i, '.webp').replace(/-medium\.webp/i, '.webp');
+    }
+
+    // Thể loại
+    const genres = [];
+    doc.querySelectorAll('.info-chitiet a[itemprop="genre"]').forEach(el => {
+      const g = el.innerText.trim();
+      if (g) genres.push(g);
     });
-    return items;
-  },
 
-  // ==================== PHA 1: TRA CỨU ====================
-  async inspect(info, { fetchProxy, parseDom }) {
-    const storyUrl = info.originalUrl;
-    const urlObj = new URL(storyUrl);
-    const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
-
-    const html = await fetchProxy(storyUrl, false);
-    const doc = parseDom(html);
-
-    const title = doc.querySelector('h1.story-title, h1.title, h1')?.innerText.trim() || "SSTruyen Story";
-    const author = doc.querySelector('.info a[href*="/tac-gia/"] [itemprop="name"], .info a[href*="/tac-gia/"]')?.innerText.trim() || "Tác giả SSTruyen";
-
-    const genresList = Array.from(doc.querySelectorAll('.info a[itemprop="genre"], .info a[href*="/the-loai/"]'))
-                            .map(a => a.innerText.trim())
-                            .filter(Boolean);
-    const genres = genresList.length > 0 ? genresList.join(", ") : "Chưa phân loại";
-
-    const descEl = doc.querySelector('#desc-content, .desc-text');
+    // Mô tả / Giới thiệu
+    const descEl = doc.querySelector('#desc-content');
     let description = "";
     if (descEl) {
       const cloneDesc = descEl.cloneNode(true);
-      cloneDesc.querySelectorAll('.short-content, script, style').forEach(el => el.remove());
+      cloneDesc.querySelector('.short-content')?.remove();
       description = cloneDesc.innerText.trim();
     }
 
-    // Xác định số trang cuối từ nút "Cuối"
-    let lastPage = 1;
-    const allPageLinks = Array.from(doc.querySelectorAll('#pagination a, .pagination-chap a'));
-    const lastBtn = allPageLinks.find(a => /cuối/i.test(a.innerText.trim()));
-    if (lastBtn) {
-      const m = (lastBtn.getAttribute('href') || '').match(/\/page\/(\d+)/i);
-      if (m) lastPage = parseInt(m[1], 10);
-    }
-    if (lastPage === 1) {
-      allPageLinks.forEach(a => {
-        const m = (a.getAttribute('href') || '').match(/\/page\/(\d+)/i);
-        if (m && parseInt(m[1], 10) > lastPage) lastPage = parseInt(m[1], 10);
-      });
-    }
+    // Đếm tổng số trang chương từ khối phân trang
+    let totalPages = 1;
+    const pageLinks = doc.querySelectorAll('#pagination .pagination-chap a');
+    pageLinks.forEach(a => {
+      const href = a.getAttribute('href') || '';
+      const m = href.match(/\/page\/(\d+)/);
+      if (m) {
+        const p = parseInt(m[1], 10);
+        if (p > totalPages) totalPages = p;
+      }
+    });
 
-    // Đọc số chương từ #new-chapter hoặc meta
-    let totalChaptersCount = 0;
-    let latestChapName = "";
-    const newChapLinks = doc.querySelectorAll('#new-chapter .list-chapter li a');
-    if (newChapLinks.length > 0) {
-      latestChapName = newChapLinks[0].querySelector('.chapter-text')?.innerText.trim() || newChapLinks[0].innerText.trim();
-      const m = latestChapName.match(/chương\s+(\d+)/i) || latestChapName.match(/(\d+)/);
-      if (m) totalChaptersCount = parseInt(m[1], 10);
-    }
-    if (!totalChaptersCount) {
-      const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content') || '';
-      const m = metaDesc.match(/tổng\s+số\s+(\d+)\s+chương/i);
-      if (m) totalChaptersCount = parseInt(m[1], 10);
-    }
-    if (!totalChaptersCount) totalChaptersCount = lastPage * 20;
+    // Lấy tên chương mới nhất
+    const latestChapEl = doc.querySelector('#new-chapter .list-chapter li a');
+    const latestChapName = latestChapEl ? latestChapEl.innerText.trim() : '';
+
+    // Danh mục chương trang đầu tiên
+    const firstPageChapters = [];
+    doc.querySelectorAll('#list-chapter .list-chapter li a').forEach(a => {
+      const href = a.getAttribute('href');
+      if (href) {
+        const fullUrl = href.startsWith('http') ? href : `https://sstruyen.net${href}`;
+        firstPageChapters.push({
+          title: a.querySelector('.chapter-text')?.innerText?.trim() || a.innerText.trim(),
+          url: fullUrl,
+          fetchUrl: fullUrl
+        });
+      }
+    });
 
     return {
-      sourceName: this.name,
-      title,
-      author,
-      genres,
-      description,
-      storyUrl,
-      lastPage,
-      expectedTotal: totalChaptersCount,
-      latestChapName,
-      firstPageDoc: doc
+      id: cleanSlug,
+      slug: cleanSlug,
+      title: title,
+      author: author,
+      sourceName: "SSTruyen",
+      cover: coverUrl, // URL: https://sstruyen.net/uploads/2026/04/21/he-thong-gian-lan-cua-phao-hoi.webp
+      genres: genres.join(', ') || "Đam Mỹ, Hệ Thống",
+      description: description,
+      totalPages: totalPages,
+      latestChapName: latestChapName,
+      expectedTotal: totalPages * 20,
+      chaptersList: firstPageChapters
     };
   },
 
-  // ==================== PHA 2: LẤY 100% URL THẬT TỪ CÁC TRANG ====================
-  async loadAllChapters(meta, { fetchProxy, parseDom, delay, updateProgress, signal }) {
-    const chaptersMap = new Map();
-    const urlObj = new URL(meta.storyUrl);
-    const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+  // 3. Nạp danh mục chương qua tất cả các trang
+  async loadAllChapters(storyMeta, context) {
+    const { fetchBatch, parseDom, signal, updateProgress } = context;
+    const { slug, totalPages } = storyMeta;
 
-    // 1. Nạp chương từ trang 1 đã có
-    this.parseChaps(meta.firstPageDoc, baseUrl).forEach(c => {
-      chaptersMap.set(c.fetchUrl, c);
-    });
-
-    // 2. Thu thập từ trang 2 đến trang lastPage (có giãn cách tránh 429)
-    for (let p = 2; p <= meta.lastPage; p++) {
-      if (signal?.aborted) throw new DOMException("Đã hủy", "AbortError");
-      updateProgress(3, `Đang lấy danh mục chương: trang [${p}/${meta.lastPage}]...`);
-
-      try {
-        const pageHtml = await fetchProxy(`${meta.storyUrl}/page/${p}`, false, signal);
-        if (pageHtml) {
-          const pageDoc = parseDom(pageHtml);
-          const chaps = this.parseChaps(pageDoc, baseUrl);
-          chaps.forEach(c => chaptersMap.set(c.fetchUrl, c));
-        }
-      } catch (err) {
-        console.warn(`Lỗi lấy mục lục trang ${p}:`, err);
-      }
-      await delay(250, signal);
+    if (!totalPages || totalPages <= 1) {
+      return storyMeta.chaptersList;
     }
 
-    // 3. Gom cả 4 chương mới nhất ở đầu trang 1 phòng khi trang 9 thiếu
-    const newChapLinks = meta.firstPageDoc.querySelectorAll('#new-chapter .list-chapter li a');
-    newChapLinks.forEach(a => {
-      const href = a.getAttribute('href');
-      const text = a.querySelector('.chapter-text')?.innerText.trim() || a.innerText.trim();
-      const fullUrl = href.startsWith('http') ? href : `${baseUrl}${href}`;
-      if (!chaptersMap.has(fullUrl)) {
-        chaptersMap.set(fullUrl, { title: text, fetchUrl: fullUrl });
+    const pageUrls = [];
+    for (let p = 1; p <= totalPages; p++) {
+      pageUrls.push(p === 1 ? `https://sstruyen.net/truyen/${slug}` : `https://sstruyen.net/truyen/${slug}/page/${p}`);
+    }
+
+    const allChapters = [];
+    const BATCH_SIZE = 5;
+
+    for (let i = 0; i < pageUrls.length; i += BATCH_SIZE) {
+      if (signal?.aborted) throw new DOMException("Đã hủy quá trình tải danh mục chương.", "AbortError");
+
+      const chunk = pageUrls.slice(i, i + BATCH_SIZE);
+      const results = await fetchBatch(chunk, signal);
+
+      results.forEach(res => {
+        if (res && res.content) {
+          const doc = parseDom(res.content);
+          doc.querySelectorAll('#list-chapter .list-chapter li a').forEach(a => {
+            const href = a.getAttribute('href');
+            if (href) {
+              const fullUrl = href.startsWith('http') ? href : `https://sstruyen.net${href}`;
+              allChapters.push({
+                title: a.querySelector('.chapter-text')?.innerText?.trim() || a.innerText.trim(),
+                url: fullUrl,
+                fetchUrl: fullUrl
+              });
+            }
+          });
+        }
+      });
+
+      if (typeof updateProgress === 'function') {
+        const pct = Math.min(5, Math.round(((i + chunk.length) / pageUrls.length) * 5));
+        updateProgress(pct, `Đang quét danh mục chương: [${Math.min(i + BATCH_SIZE, pageUrls.length)}/${pageUrls.length}] trang...`);
       }
-    });
+    }
 
-    // Sắp xếp theo số chương chuẩn xác
-    const list = Array.from(chaptersMap.values());
-    list.sort((a, b) => {
-      const numA = (a.fetchUrl.match(/chuong-(\d+)/i) || a.title.match(/(\d+)/) || [0, 0])[1];
-      const numB = (b.fetchUrl.match(/chuong-(\d+)/i) || b.title.match(/(\d+)/) || [0, 0])[1];
-      return parseInt(numA, 10) - parseInt(numB, 10);
-    });
-
-    return list;
+    return allChapters.length > 0 ? allChapters : storyMeta.chaptersList;
   },
 
-  async fetchChapterContent(chapterItem, { fetchProxy, parseDom, signal }) {
-    const chapHtml = await fetchProxy(chapterItem.fetchUrl, false, signal);
-    const chapDoc = parseDom(chapHtml);
-    const contentEl = chapDoc.querySelector('.chapter-content, .content-container, #chapter-c');
+  // 4. Fallback cào nội dung chương đơn lẻ
+  async fetchChapterContent(chapterItem, context) {
+    const { fetchProxy, parseDom, signal } = context;
+    const htmlText = await fetchProxy(chapterItem.fetchUrl, false, signal);
+    if (!htmlText) return "<p>[Không thể tải nội dung chương]</p>";
+
+    const doc = parseDom(htmlText);
+    const contentEl = doc.querySelector('.chapter-content') || doc.querySelector('#chapter-c') || doc.querySelector('.content');
+
     if (contentEl) {
-      contentEl.querySelectorAll('div, script, ins, style, iframe, .ads').forEach(n => n.remove());
+      contentEl.querySelectorAll('script, style, .ads, .ad-box, iframe').forEach(el => el.remove());
       return contentEl.innerHTML.trim();
     }
+
     return "<p>[Nội dung chương trống]</p>";
   }
 };
+
+export default SSTruyenScraper;
