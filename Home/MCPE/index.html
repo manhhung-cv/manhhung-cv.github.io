@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html lang="vi" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>MCPE Cosmos - Trạm Tài Nguyên Không Gian Tối Giản</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <!-- Google Fonts: Be Vietnam Pro & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+
+    <style>
+        :root {
+            --font-sans: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --space-bg: #06070b;
+            --surface-card: #0c0f18;
+            --surface-elevated: #111522;
+            --border-subtle: rgba(255, 255, 255, 0.07);
+            --border-amber: rgba(245, 158, 11, 0.35);
+            --amber-accent: #f59e0b;
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        * {
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--space-bg);
+            color: #e2e8f0;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding-bottom: calc(4.5rem + var(--safe-bottom));
+        }
+
+        @media (min-width: 768px) {
+            body {
+                padding-bottom: 2rem;
+            }
+        }
+
+        .font-mono {
+            font-family: var(--font-mono);
+        }
+
+        /* Nền vũ trụ phẳng tối giản */
+        .flat-space-bg {
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            pointer-events: none;
+            background-color: #06070b;
+            background-image:
+                radial-gradient(circle at 50% 10%, rgba(245, 158, 11, 0.08) 0%, transparent 60%),
+                radial-gradient(circle at 85% 80%, rgba(56, 189, 248, 0.05) 0%, transparent 50%),
+                url('Gemini_Generated_Image_hnowcvhnowcvhnow.jpeg'),
+                url('background.jpg');
+            background-size: cover;
+            background-position: center 20%;
+            background-repeat: no-repeat;
+            opacity: 0.88;
+        }
+
+        .flat-space-veil {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(6, 7, 11, 0.85) 0%, rgba(6, 7, 11, 0.94) 50%, #06070b 100%);
+        }
+
+        /* Thẻ phẳng Minimal Flat Card */
+        .flat-card {
+            background-color: var(--surface-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 0.875rem;
+            transition: border-color 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+        }
+
+        .flat-card:hover {
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        /* Nút phẳng tối giản */
+        .btn-flat-primary {
+            background-color: #f59e0b;
+            color: #050505;
+            font-weight: 700;
+            transition: all 0.15s ease;
+        }
+
+        .btn-flat-primary:hover {
+            background-color: #fbbf24;
+        }
+
+        .btn-flat-primary:active {
+            transform: scale(0.97);
+        }
+
+        .btn-flat-ghost {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-subtle);
+            color: #cbd5e1;
+            transition: all 0.15s ease;
+        }
+
+        .btn-flat-ghost:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.18);
+            color: #ffffff;
+        }
+
+        .btn-flat-ghost:active {
+            transform: scale(0.97);
+        }
+
+        /* Thanh cuộn tối giản */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+            background: #06070b;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #1e2536;
+            border-radius: 9999px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f59e0b;
+        }
+    </style>
+</head>
+
+<body class="flex flex-col min-h-screen selection:bg-amber-500 selection:text-black">
+
+    <div class="flat-space-bg"></div>
+    <div class="flat-space-veil"></div>
+    <canvas id="starfieldCanvas" class="fixed inset-0 pointer-events-none z-[-1]"></canvas>
+
+    <!-- Header tối giản dạng phẳng -->
+    <header class="sticky top-0 z-40 bg-[#06070b]/92 backdrop-blur-md border-b border-white/[0.06]">
+        <div class="max-w-7xl mx-auto px-3.5 sm:px-6">
+            <div class="flex items-center justify-between h-14 sm:h-16 gap-3">
+
+                <!-- Logo MCPE Cosmos -->
+                <a href="#" onclick="resetFilters(); triggerHaptic();" class="flex items-center gap-2.5 flex-shrink-0">
+                    <div
+                        class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xs">
+                        <i class="fa-solid fa-atom"></i>
+                    </div>
+                    <div class="leading-tight">
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-extrabold text-sm tracking-tight text-white">MCPE<span
+                                    class="text-amber-400">.COSMOS</span></span>
+                            <span
+                                class="text-[9px] font-mono px-1 py-0.2 rounded bg-white/5 border border-white/10 text-zinc-400 hidden sm:inline">FLAT</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Thanh tìm kiếm tối giản trung tâm (Desktop) -->
+                <div class="hidden md:flex flex-1 max-w-sm mx-4">
+                    <div class="relative w-full">
+                        <input type="text" id="desktopSearchInput" placeholder="Tìm kiếm mod, addon, bản đồ..."
+                            class="w-full bg-[#0d101a] border border-white/10 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400/80 transition-colors"
+                            oninput="syncSearch(this.value)">
+                        <i
+                            class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-[11px]"></i>
+                    </div>
+                </div>
+
+                <!-- Thao tác trên thanh điều hướng -->
+                <div class="flex items-center gap-1.5 sm:gap-2">
+                    <button onclick="toggleFavoritesModal(); triggerHaptic();"
+                        class="btn-flat-ghost rounded-lg px-2.5 sm:px-3 h-8 sm:h-9 flex items-center gap-1.5 text-xs"
+                        title="Rương lưu trữ">
+                        <i class="fa-solid fa-box-archive text-amber-400 text-xs"></i>
+                        <span class="hidden sm:inline">Rương trữ</span>
+                        <span id="headerFavCount"
+                            class="font-mono text-[10px] text-amber-300 font-bold bg-amber-500/15 px-1.5 py-0.2 rounded">0</span>
+                    </button>
+
+                    <button onclick="openProxyConfigModal(); triggerHaptic();"
+                        class="btn-flat-ghost rounded-lg px-2.5 h-8 sm:h-9 flex items-center gap-1.5 text-xs"
+                        title="Cấu hình Cloudflare Worker Proxy">
+                        <i class="fa-solid fa-server text-emerald-400 text-xs"></i>
+                        <span class="font-mono text-[10px] text-emerald-400 hidden sm:inline"
+                            id="proxyStatusBadge">Proxy</span>
+                    </button>
+
+                    <button onclick="openSubmitModal(); triggerHaptic();"
+                        class="btn-flat-primary rounded-lg px-3 h-8 sm:h-9 flex items-center gap-1.5 text-xs">
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                        <span class="hidden sm:inline">Thêm Tài Nguyên</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <section class="max-w-7xl mx-auto px-3.5 sm:px-6 pt-3 sm:pt-5 pb-1 w-full">
+        <div class="flat-card p-3.5 sm:p-5 bg-gradient-to-b from-[#0e1220] to-[#0a0c14] border border-white/[0.08]">
+            <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 sm:gap-4">
+
+                <div class="space-y-1">
+                    <div
+                        class="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold text-amber-400">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        Cổng Trích Xuất & Phân Phối Trực Tiếp
+                    </div>
+                    <h1 class="text-sm sm:text-lg font-bold text-white tracking-tight">
+                        Kho Tài Nguyên MCPE <span class="text-amber-400">Minimal Space</span>
+                    </h1>
+                    <p class="text-[11px] sm:text-xs text-zinc-400 max-w-xl leading-relaxed">
+                        Hỗ trợ bóc tách link CurseForge siêu tốc và tải trực tiếp từ nguồn riêng (GitHub, CDN, Drive)
+                        không qua trung gian.
+                    </p>
+                </div>
+
+                <!-- Dải thống kê tối giản Flat Stats -->
+                <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs w-full sm:w-auto">
+                    <div
+                        class="px-2 py-1 rounded-lg bg-[#070910] border border-white/5 flex items-center gap-1.5 flex-1 sm:flex-none justify-center">
+                        <span class="text-zinc-400 text-[10px]">Tổng:</span>
+                        <span id="statLinksCount" class="font-mono text-amber-400 font-bold">0</span>
+                    </div>
+                    <div
+                        class="px-2 py-1 rounded-lg bg-[#070910] border border-white/5 flex items-center gap-1.5 flex-1 sm:flex-none justify-center">
+                        <span class="text-zinc-400 text-[10px]">Addon:</span>
+                        <span id="statAddons" class="font-mono text-purple-400 font-bold">0</span>
+                    </div>
+                    <div
+                        class="px-2 py-1 rounded-lg bg-[#070910] border border-white/5 flex items-center gap-1.5 flex-1 sm:flex-none justify-center">
+                        <span class="text-zinc-400 text-[10px]">Bản đồ:</span>
+                        <span id="statMaps" class="font-mono text-amber-300 font-bold">0</span>
+                    </div>
+                    <div
+                        class="px-2 py-1 rounded-lg bg-[#070910] border border-white/5 flex items-center gap-1.5 flex-1 sm:flex-none justify-center">
+                        <span class="text-zinc-400 text-[10px]">Tiện ích:</span>
+                        <span id="statMods" class="font-mono text-sky-400 font-bold">0</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Dòng nạp nhanh link CurseForge hoặc nguồn riêng -->
+            <form onsubmit="handleQuickAddLink(event);"
+                class="mt-3 pt-3 border-t border-white/[0.06] flex flex-col sm:flex-row items-center gap-2">
+                <div class="relative w-full flex-1">
+                    <i class="fa-solid fa-link absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs"></i>
+                    <input type="url" id="quickLinkInput" required placeholder="Dán link CurseForge hoặc nguồn riêng..."
+                        class="w-full bg-[#060810] border border-white/10 rounded-lg pl-8 pr-16 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400 font-mono">
+                    <button type="button" onclick="pasteFromClipboard();"
+                        class="absolute right-1.5 top-1/2 -translate-y-1/2 px-2 py-0.5 bg-white/5 hover:bg-white/10 text-zinc-300 text-[10px] rounded active:scale-95">
+                        Dán
+                    </button>
+                </div>
+                <button type="submit"
+                    class="btn-flat-primary w-full sm:w-auto px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-satellite-dish text-[10px]"></i>
+                    <span>Trích xuất & Thêm</span>
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-3.5 sm:px-6 py-2 flex-1 w-full space-y-2.5">
+
+        <div class="flex flex-col gap-2">
+            <!-- Tabs danh mục phẳng cuộn mượt -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+                <button onclick="setCategory('all'); triggerHaptic();"
+                    class="category-btn active px-3 py-1.5 rounded-lg bg-white/5 border border-amber-500/40 text-amber-400 font-semibold flex items-center gap-1.5 whitespace-nowrap"
+                    data-cat="all">
+                    <span>Tất cả</span>
+                    <span id="badgeCatAll" class="font-mono text-[10px] px-1 rounded bg-white/10 text-white">0</span>
+                </button>
+                <button onclick="setCategory('addon'); triggerHaptic();"
+                    class="category-btn px-3 py-1.5 rounded-lg bg-transparent border border-white/5 text-zinc-400 hover:text-white font-medium flex items-center gap-1.5 whitespace-nowrap"
+                    data-cat="addon">
+                    <span>Addons</span>
+                    <span id="badgeCatAddon"
+                        class="font-mono text-[10px] px-1 rounded bg-white/10 text-zinc-400">0</span>
+                </button>
+                <button onclick="setCategory('map'); triggerHaptic();"
+                    class="category-btn px-3 py-1.5 rounded-lg bg-transparent border border-white/5 text-zinc-400 hover:text-white font-medium flex items-center gap-1.5 whitespace-nowrap"
+                    data-cat="map">
+                    <span>Bản đồ</span>
+                    <span id="badgeCatMap" class="font-mono text-[10px] px-1 rounded bg-white/10 text-zinc-400">0</span>
+                </button>
+                <button onclick="setCategory('mod'); triggerHaptic();"
+                    class="category-btn px-3 py-1.5 rounded-lg bg-transparent border border-white/5 text-zinc-400 hover:text-white font-medium flex items-center gap-1.5 whitespace-nowrap"
+                    data-cat="mod">
+                    <span>Tiện ích</span>
+                    <span id="badgeCatMod" class="font-mono text-[10px] px-1 rounded bg-white/10 text-zinc-400">0</span>
+                </button>
+            </div>
+
+            <!-- Thanh điều khiển: Tìm kiếm Mobile, Nút Dịch toàn bộ, Sắp xếp -->
+            <div class="flat-card p-2.5 flex flex-col md:flex-row items-center justify-between gap-2 text-xs">
+                <div class="relative w-full md:hidden">
+                    <input type="text" id="mobileSearchInput" placeholder="Tìm kiếm mod, addon..."
+                        class="w-full bg-[#070910] border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
+                        oninput="syncSearch(this.value)">
+                    <i
+                        class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 text-[10px]"></i>
+                </div>
+
+                <div
+                    class="flex items-center justify-between w-full md:w-auto gap-3 text-zinc-400 text-[11px] sm:text-xs">
+                    <span>Hiển thị: <b id="resultCount" class="text-amber-400 font-mono font-bold">0</b></span>
+
+                    <!-- Nút Dịch toàn bộ mượt mà -->
+                    <button id="translateAllBtn" onclick="toggleTranslateAll(); triggerHaptic();"
+                        class="text-sky-400 hover:text-sky-300 flex items-center gap-1 font-medium transition-colors">
+                        <i class="fa-solid fa-language text-xs"></i>
+                        <span id="translateAllBtnText">Dịch toàn bộ</span>
+                        <span id="translateAllProgress"
+                            class="hidden font-mono text-[10px] bg-sky-500/10 px-1 rounded text-sky-300"></span>
+                    </button>
+
+                    <button onclick="reloadAllCurseforgeData(); triggerHaptic();"
+                        class="text-zinc-400 hover:text-amber-300 flex items-center gap-1 transition-colors">
+                        <i class="fa-solid fa-arrows-rotate text-[10px]"></i> Làm mới
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                    <div class="relative min-w-[125px] w-full sm:w-auto">
+                        <select id="sortSelect" onchange="handleSort(this.value);"
+                            class="w-full bg-[#060810] border border-white/10 text-zinc-300 text-xs rounded-lg px-2.5 py-1.5 pr-6 focus:outline-none focus:border-amber-400 appearance-none font-medium">
+                            <option value="newest">Mới cập nhật</option>
+                            <option value="title">Tên (A → Z)</option>
+                        </select>
+                        <i
+                            class="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none text-[9px]"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lưới danh sách Card tài nguyên Minimal Flat Space -->
+        <div id="itemsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+            <!-- Nạp động qua JavaScript -->
+        </div>
+
+        <!-- Trạng thái trống -->
+        <div id="emptyState" class="hidden flat-card p-8 sm:p-10 text-center">
+            <div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center mx-auto text-amber-400 mb-2">
+                <i class="fa-solid fa-satellite-dish"></i>
+            </div>
+            <h3 class="text-xs sm:text-sm font-bold text-white">Không tìm thấy tài nguyên phù hợp</h3>
+            <p class="text-[11px] text-zinc-500 mt-0.5">Hãy dán link CurseForge hoặc thử từ khóa tìm kiếm khác.</p>
+        </div>
+
+    </main>
+
+    <!-- Thanh điều hướng đáy dành riêng cho thiết bị di động (Mobile Bottom Bar) -->
+    <nav
+        class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#06070b]/95 backdrop-blur-lg border-t border-white/[0.08] px-3 py-1.5 flex items-center justify-around text-zinc-400 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <button onclick="resetFilters(); triggerHaptic();"
+            class="flex flex-col items-center gap-0.5 py-1 px-2.5 text-[10px] text-amber-400">
+            <i class="fa-solid fa-compass text-sm"></i>
+            <span>Khám phá</span>
+        </button>
+
+        <button onclick="focusMobileSearch(); triggerHaptic();"
+            class="flex flex-col items-center gap-0.5 py-1 px-2.5 text-[10px] text-zinc-400 hover:text-white">
+            <i class="fa-solid fa-magnifying-glass text-sm"></i>
+            <span>Tìm kiếm</span>
+        </button>
+
+        <!-- Nút Thêm nổi bật ở giữa -->
+        <button onclick="openSubmitModal(); triggerHaptic();"
+            class="w-10 h-10 -mt-3 rounded-full bg-amber-500 text-black flex items-center justify-center shadow-lg shadow-amber-500/30 active:scale-95">
+            <i class="fa-solid fa-plus text-sm"></i>
+        </button>
+
+        <button onclick="toggleFavoritesModal(); triggerHaptic();"
+            class="flex flex-col items-center gap-0.5 py-1 px-2.5 text-[10px] text-zinc-400 hover:text-white relative">
+            <i class="fa-solid fa-box-archive text-sm"></i>
+            <span>Rương đồ</span>
+            <span id="mobileFavBadge"
+                class="absolute top-0.5 right-1 w-3.5 h-3.5 rounded-full bg-amber-500 text-black font-mono font-bold text-[8px] flex items-center justify-center">0</span>
+        </button>
+
+        <button onclick="openProxyConfigModal(); triggerHaptic();"
+            class="flex flex-col items-center gap-0.5 py-1 px-2.5 text-[10px] text-zinc-400 hover:text-white">
+            <i class="fa-solid fa-server text-sm"></i>
+            <span>Proxy</span>
+        </button>
+    </nav>
+
+    <!-- Modal Chi tiết tài nguyên (Bottom Sheet trên di động) -->
+    <div id="detailModal"
+        class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
+        <div
+            class="relative w-full h-full max-w-xl bg-[#0b0e18] rounded-t-2xl sm:rounded-xl  flex flex-col overflow-hidden border border-white/10">
+
+            <!-- Thanh kéo chỉ báo di động -->
+            <div class="w-10 h-1 bg-zinc-700 rounded-full mx-auto my-2 sm:hidden flex-shrink-0"></div>
+
+            <div
+                class="px-4 py-2.5 border-b border-white/[0.08] flex items-center justify-between flex-shrink-0 bg-[#080a12]">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span class="text-xs font-bold text-zinc-200">Chi Tiết Tài Nguyên</span>
+                </div>
+                <button onclick="closeDetailModal(); triggerHaptic();"
+                    class="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center text-xs transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Banner bìa tối giản -->
+            <div class="relative h-36 sm:h-44 w-full bg-[#05060a] flex-shrink-0 overflow-hidden">
+                <img id="modalCover" src="" alt="Thumbnail" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-gradient-to-t from-[#0b0e18] via-[#0b0e18]/40 to-transparent"></div>
+
+                <div class="absolute bottom-2.5 left-4 right-4 flex items-end justify-between text-xs">
+                    <div class="flex items-center gap-1.5">
+                        <span id="modalCategoryBadge"
+                            class="px-2 py-0.5 rounded bg-black/70 border border-white/10 text-[10px] font-bold uppercase text-white"></span>
+                        <span id="modalVersionBadge"
+                            class="px-2 py-0.5 rounded bg-black/70 border border-amber-500/30 font-mono text-[10px] text-amber-300">1.21+</span>
+                    </div>
+                    <span id="modalFileSize"
+                        class="font-mono text-[10px] text-zinc-400 px-2 py-0.5 rounded bg-black/70 border border-white/10"></span>
+                </div>
+            </div>
+
+            <!-- Thân Modal cuộn -->
+            <div class="p-4 overflow-y-auto space-y-3 flex-1 bg-[#0b0e18]">
+                <div>
+                    <div class="flex items-start justify-between gap-3">
+                        <h2 id="modalTitle" class="text-sm sm:text-base font-bold text-white"></h2>
+                        <button id="modalFavBtn" onclick="toggleFavoriteFromModal(); triggerHaptic();"
+                            class="p-2 rounded-lg bg-white/5 text-zinc-400 hover:text-red-400 transition-colors">
+                            <i class="fa-regular fa-heart text-xs"></i>
+                        </button>
+                    </div>
+
+                    <!-- Nút Dịch Google & Link Gốc -->
+                    <div
+                        class="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2 border-t border-white/[0.06]">
+                        <div class="text-[11px] text-zinc-400">
+                            Nguồn: <b id="modalAuthor" class="text-zinc-200">CurseForge</b>
+                        </div>
+
+                        <div class="flex items-center gap-1.5">
+                            <button id="googleTranslateBtn" onclick="toggleGoogleTranslation(); triggerHaptic();"
+                                class="px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-xs font-semibold flex items-center gap-1.5 transition-colors active:scale-95">
+                                <i class="fa-solid fa-language text-xs"></i>
+                                <span id="translateBtnText">Dịch tiếng Việt</span>
+                            </button>
+
+                            <a id="modalAuthorLink" href="#" target="_blank" rel="noopener noreferrer"
+                                class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 text-xs font-medium flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> Link gốc
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs chi tiết -->
+                <div class="flex gap-1.5 border-b border-white/[0.08] pb-1 text-xs font-semibold">
+                    <button onclick="switchModalTab('desc'); triggerHaptic();" id="tabBtnDesc"
+                        class="px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30">Mô tả &
+                        Tải về</button>
+                    <button onclick="switchModalTab('install'); triggerHaptic();" id="tabBtnInstall"
+                        class="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white">Cài đặt</button>
+                </div>
+
+                <!-- Tab 1: Mô tả & Trích xuất file -->
+                <div id="tabContentDesc" class="space-y-3 text-xs text-zinc-300">
+                    <div class="p-3 rounded-lg bg-[#070910] border border-white/5 space-y-1">
+                        <div
+                            class="flex items-center justify-between text-[10px] text-zinc-500 pb-1 border-b border-white/5">
+                            <span>TÓM TẮT NỘI DUNG</span>
+                            <span id="translationStateBadge" class="font-mono">Ngôn ngữ gốc</span>
+                        </div>
+                        <p id="modalDescription" class="leading-relaxed text-zinc-300 pt-0.5"></p>
+                    </div>
+
+                    <!-- Phần danh sách tệp tải về -->
+                    <div class="p-3 rounded-lg bg-[#070910] border border-white/5 space-y-2">
+                        <div class="flex items-center justify-between pb-1.5 border-b border-white/5">
+                            <span class="font-semibold text-white text-[11px] flex items-center gap-1.5">
+                                <i class="fa-solid fa-file-arrow-down text-amber-400"></i> Danh Sách Tệp Tải Về
+                            </span>
+                            <span id="extractorBadge"
+                                class="font-mono text-[9px] px-1.5 py-0.2 rounded bg-white/5 text-zinc-400">
+                                Đang kiểm tra...
+                            </span>
+                        </div>
+
+                        <!-- Vòng quay tải -->
+                        <div id="proxyLoading" class="py-4 text-center text-zinc-500 space-y-1.5">
+                            <div
+                                class="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto">
+                            </div>
+                            <p class="text-[11px]">Đang trích xuất tệp...</p>
+                        </div>
+
+                        <!-- Danh sách tệp được render -->
+                        <div id="proxyFilesContainer" class="hidden space-y-1.5"></div>
+
+                        <!-- Thông báo lỗi proxy -->
+                        <div id="proxyErrorNotice"
+                            class="hidden p-2.5 rounded bg-red-950/30 border border-red-800/40 text-red-300 text-xs flex items-center justify-between">
+                            <span class="text-[11px]">Không thể bóc tách file từ Proxy</span>
+                            <a id="fallbackRawLinkBtn" href="#" target="_blank" rel="noopener noreferrer"
+                                class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px]">
+                                Mở link gốc
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Hướng dẫn cài đặt -->
+                <div id="tabContentInstall" class="hidden space-y-2.5 text-xs text-zinc-300">
+                    <div id="customInstructionsBox"
+                        class="p-3 rounded-lg bg-[#070910] border border-amber-500/20 space-y-1 hidden">
+                        <h4 class="font-bold text-amber-300 text-[11px]">
+                            <i class="fa-solid fa-circle-info mr-1"></i> Ghi chú & Cách sử dụng
+                        </h4>
+                        <p id="customInstructionsText"
+                            class="text-zinc-300 whitespace-pre-line leading-relaxed text-[11px]"></p>
+                    </div>
+
+                    <div
+                        class="p-3 rounded-lg bg-[#070910] border border-white/5 space-y-1.5 text-zinc-400 text-[11px]">
+                        <p class="text-zinc-200 font-semibold mb-1">Cách kích hoạt trên Minecraft PE (Bedrock):</p>
+                        <p>1. Tải tệp định dạng <span class="font-mono text-amber-300">.mcaddon / .mcworld /
+                                .mcpack</span> về máy.</p>
+                        <p>2. Chạm trực tiếp vào tệp tải về để game Minecraft tự động khởi động và nạp gói.</p>
+                        <p>3. Trong cài đặt thế giới, vào mục <b>Resource Packs</b> và <b>Behavior Packs</b> để bật gói
+                            tài nguyên.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Modal cố định ngón tay cái -->
+            <div
+                class="p-3 bg-[#080a12] border-t border-white/[0.08] flex items-center justify-between gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <span class="text-[10px] text-zinc-500 font-mono hidden sm:inline">Minecraft Bedrock Edition</span>
+                <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <button onclick="copyShareLink(); triggerHaptic();"
+                        class="btn-flat-ghost rounded-lg px-3 py-2 text-xs flex-1 sm:flex-none">
+                        <i class="fa-solid fa-share-nodes mr-1"></i> Chia sẻ
+                    </button>
+                    <button id="downloadActionBtn" onclick="startDownloadProcess(); triggerHaptic();"
+                        class="btn-flat-primary rounded-lg px-4 py-2 text-xs flex items-center justify-center gap-1.5 flex-1 sm:flex-none font-bold">
+                        <i class="fa-solid fa-download text-[10px]"></i> Tải về ngay
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal Rương Lưu Trữ -->
+    <div id="favoritesModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex justify-end">
+        <div class="w-full max-w-sm bg-[#0a0d16] h-full flex flex-col border-l border-white/10">
+            <div class="p-3.5 border-b border-white/10 flex items-center justify-between bg-[#070910]">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-box-archive text-amber-400 text-xs"></i>
+                    <h3 class="text-xs font-bold text-white uppercase tracking-wider">Rương Lưu Trữ</h3>
+                </div>
+                <button onclick="toggleFavoritesModal(); triggerHaptic();"
+                    class="w-7 h-7 rounded-lg bg-white/5 text-zinc-400 hover:text-white flex items-center justify-center text-xs">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div id="favoritesList" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
+
+            <div class="p-3 border-t border-white/10 bg-[#070910] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <button onclick="clearAllFavorites(); triggerHaptic();"
+                    class="w-full py-2 rounded-lg bg-red-950/30 hover:bg-red-900/40 text-red-300 border border-red-800/40 text-xs font-medium transition-colors">
+                    Dọn sạch rương
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Thêm Tài Nguyên Mới -->
+    <div id="submitModal"
+        class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div
+            class="relative w-full max-w-md bg-[#0b0e18] rounded-xl p-4 sm:p-5 border border-white/10 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between pb-2.5 border-b border-white/10 mb-3">
+                <h3 class="text-xs font-bold text-white uppercase tracking-wider">Thêm Tài Nguyên Mới</h3>
+                <button onclick="closeSubmitModal(); triggerHaptic();"
+                    class="w-7 h-7 rounded-lg bg-white/5 text-zinc-400 hover:text-white flex items-center justify-center text-xs">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleResourceSubmit(event);" class="space-y-2.5 text-xs">
+                <div>
+                    <label class="block text-zinc-400 mb-1">Đường dẫn CurseForge hoặc Nguồn riêng <span
+                            class="text-amber-400">*</span></label>
+                    <input type="url" id="modalLinkInput" required
+                        placeholder="https://www.curseforge.com/... hoặc https://github.com/..."
+                        class="w-full bg-[#060810] border border-white/10 rounded-lg px-3 py-1.5 text-white font-mono text-[11px] focus:outline-none focus:border-amber-400">
+                    <p class="text-[10px] text-zinc-500 mt-0.5">Với link CurseForge, các ô dưới để trống sẽ tự động bóc
+                        tách.</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-zinc-400 mb-1">Link tải trực tiếp</label>
+                        <input type="url" id="modalDownloadUrlInput" placeholder="https://.../mod.mcaddon"
+                            class="w-full bg-[#060810] border border-white/10 rounded-lg px-2.5 py-1.5 text-white text-[11px] font-mono focus:outline-none focus:border-amber-400">
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1">Ảnh bìa (URL)</label>
+                        <input type="url" id="modalCoverInput" placeholder="https://.../cover.jpg"
+                            class="w-full bg-[#060810] border border-white/10 rounded-lg px-2.5 py-1.5 text-white text-[11px] focus:outline-none focus:border-amber-400">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-zinc-400 mb-1">Tác giả</label>
+                        <input type="text" id="modalAuthorInput" placeholder="Tên tác giả"
+                            class="w-full bg-[#060810] border border-white/10 rounded-lg px-2.5 py-1.5 text-white text-[11px] focus:outline-none focus:border-amber-400">
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1">Dung lượng</label>
+                        <input type="text" id="modalFileSizeInput" placeholder="Ví dụ: 12.5 MB"
+                            class="w-full bg-[#060810] border border-white/10 rounded-lg px-2.5 py-1.5 text-white text-[11px] focus:outline-none focus:border-amber-400">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between p-2 rounded-lg bg-sky-500/10 border border-sky-500/20">
+                    <span class="text-[10px] text-sky-300">Dùng nguồn ngoài (GitHub, MediaFire, Drive)?</span>
+                    <button type="button" onclick="fillCustomSourceTemplate(); triggerHaptic();"
+                        class="px-2 py-0.5 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 rounded text-[10px] font-bold">
+                        Điền mẫu thử
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-zinc-400 mb-1">Tên tài nguyên</label>
+                        <input type="text" id="modalTitleInput" placeholder="Để trống lấy từ link"
+                            class="w-full bg-[#060810] border border-white/10 rounded-lg px-2.5 py-1.5 text-white text-[11px] focus:outline-none focus:border-amber-400">
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1">Phân loại</label>
+                        <select id="modalCategoryInput"
+                            class="w-full bg-[#060810] border border-white/10 rounded-lg px-2 py-1.5 text-zinc-300 text-[11px] focus:outline-none focus:border-amber-400">
+                            <option value="">Tự nhận diện</option>
+                            <option value="addon">Addon</option>
+                            <option value="map">Bản đồ (Map)</option>
+                            <option value="mod">Tiện ích (Mod)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-zinc-400 mb-1">Mô tả tóm tắt</label>
+                    <textarea id="modalDescInput" rows="2" placeholder="Mô tả nội dung..."
+                        class="w-full bg-[#060810] border border-white/10 rounded-lg p-2 text-white text-[11px] focus:outline-none focus:border-amber-400"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-zinc-400 mb-1">Hướng dẫn sử dụng</label>
+                    <textarea id="modalInstructionsInput" rows="2" placeholder="Ghi chú lệnh hoặc cách chơi..."
+                        class="w-full bg-[#060810] border border-white/10 rounded-lg p-2 text-white text-[11px] focus:outline-none focus:border-amber-400"></textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+                    <button type="button" onclick="closeSubmitModal(); triggerHaptic();"
+                        class="px-3 py-1.5 text-zinc-400 hover:text-white text-xs">Hủy</button>
+                    <button type="submit" class="btn-flat-primary px-4 py-1.5 rounded-lg text-xs font-bold">Thêm
+                        ngay</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Cấu hình Proxy Worker -->
+    <div id="proxyConfigModal"
+        class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="relative w-full max-w-sm bg-[#0b0e18] rounded-xl p-4 border border-white/10 space-y-3 text-xs">
+            <div class="flex items-center justify-between pb-2 border-b border-white/10">
+                <span class="font-bold text-white text-xs">Cấu hình Worker Proxy</span>
+                <button onclick="closeProxyConfigModal(); triggerHaptic();"
+                    class="w-6 h-6 rounded bg-white/5 text-zinc-400 hover:text-white flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div>
+                <label class="block text-zinc-400 mb-1">Địa chỉ Cloudflare Worker</label>
+                <input type="text" id="configProxyUrlInput"
+                    class="w-full px-2.5 py-1.5 bg-[#060810] border border-white/10 rounded-lg text-white font-mono text-[11px]">
+            </div>
+            <div>
+                <label class="block text-zinc-400 mb-1">Phương thức truyền URL</label>
+                <select id="configProxyMethodSelect"
+                    class="w-full px-2 py-1.5 bg-[#060810] border border-white/10 rounded-lg text-zinc-300 text-[11px]">
+                    <option value="query">Query (?url=...)</option>
+                    <option value="path">Nối tiếp (/https://...)</option>
+                </select>
+            </div>
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+                <button onclick="resetProxyConfig(); triggerHaptic();"
+                    class="px-3 py-1 text-zinc-400 hover:text-white text-xs">Mặc định</button>
+                <button onclick="saveProxyConfig(); triggerHaptic();"
+                    class="btn-flat-primary px-3 py-1 rounded-lg text-xs font-bold">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast thông báo tối giản -->
+    <div id="toast"
+        class="fixed bottom-16 sm:bottom-5 right-5 z-50 transform translate-y-16 opacity-0 pointer-events-none transition-all duration-200 bg-[#0c0f18] border border-white/15 rounded-lg px-3.5 py-2 text-white flex items-center gap-2 text-xs shadow-xl">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-amber-400"></i>
+        <span id="toastMsg">Thông báo</span>
+    </div>
+
+    <script>
+        // Dữ liệu ban đầu bao gồm cả CurseForge và nguồn riêng
+        const DEFAULT_RESOURCES = [
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/texture-packs/the-ty-els-vietnamese-language-pack",
+                title: "Gói Tiếng Việt The Ty Els",
+                category: "",
+                downloadUrl: "",
+                cover: "",
+                author: "tlgm2308",
+                fileSize: "",
+                description: "Gói dịch tiếng Việt cho Minecraft Bedrock Edition, giúp người chơi trải nghiệm game bằng ngôn ngữ Việt Nam.",
+                instructions: ""
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/addons/dls-vanilla-waypoints",
+                title: "",
+                category: "",
+                downloadUrl: "",
+                cover: "",
+                author: "",
+                fileSize: "",
+                description: "",
+                instructions: "Chế tạo Waypoint Compass bằng la bàn và đá đỏ để lưu tọa độ dịch chuyển tức thời."
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/addons/morph-into-mobs",
+                title: "",
+                category: "",
+                downloadUrl: "",
+                cover: "",
+                author: "",
+                fileSize: "",
+                description: "",
+                instructions: "Chế tạo Waypoint Compass bằng la bàn và đá đỏ để lưu tọa độ dịch chuyển tức thời."
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/texture-packs/xiaoboost-ultimate",
+                title: "",
+                category: "",
+                downloadUrl: "",
+                cover: "",
+                author: "",
+                fileSize: "",
+                description: "Giảm lag, tăng FPS cho Minecraft Bedrock Edition trên thiết bị di động và máy tính bảng.",
+                instructions: ""
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/maps/dta-one-block-made-by-dta-mc"
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/maps/squid-game-daniye",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/texture-packs/fps-optimizer-fps-boost",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/texture-packs/prizma-pbr-deferred-pack",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/texture-packs/realsource-realistic-pack",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/texture-packs/bare-bones-be",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/texture-packs/poggy-s-luminous-dreams-deferred-renderer-shader-pack-beta",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/texture-packs/the-ty-els-settings-overlay-ui-pack",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/addons/more-body-actions-pickup-carry-cf",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/addons/multiplayer-waypoint-system-cf",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/addons/rise-and-survive",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/maps/ape-one-block-wars",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/maps/dta-one-block-made-by-dta-mchttps://www.curseforge.com/minecraft-bedrock/maps/ultimate-pvp-map-one-click-kits-crystal-mace-spear",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/maps/granny-samtiaka",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/maps/ocean-one-block",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/maps/lethalcraft",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/maps/battle-mini-game",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/maps/multiplayer-one-block",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/maps/survival-100-days-bakuthebuilder",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/maps/survival-island-achievements-on",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/maps/all-in-one-map-v2-50-games-bot-pvp-mlg-races-boss",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/maps/subow",
+            },
+            {
+                link: "https://www.curseforge.com/minecraft-bedrock/maps/ultimate-pvp-map-one-click-kits-crystal-mace-spear",
+            },
+            {
+                link: "",
+            },
+            {
+                link: "",
+            },
+
+
+
+        ];
+
+        // Đọc dữ liệu từ bộ nhớ
+        let rawStoredData = localStorage.getItem('mcpe_curseforge_links');
+        let resourceItems = [];
+
+        try {
+            const parsed = JSON.parse(rawStoredData || 'null');
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                resourceItems = parsed.map(item => typeof item === 'string' ? { link: item, title: '', category: '', description: '', instructions: '' } : item);
+            } else {
+                resourceItems = [...DEFAULT_RESOURCES];
+            }
+        } catch (e) {
+            resourceItems = [...DEFAULT_RESOURCES];
+        }
+
+        let parsedItemsCache = JSON.parse(localStorage.getItem('mcpe_parsed_cache') || '{}');
+
+        // Cấu hình Proxy Worker
+        const DEFAULT_PROXY = "https://bold-night.year-tucking-0v.workers.dev/";
+        let currentProxy = localStorage.getItem('cf_proxy_url') || DEFAULT_PROXY;
+        let proxyMethod = localStorage.getItem('cf_proxy_method') || 'query';
+
+        let activeItem = null;
+        let activeTranslation = null;
+        let currentCategory = 'all';
+        let searchQuery = '';
+        let currentSort = 'newest';
+        let favorites = JSON.parse(localStorage.getItem('mcpe_cosmic_favs') || '[]');
+
+        let translationStore = JSON.parse(localStorage.getItem('mcpe_translation_store') || '{}');
+        let isTranslatedAll = false;
+        let isTranslatingAll = false;
+
+        const proxyFetchQueue = [];
+        let isProcessingQueue = false;
+        let cardObserver = null;
+
+        // Phản hồi xúc giác Haptic cho mobile
+        function triggerHaptic() {
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                navigator.vibrate(15);
+            }
+        }
+
+        function isCurseforgeUrl(url) {
+            return typeof url === 'string' && url.includes('curseforge.com');
+        }
+
+        function buildProxyUrl(targetUrl, method = proxyMethod) {
+            const cleanProxy = currentProxy.endsWith('/') ? currentProxy : currentProxy + '/';
+            if (method === 'query') {
+                return `${cleanProxy}?url=${encodeURIComponent(targetUrl)}`;
+            } else {
+                return `${cleanProxy}${targetUrl.replace(/^https?:\/\//, '')}`;
+            }
+        }
+
+        function updateProxyBadgeText() {
+            const badge = document.getElementById('proxyStatusBadge');
+            if (!badge) return;
+            try {
+                const u = new URL(currentProxy);
+                badge.textContent = u.hostname.split('.')[0] || 'Proxy';
+            } catch (e) {
+                badge.textContent = 'Proxy';
+            }
+        }
+
+        function parseCurseforgeMetaFromUrl(url) {
+            try {
+                const parsed = new URL(url);
+                const segments = parsed.pathname.split('/').filter(Boolean);
+                let game = 'minecraft-bedrock';
+                let category = 'addon';
+                let slug = 'addon';
+
+                if (segments.length >= 3) {
+                    game = segments[0];
+                    const rawCat = segments[1].toLowerCase();
+                    if (rawCat.includes('map')) category = 'map';
+                    else if (rawCat.includes('mod')) category = 'mod';
+                    else category = 'addon';
+                    slug = segments[2];
+                } else if (segments.length === 2) {
+                    game = segments[0];
+                    slug = segments[1];
+                } else if (segments.length === 1) {
+                    slug = segments[0];
+                }
+
+                const readableTitle = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+                return { link: url, slug, game, category, defaultTitle: readableTitle };
+            } catch (e) {
+                return { link: url, slug: 'curseforge-pack', game: 'minecraft-bedrock', category: 'addon', defaultTitle: 'CurseForge Resource' };
+            }
+        }
+
+        async function fetchCurseforgeResource(itemOrUrl, forceRefresh = false) {
+            const userItem = typeof itemOrUrl === 'string' ? { link: itemOrUrl } : itemOrUrl;
+            const targetUrl = userItem.link;
+            const isCF = isCurseforgeUrl(targetUrl);
+            const meta = parseCurseforgeMetaFromUrl(targetUrl);
+
+            let cached = parsedItemsCache[targetUrl];
+            if (!cached || forceRefresh) {
+                const defaultTitle = userItem.title || meta.defaultTitle;
+                cached = {
+                    link: targetUrl,
+                    slug: meta.slug,
+                    title: defaultTitle,
+                    category: userItem.category || meta.category,
+                    version: userItem.version || "1.21+",
+                    fileSize: userItem.fileSize || "Tự do",
+                    fileType: ".mcaddon",
+                    author: userItem.author || (isCF ? "CurseForge" : "Tác giả"),
+                    authorUrl: userItem.authorUrl || targetUrl,
+                    cover: userItem.cover || ("https://placehold.co/600x400/0c0f18/f59e0b?text=" + encodeURIComponent(defaultTitle)),
+                    description: userItem.description || `Tài nguyên Minecraft Bedrock: ${defaultTitle}.`,
+                    instructions: userItem.instructions || "",
+                    downloadUrl: userItem.downloadUrl || "",
+                    files: []
+                };
+
+                // Nguồn riêng: Tải trực tiếp, hoàn toàn không qua proxy
+                if (!isCF) {
+                    const directUrl = userItem.downloadUrl || targetUrl;
+                    const fileName = directUrl.split('/').pop().split('?')[0] || `${meta.slug}.mcaddon`;
+                    cached.files = [{
+                        id: 'custom_direct',
+                        displayName: cached.title,
+                        fileName: fileName.includes('.') ? fileName : `${fileName}.mcaddon`,
+                        fileLength: 0,
+                        releaseType: 'Direct',
+                        gameVersions: ['Bedrock 1.21+'],
+                        downloadUrl: directUrl,
+                        date: 'Mới'
+                    }];
+                    parsedItemsCache[targetUrl] = cached;
+                    localStorage.setItem('mcpe_parsed_cache', JSON.stringify(parsedItemsCache));
+                } else {
+                    // Nguồn CurseForge: Bóc tách qua proxy
+                    const proxyUrl = buildProxyUrl(targetUrl);
+                    try {
+                        const response = await fetch(proxyUrl, {
+                            headers: { 'Accept': 'text/html,application/xhtml+xml,application/xml,application/json' }
+                        });
+
+                        if (response.ok) {
+                            const contentType = response.headers.get('content-type') || '';
+                            if (contentType.includes('application/json')) {
+                                const json = await response.json();
+                                const p = json.data || json;
+                                if (p.name) cached.title = p.name;
+                                if (p.summary) cached.description = p.summary;
+                                if (p.logo?.url || p.avatarUrl) cached.cover = p.logo?.url || p.avatarUrl;
+                                if (p.authors && p.authors[0]) cached.author = p.authors[0].name;
+                                if (p.latestFiles) {
+                                    cached.files = p.latestFiles.map(f => ({
+                                        id: f.id,
+                                        displayName: f.displayName || f.fileName,
+                                        fileName: f.fileName,
+                                        fileLength: f.fileLength || 0,
+                                        releaseType: f.releaseType === 1 ? 'Release' : 'Beta',
+                                        gameVersions: f.gameVersions || ['Bedrock'],
+                                        downloadUrl: f.downloadUrl || `https://www.curseforge.com/api/v1/mods/${p.id || f.modId}/files/${f.id}/download`,
+                                        date: f.fileDate ? new Date(f.fileDate).toLocaleDateString('vi-VN') : 'Mới'
+                                    }));
+                                }
+                            } else {
+                                const html = await response.text();
+                                const parser = new DOMParser();
+                                const doc = parser.parseFromString(html, 'text/html');
+
+                                const nextDataEl = doc.getElementById('__NEXT_DATA__');
+                                if (nextDataEl) {
+                                    try {
+                                        const nextData = JSON.parse(nextDataEl.textContent);
+                                        const pageProps = nextData?.props?.pageProps;
+                                        const project = pageProps?.project || pageProps?.mod || pageProps?.initialData?.project;
+
+                                        if (project) {
+                                            if (project.name) cached.title = project.name;
+                                            if (project.summary) cached.description = project.summary;
+                                            if (project.avatarUrl || project.logo?.url) cached.cover = project.avatarUrl || project.logo?.url;
+                                            if (project.authors && project.authors.length > 0) {
+                                                cached.author = project.authors[0].name || project.authors[0].username || cached.author;
+                                            }
+                                        }
+
+                                        const rawFiles = pageProps?.files || pageProps?.initialData?.files || project?.latestFiles || [];
+                                        if (Array.isArray(rawFiles) && rawFiles.length > 0) {
+                                            cached.files = rawFiles.map(f => ({
+                                                id: f.id,
+                                                displayName: f.displayName || f.fileName || `${meta.slug}.mcaddon`,
+                                                fileName: f.fileName || `${meta.slug}.mcaddon`,
+                                                fileLength: f.fileLength || 0,
+                                                releaseType: f.releaseType === 1 ? 'Release' : (f.releaseType === 2 ? 'Beta' : 'Alpha'),
+                                                gameVersions: f.gameVersions || ['Bedrock'],
+                                                downloadUrl: f.downloadUrl || `https://www.curseforge.com/api/v1/mods/${project?.id || f.modId}/files/${f.id}/download`,
+                                                date: f.fileDate ? new Date(f.fileDate).toLocaleDateString('vi-VN') : 'Mới'
+                                            }));
+                                        }
+                                    } catch (errJson) {
+                                        console.warn("Lỗi phân tích __NEXT_DATA__:", errJson);
+                                    }
+                                }
+
+                                const ogTitle = doc.querySelector('meta[property="og:title"]');
+                                if (ogTitle && ogTitle.content && (!cached.title || cached.title === meta.defaultTitle)) {
+                                    cached.title = ogTitle.content.split('-')[0].trim();
+                                }
+                                const ogDesc = doc.querySelector('meta[property="og:description"]');
+                                if (ogDesc && ogDesc.content) cached.description = ogDesc.content;
+                                const ogImg = doc.querySelector('meta[property="og:image"]');
+                                if (ogImg && ogImg.content) cached.cover = ogImg.content;
+                            }
+                        }
+                    } catch (fetchErr) {
+                        console.warn(`Lỗi nạp online cho ${targetUrl}:`, fetchErr);
+                    }
+
+                    if (!cached.files || cached.files.length === 0) {
+                        cached.files = [{
+                            id: 'latest',
+                            displayName: `${cached.title} (Bản mới)`,
+                            fileName: `${meta.slug}.mcaddon`,
+                            fileLength: 0,
+                            releaseType: 'Release',
+                            gameVersions: ['Bedrock 1.21+'],
+                            downloadUrl: `${targetUrl}/download`,
+                            date: 'Mới'
+                        }];
+                    }
+
+                    parsedItemsCache[targetUrl] = cached;
+                    localStorage.setItem('mcpe_parsed_cache', JSON.stringify(parsedItemsCache));
+                }
+            }
+
+            return {
+                ...cached,
+                title: (userItem.title && userItem.title.trim()) ? userItem.title.trim() : cached.title,
+                category: (userItem.category && userItem.category.trim()) ? userItem.category.trim() : cached.category,
+                description: (userItem.description && userItem.description.trim()) ? userItem.description.trim() : cached.description,
+                instructions: (userItem.instructions && userItem.instructions.trim()) ? userItem.instructions.trim() : (cached.instructions || ""),
+                downloadUrl: userItem.downloadUrl || cached.downloadUrl || ""
+            };
+        }
+
+        function enqueueProxyFetch(item) {
+            if (!isCurseforgeUrl(item.link)) {
+                if (!parsedItemsCache[item.link]) fetchCurseforgeResource(item);
+                return;
+            }
+
+            const cached = parsedItemsCache[item.link];
+            if (cached && cached.files && cached.files.length > 0 && cached.cover && !cached.cover.includes('placehold.co')) {
+                return;
+            }
+            if (proxyFetchQueue.some(i => i.link === item.link)) return;
+
+            proxyFetchQueue.push(item);
+            processProxyQueue();
+        }
+
+        async function processProxyQueue() {
+            if (isProcessingQueue || proxyFetchQueue.length === 0) return;
+            isProcessingQueue = true;
+
+            const nextItem = proxyFetchQueue.shift();
+            try {
+                const res = await fetchCurseforgeResource(nextItem);
+                updateSingleCardDOM(res);
+            } catch (err) {
+                console.warn("Lỗi proxy queue:", err);
+            }
+
+            setTimeout(() => {
+                isProcessingQueue = false;
+                processProxyQueue();
+            }, 300);
+        }
+
+        function updateSingleCardDOM(item) {
+            const cardEl = document.querySelector(`[data-card-link="${encodeURIComponent(item.link)}"]`);
+            if (!cardEl) return;
+
+            const imgEl = cardEl.querySelector('.card-img');
+            if (imgEl && item.cover && !imgEl.src.includes(item.cover)) {
+                imgEl.src = item.cover;
+            }
+
+            const titleEl = cardEl.querySelector('.card-title');
+            const descEl = cardEl.querySelector('.card-desc');
+
+            if (isTranslatedAll && translationStore[item.link]) {
+                const t = translationStore[item.link];
+                if (titleEl) titleEl.textContent = t.title;
+                if (descEl) descEl.textContent = t.desc;
+            } else {
+                if (titleEl && !titleEl.textContent.trim()) titleEl.textContent = item.title;
+                if (descEl && !descEl.textContent.trim()) descEl.textContent = item.description;
+            }
+        }
+
+        async function translateWithGoogle(text, targetLang = 'vi') {
+            if (!text || !text.trim()) return text;
+            const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+
+            try {
+                const res = await fetch(googleUrl);
+                if (!res.ok) throw new Error("Google direct error");
+                const json = await res.json();
+                if (json && json[0]) {
+                    return json[0].map(item => item[0]).join('');
+                }
+            } catch (errDirect) {
+                try {
+                    const proxiedGoogle = buildProxyUrl(googleUrl);
+                    const resProxy = await fetch(proxiedGoogle);
+                    const jsonProxy = await resProxy.json();
+                    if (jsonProxy && jsonProxy[0]) {
+                        return jsonProxy[0].map(item => item[0]).join('');
+                    }
+                } catch (errProxy) {
+                    throw new Error("Không thể kết nối máy chủ Google Dịch.");
+                }
+            }
+            return text;
+        }
+
+        async function toggleTranslateAll() {
+            if (isTranslatingAll) return;
+            const btnText = document.getElementById('translateAllBtnText');
+            const progressBadge = document.getElementById('translateAllProgress');
+
+            if (isTranslatedAll) {
+                isTranslatedAll = false;
+                btnText.textContent = "Dịch toàn bộ";
+                progressBadge.classList.add('hidden');
+                renderItems();
+                showToast("Đã khôi phục ngôn ngữ gốc", "info");
+                return;
+            }
+
+            isTranslatingAll = true;
+            btnText.textContent = "Đang dịch...";
+            progressBadge.classList.remove('hidden');
+
+            const total = resourceItems.length;
+            let current = 0;
+
+            for (const item of resourceItems) {
+                current++;
+                progressBadge.textContent = `${current}/${total}`;
+
+                if (!translationStore[item.link]) {
+                    try {
+                        const cached = parsedItemsCache[item.link] || {};
+                        const rawTitle = (item.title && item.title.trim()) || cached.title || parseCurseforgeMetaFromUrl(item.link).defaultTitle;
+                        const rawDesc = (item.description && item.description.trim()) || cached.description || `Tài nguyên: ${rawTitle}`;
+
+                        const [viTitle, viDesc] = await Promise.all([
+                            translateWithGoogle(rawTitle),
+                            translateWithGoogle(rawDesc)
+                        ]);
+
+                        translationStore[item.link] = { title: viTitle, desc: viDesc };
+                        localStorage.setItem('mcpe_translation_store', JSON.stringify(translationStore));
+                    } catch (e) {
+                        console.warn("Lỗi dịch link:", item.link);
+                    }
+                    await new Promise(r => setTimeout(r, 80));
+                }
+
+                const cardEl = document.querySelector(`[data-card-link="${encodeURIComponent(item.link)}"]`);
+                if (cardEl && translationStore[item.link]) {
+                    const titleEl = cardEl.querySelector('.card-title');
+                    const descEl = cardEl.querySelector('.card-desc');
+                    if (titleEl) titleEl.textContent = translationStore[item.link].title;
+                    if (descEl) descEl.textContent = translationStore[item.link].desc;
+                }
+            }
+
+            isTranslatingAll = false;
+            isTranslatedAll = true;
+            btnText.textContent = "Bản gốc";
+            progressBadge.textContent = "Hoàn tất";
+            showToast("Đã dịch toàn bộ sang tiếng Việt!", "success");
+        }
+
+        async function toggleGoogleTranslation() {
+            if (!activeItem) return;
+
+            const btnText = document.getElementById('translateBtnText');
+            const stateBadge = document.getElementById('translationStateBadge');
+            const titleEl = document.getElementById('modalTitle');
+            const descEl = document.getElementById('modalDescription');
+
+            if (activeTranslation) {
+                titleEl.textContent = activeTranslation.originalTitle;
+                descEl.textContent = activeTranslation.originalDesc;
+                btnText.textContent = "Dịch tiếng Việt";
+                stateBadge.textContent = "Ngôn ngữ gốc";
+                activeTranslation = null;
+                showToast("Đã khôi phục ngôn ngữ gốc", "info");
+                return;
+            }
+
+            btnText.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Đang dịch...`;
+            try {
+                const [transTitle, transDesc] = await Promise.all([
+                    translateWithGoogle(activeItem.title),
+                    translateWithGoogle(activeItem.description)
+                ]);
+
+                activeTranslation = {
+                    originalTitle: activeItem.title,
+                    originalDesc: activeItem.description,
+                    viTitle: transTitle,
+                    viDesc: transDesc
+                };
+
+                titleEl.textContent = transTitle;
+                descEl.textContent = transDesc;
+                btnText.textContent = "Bản gốc";
+                stateBadge.textContent = "Đã dịch Google";
+                showToast("Đã dịch sang tiếng Việt!", "success");
+            } catch (e) {
+                showToast(e.message || "Lỗi khi dịch", "error");
+                btnText.textContent = "Dịch tiếng Việt";
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function updateRealStats() {
+            const allItems = resourceItems.map(item => {
+                const cached = parsedItemsCache[item.link] || {};
+                return {
+                    category: item.category || cached.category || parseCurseforgeMetaFromUrl(item.link).category
+                };
+            });
+
+            const mapCount = allItems.filter(i => i.category === 'map').length;
+            const addonCount = allItems.filter(i => i.category === 'addon').length;
+            const modCount = allItems.filter(i => i.category === 'mod').length;
+
+            document.getElementById('statLinksCount').textContent = resourceItems.length;
+            document.getElementById('statAddons').textContent = addonCount;
+            document.getElementById('statMaps').textContent = mapCount;
+            document.getElementById('statMods').textContent = modCount;
+
+            document.getElementById('badgeCatAll').textContent = resourceItems.length;
+            document.getElementById('badgeCatAddon').textContent = addonCount;
+            document.getElementById('badgeCatMap').textContent = mapCount;
+            document.getElementById('badgeCatMod').textContent = modCount;
+
+            const badge = document.getElementById('headerFavCount');
+            if (badge) badge.textContent = favorites.length;
+
+            const mobileBadge = document.getElementById('mobileFavBadge');
+            if (mobileBadge) mobileBadge.textContent = favorites.length;
+        }
+
+        async function renderItems() {
+            const grid = document.getElementById('itemsGrid');
+            const emptyState = document.getElementById('emptyState');
+            const resultCount = document.getElementById('resultCount');
+
+            if (resourceItems.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                resultCount.textContent = '0';
+                updateRealStats();
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            const cardsHtml = resourceItems.map(item => {
+                const cached = parsedItemsCache[item.link] || {};
+                const meta = parseCurseforgeMetaFromUrl(item.link);
+                const isCF = isCurseforgeUrl(item.link);
+
+                const translated = isTranslatedAll ? translationStore[item.link] : null;
+
+                const resolvedTitle = (translated && translated.title) || (item.title && item.title.trim()) || cached.title || meta.defaultTitle;
+                const resolvedCategory = (item.category && item.category.trim()) || cached.category || meta.category;
+                const resolvedDesc = (translated && translated.desc) || (item.description && item.description.trim()) || cached.description || `Tài nguyên Minecraft: ${resolvedTitle}`;
+                const resolvedCover = item.cover || cached.cover || `https://placehold.co/240x240/0c0f18/f59e0b?text=${encodeURIComponent(meta.slug.substring(0, 4))}`;
+                const resolvedAuthor = item.author || cached.author || (isCF ? "CurseForge" : "Tác giả");
+
+                if (currentCategory !== 'all' && resolvedCategory !== currentCategory) return '';
+
+                if (searchQuery) {
+                    const q = searchQuery.toLowerCase().trim();
+                    const mTitle = resolvedTitle.toLowerCase().includes(q);
+                    const mAuthor = resolvedAuthor.toLowerCase().includes(q);
+                    const mDesc = resolvedDesc.toLowerCase().includes(q);
+                    if (!mTitle && !mAuthor && !mDesc) return '';
+                }
+
+                const isFav = favorites.includes(item.link);
+                const safeId = encodeURIComponent(item.link);
+
+                let catBadge = 'text-purple-400 bg-purple-500/10 border-purple-500/20';
+                if (resolvedCategory === 'map') catBadge = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+                if (resolvedCategory === 'mod') catBadge = 'text-sky-400 bg-sky-500/10 border-sky-500/20';
+
+                return `
+                <div 
+                    class="flat-card p-3 flex flex-col justify-between group"
+                    data-card-link="${safeId}"
+                >
+                    <!-- PHẦN 1: Ảnh đại diện 1 cột & Tên, Danh mục, Nút tải 1 cột -->
+                    <div class="flex items-start gap-2.5">
+                        <!-- Cột 1: Ảnh đại diện phẳng -->
+                        <div 
+                            onclick="openDetailModal('${safeId}'); triggerHaptic();" 
+                            class="relative w-20 h-20 rounded-lg overflow-hidden bg-[#060810] flex-shrink-0 cursor-pointer border border-white/[0.08]"
+                        >
+                            <img 
+                                src="${resolvedCover}" 
+                                alt="${resolvedTitle}" 
+                                class="card-img w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                loading="lazy"
+                                onerror="this.src='https://placehold.co/200x200/0c0f18/f59e0b?text=MCPE'"
+                            >
+                            <span class="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-black/80 font-mono text-[8px] ${isCF ? 'text-emerald-400 border border-emerald-500/20' : 'text-sky-400 border border-sky-500/20'}">
+                                ${isCF ? 'CF' : 'DIRECT'}
+                            </span>
+                        </div>
+
+                        <!-- Cột 2: Phân loại, Tiêu đề, Tác giả, Nút tải về -->
+                        <div class="flex-1 min-w-0 flex flex-col justify-between min-h-[5rem]">
+                            <div>
+                                <div class="flex items-center justify-between gap-1 mb-1">
+                                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider border ${catBadge}">
+                                        ${resolvedCategory}
+                                    </span>
+                                    <button 
+                                        onclick="toggleFavorite('${safeId}'); triggerHaptic();" 
+                                        class="p-1 text-zinc-500 hover:text-red-400 active:scale-90 transition-all"
+                                        title="Yêu thích"
+                                    >
+                                        <i class="fa-${isFav ? 'solid text-red-500' : 'regular'} fa-heart text-[12px]"></i>
+                                    </button>
+                                </div>
+                                
+                                <h3 
+                                    onclick="openDetailModal('${safeId}'); triggerHaptic();" 
+                                    class="card-title text-xs font-bold text-white group-hover:text-amber-400 transition-colors cursor-pointer line-clamp-2 leading-tight" 
+                                    title="${resolvedTitle}"
+                                >
+                                    ${resolvedTitle}
+                                </h3>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-1.5 pt-1.5">
+                                <span class="text-[10px] text-zinc-400 truncate max-w-[80px]" title="${resolvedAuthor}">
+                                    ${resolvedAuthor}
+                                </span>
+
+                                <button 
+                                    onclick="quickDownloadItem('${safeId}'); triggerHaptic();" 
+                                    class="btn-flat-primary px-2.5 py-1 rounded text-[10px] font-bold flex items-center gap-1 whitespace-nowrap active:scale-95"
+                                    title="${isCF ? 'Tải qua Proxy' : 'Tải trực tiếp'}"
+                                >
+                                    <i class="fa-solid fa-download text-[9px]"></i> Tải về
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PHẦN 2: Mô tả tóm tắt 1 dòng & Xem thêm -->
+                    <div class="pt-2 mt-2 border-t border-white/[0.06] flex items-center justify-between gap-2 text-[11px]">
+                        <p class="card-desc text-zinc-400 line-clamp-1 flex-1 font-light" title="${resolvedDesc}">
+                            ${resolvedDesc}
+                        </p>
+                        <button 
+                            onclick="openDetailModal('${safeId}'); triggerHaptic();" 
+                            class="text-amber-400 hover:text-amber-300 text-[10px] font-semibold flex items-center gap-1 whitespace-nowrap"
+                        >
+                            <span>Chi tiết</span>
+                            <i class="fa-solid fa-chevron-right text-[8px]"></i>
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).filter(Boolean);
+
+            grid.innerHTML = cardsHtml.join('');
+            resultCount.textContent = cardsHtml.length;
+            updateRealStats();
+
+            setupLazyCardObserver();
+        }
+
+        function setupLazyCardObserver() {
+            if (cardObserver) cardObserver.disconnect();
+
+            cardObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const targetUrl = decodeURIComponent(entry.target.getAttribute('data-card-link'));
+                        const userItem = resourceItems.find(i => i.link === targetUrl);
+                        if (userItem) enqueueProxyFetch(userItem);
+                        cardObserver.unobserve(entry.target);
+                    }
+                });
+            }, {
+                rootMargin: '80px 0px',
+                threshold: 0.05
+            });
+
+            document.querySelectorAll('[data-card-link]').forEach(el => cardObserver.observe(el));
+        }
+
+        // Tải nhanh: Nguồn riêng mở trực tiếp, Curseforge đi qua Proxy
+        function quickDownloadItem(encodedLink) {
+            const targetUrl = decodeURIComponent(encodedLink);
+            const userItem = resourceItems.find(i => i.link === targetUrl) || { link: targetUrl };
+            const cached = parsedItemsCache[targetUrl];
+            const isCF = isCurseforgeUrl(targetUrl);
+
+            const directUrl = userItem.downloadUrl || cached?.downloadUrl || cached?.files?.[0]?.downloadUrl;
+
+            if (directUrl) {
+                const finalUrl = isCF ? buildProxyUrl(directUrl) : directUrl;
+                showToast(`Đang mở tải ${isCF ? 'qua Proxy' : 'trực tiếp'}...`, 'info');
+                window.open(finalUrl, '_blank');
+            } else if (cached && cached.files && cached.files.length > 0) {
+                const file = cached.files[0];
+                const finalUrl = isCF ? buildProxyUrl(file.downloadUrl) : file.downloadUrl;
+                showToast(`Đang mở tải: ${file.displayName || file.fileName}...`, 'info');
+                window.open(finalUrl, '_blank');
+            } else {
+                openDetailModal(encodedLink);
+            }
+        }
+
+        function switchModalTab(tab) {
+            const descContent = document.getElementById('tabContentDesc');
+            const installContent = document.getElementById('tabContentInstall');
+            const descBtn = document.getElementById('tabBtnDesc');
+            const installBtn = document.getElementById('tabBtnInstall');
+
+            if (tab === 'desc') {
+                if (descContent) descContent.classList.remove('hidden');
+                if (installContent) installContent.classList.add('hidden');
+                if (descBtn) descBtn.className = "px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30";
+                if (installBtn) installBtn.className = "px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white";
+            } else {
+                if (descContent) descContent.classList.add('hidden');
+                if (installContent) installContent.classList.remove('hidden');
+                if (installBtn) installBtn.className = "px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30";
+                if (descBtn) descBtn.className = "px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white";
+            }
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            activeItem = null;
+            activeTranslation = null;
+        }
+
+        function startDownloadProcess() {
+            if (!activeItem) return;
+            const isCF = isCurseforgeUrl(activeItem.link);
+            const directTarget = activeItem.downloadUrl || activeItem.files?.[0]?.downloadUrl;
+
+            if (directTarget) {
+                const finalTarget = isCF ? buildProxyUrl(directTarget) : directTarget;
+                showToast(`Đang tải ${isCF ? 'qua Proxy' : 'trực tiếp'}...`, 'info');
+                window.open(finalTarget, '_blank');
+            } else {
+                window.open(activeItem.link, '_blank');
+            }
+        }
+
+        async function openDetailModal(encodedLink) {
+            const targetUrl = decodeURIComponent(encodedLink);
+            const modal = document.getElementById('detailModal');
+            const matchedUserItem = resourceItems.find(i => i.link === targetUrl) || { link: targetUrl };
+
+            activeTranslation = null;
+            document.getElementById('translateBtnText').textContent = "Dịch tiếng Việt";
+            document.getElementById('translationStateBadge').textContent = "Ngôn ngữ gốc";
+
+            modal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+
+            const item = await fetchCurseforgeResource(matchedUserItem);
+            activeItem = item;
+
+            document.getElementById('modalCover').src = item.cover;
+            document.getElementById('modalCategoryBadge').textContent = (item.category || 'ADDON').toUpperCase();
+            document.getElementById('modalFileSize').textContent = item.fileSize || 'Sẵn sàng';
+            document.getElementById('modalTitle').textContent = item.title;
+            document.getElementById('modalAuthor').textContent = item.author;
+            document.getElementById('modalAuthorLink').href = item.link;
+            document.getElementById('modalDescription').textContent = item.description;
+
+            const customGuideBox = document.getElementById('customInstructionsBox');
+            const customGuideText = document.getElementById('customInstructionsText');
+            if (item.instructions && item.instructions.trim()) {
+                customGuideText.textContent = item.instructions.trim();
+                customGuideBox.classList.remove('hidden');
+            } else {
+                customGuideBox.classList.add('hidden');
+            }
+
+            updateModalFavIcon();
+            switchModalTab('desc');
+            renderModalFiles(item);
+        }
+
+        function renderModalFiles(item) {
+            const filesContainer = document.getElementById('proxyFilesContainer');
+            const loading = document.getElementById('proxyLoading');
+            const errorNotice = document.getElementById('proxyErrorNotice');
+            const extractorBadge = document.getElementById('extractorBadge');
+            const fallbackBtn = document.getElementById('fallbackRawLinkBtn');
+
+            loading.classList.add('hidden');
+            errorNotice.classList.add('hidden');
+            fallbackBtn.href = item.link;
+
+            if (!item.files || item.files.length === 0) {
+                extractorBadge.textContent = 'Link gốc';
+                filesContainer.classList.add('hidden');
+                errorNotice.classList.remove('hidden');
+                return;
+            }
+
+            filesContainer.classList.remove('hidden');
+            const isCF = isCurseforgeUrl(item.link);
+            extractorBadge.textContent = isCF ? `${item.files.length} tệp trực tiếp` : 'Tải trực tiếp (Nguồn riêng)';
+
+            filesContainer.innerHTML = item.files.map(f => {
+                const downloadDirect = isCF ? buildProxyUrl(f.downloadUrl) : f.downloadUrl;
+                const sizeText = formatBytes(f.fileLength) || item.fileSize || 'Tự do';
+
+                return `
+                    <div class="p-2 rounded-lg bg-[#060810] border border-white/[0.08] flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[8px] px-1 py-0.2 rounded uppercase font-mono ${isCF ? 'text-emerald-400 bg-emerald-500/10' : 'text-sky-400 bg-sky-500/10'}">${f.releaseType || 'File'}</span>
+                                <h5 class="text-xs font-bold text-white truncate max-w-[170px] sm:max-w-xs">${f.displayName}</h5>
+                            </div>
+                            <div class="text-[10px] text-zinc-500 font-mono mt-0.5 flex items-center gap-1.5">
+                                <span>${f.fileName}</span>
+                                <span>•</span>
+                                <span class="text-amber-300">${sizeText}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <button onclick="copyToClipboardText('${f.downloadUrl}'); triggerHaptic();" class="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-zinc-400 text-xs" title="Sao chép link">
+                                <i class="fa-regular fa-copy"></i>
+                            </button>
+                            <a href="${downloadDirect}" target="_blank" rel="noopener noreferrer" class="btn-flat-primary px-2.5 py-1 rounded text-[10px] font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-download text-[9px]"></i> ${isCF ? 'Tải tệp' : 'Tải trực tiếp'}
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function handleResourceSubmit(e) {
+            e.preventDefault();
+            const link = document.getElementById('modalLinkInput').value.trim();
+            if (!link) return;
+
+            const title = document.getElementById('modalTitleInput')?.value?.trim() || '';
+            const category = document.getElementById('modalCategoryInput')?.value || '';
+            const downloadUrl = document.getElementById('modalDownloadUrlInput')?.value?.trim() || '';
+            const cover = document.getElementById('modalCoverInput')?.value?.trim() || '';
+            const author = document.getElementById('modalAuthorInput')?.value?.trim() || '';
+            const fileSize = document.getElementById('modalFileSizeInput')?.value?.trim() || '';
+            const description = document.getElementById('modalDescInput')?.value?.trim() || '';
+            const instructions = document.getElementById('modalInstructionsInput')?.value?.trim() || '';
+
+            await addNewItemToList({ link, downloadUrl, title, category, cover, author, fileSize, description, instructions });
+
+            closeSubmitModal();
+            ['modalLinkInput', 'modalTitleInput', 'modalCategoryInput', 'modalDownloadUrlInput', 'modalCoverInput', 'modalAuthorInput', 'modalFileSizeInput', 'modalDescInput', 'modalInstructionsInput']
+                .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        }
+
+        async function handleQuickAddLink(e) {
+            e.preventDefault();
+            const input = document.getElementById('quickLinkInput');
+            const link = input.value.trim();
+            if (!link) return;
+
+            await addNewItemToList({ link, title: '', category: '', description: '', instructions: '' });
+            input.value = '';
+        }
+
+        async function addNewItemToList(newItem) {
+            const existingIdx = resourceItems.findIndex(i => i.link === newItem.link);
+            if (existingIdx > -1) {
+                resourceItems[existingIdx] = { ...resourceItems[existingIdx], ...newItem };
+                showToast("Đã cập nhật thông tin tài nguyên!", "info");
+            } else {
+                resourceItems.unshift(newItem);
+                showToast("Đang đồng bộ dữ liệu...", "info");
+            }
+
+            localStorage.setItem('mcpe_curseforge_links', JSON.stringify(resourceItems));
+            renderItems();
+
+            await fetchCurseforgeResource(newItem, true);
+            renderItems();
+            showToast("Đã lưu tài nguyên thành công!", "success");
+        }
+
+        async function reloadAllCurseforgeData() {
+            showToast("Đang đồng bộ lại toàn bộ dữ liệu...", "info");
+            localStorage.removeItem('mcpe_parsed_cache');
+            parsedItemsCache = {};
+            renderItems();
+            resourceItems.forEach(item => enqueueProxyFetch(item));
+        }
+
+        async function pasteFromClipboard() {
+            try {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                        document.getElementById('quickLinkInput').value = text;
+                        showToast("Đã dán link!", "success");
+                        return;
+                    }
+                }
+                showToast("Hãy nhấn giữ để Dán link", "info");
+            } catch (err) {
+                showToast("Hãy nhấn giữ để Dán link", "info");
+            }
+        }
+
+        function toggleFavoritesModal() {
+            const modal = document.getElementById('favoritesModal');
+            if (modal.classList.contains('hidden')) {
+                renderFavoritesList();
+                modal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+            } else {
+                modal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
+
+        function toggleFavorite(encodedLink) {
+            const link = decodeURIComponent(encodedLink);
+            const idx = favorites.indexOf(link);
+            if (idx > -1) {
+                favorites.splice(idx, 1);
+                showToast("Đã xóa khỏi rương", "info");
+            } else {
+                favorites.push(link);
+                showToast("Đã thêm vào rương!", "success");
+            }
+            localStorage.setItem('mcpe_cosmic_favs', JSON.stringify(favorites));
+            updateRealStats();
+            renderItems();
+            if (activeItem && activeItem.link === link) updateModalFavIcon();
+            if (!document.getElementById('favoritesModal').classList.contains('hidden')) renderFavoritesList();
+        }
+
+        function toggleFavoriteFromModal() {
+            if (!activeItem) return;
+            toggleFavorite(encodeURIComponent(activeItem.link));
+        }
+
+        function updateModalFavIcon() {
+            const btn = document.getElementById('modalFavBtn');
+            if (!btn || !activeItem) return;
+            const isFav = favorites.includes(activeItem.link);
+            btn.innerHTML = `<i class="fa-${isFav ? 'solid text-red-500' : 'regular'} fa-heart text-xs"></i>`;
+        }
+
+        function renderFavoritesList() {
+            const list = document.getElementById('favoritesList');
+            const favItems = resourceItems.filter(i => favorites.includes(i.link));
+            if (favItems.length === 0) {
+                list.innerHTML = `<div class="py-12 text-center text-zinc-500 text-xs">Rương đồ hiện đang trống.</div>`;
+                return;
+            }
+            list.innerHTML = favItems.map(item => {
+                const cached = parsedItemsCache[item.link] || {};
+                const displayTitle = item.title || cached.title || item.link;
+                const displayCover = cached.cover || '';
+                const safeId = encodeURIComponent(item.link);
+                return `
+                    <div class="p-2 rounded-lg bg-[#060810] border border-white/5 flex items-center justify-between gap-2 text-xs">
+                        <div class="flex items-center gap-2 min-w-0 cursor-pointer" onclick="toggleFavoritesModal(); openDetailModal('${safeId}'); triggerHaptic();">
+                            <img src="${displayCover}" class="w-8 h-8 rounded object-cover flex-shrink-0" onerror="this.src='https://placehold.co/80x80/0c0f18/f59e0b?text=MCPE'">
+                            <div class="min-w-0">
+                                <h4 class="font-bold text-white truncate text-[11px]">${displayTitle}</h4>
+                            </div>
+                        </div>
+                        <button onclick="toggleFavorite('${safeId}'); triggerHaptic();" class="p-1 text-red-400 hover:text-red-300">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function clearAllFavorites() {
+            favorites = [];
+            localStorage.setItem('mcpe_cosmic_favs', JSON.stringify(favorites));
+            updateRealStats();
+            renderFavoritesList();
+            renderItems();
+            if (activeItem) updateModalFavIcon();
+            showToast("Đã dọn sạch rương lưu trữ", "info");
+        }
+
+        function setCategory(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                const active = btn.getAttribute('data-cat') === cat;
+                btn.className = active
+                    ? "category-btn active px-3 py-1.5 rounded-lg bg-white/5 border border-amber-500/40 text-amber-400 font-semibold flex items-center gap-1.5 whitespace-nowrap"
+                    : "category-btn px-3 py-1.5 rounded-lg bg-transparent border border-white/5 text-zinc-400 hover:text-white font-medium flex items-center gap-1.5 whitespace-nowrap";
+            });
+            renderItems();
+        }
+
+        function syncSearch(val) {
+            searchQuery = val;
+            const d = document.getElementById('desktopSearchInput');
+            const m = document.getElementById('mobileSearchInput');
+            if (d && d.value !== val) d.value = val;
+            if (m && m.value !== val) m.value = val;
+            renderItems();
+        }
+
+        function focusMobileSearch() {
+            const m = document.getElementById('mobileSearchInput');
+            if (m) {
+                m.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => m.focus(), 250);
+            }
+        }
+
+        function handleSort(val) {
+            currentSort = val;
+            if (val === 'title') {
+                resourceItems.sort((a, b) => {
+                    const tA = (a.title || parsedItemsCache[a.link]?.title || a.link).toLowerCase();
+                    const tB = (b.title || parsedItemsCache[b.link]?.title || b.link).toLowerCase();
+                    return tA.localeCompare(tB, 'vi');
+                });
+            } else {
+                try {
+                    resourceItems = JSON.parse(localStorage.getItem('mcpe_curseforge_links') || '[]');
+                } catch (e) { }
+            }
+            renderItems();
+        }
+
+        function resetFilters() {
+            currentCategory = 'all';
+            searchQuery = '';
+            document.getElementById('desktopSearchInput').value = '';
+            const m = document.getElementById('mobileSearchInput');
+            if (m) m.value = '';
+            setCategory('all');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function openSubmitModal() {
+            document.getElementById('submitModal').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closeSubmitModal() {
+            document.getElementById('submitModal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        function fillCustomSourceTemplate() {
+            document.getElementById('modalLinkInput').value = "https://github.com/my-addons/cosmic-warp";
+            document.getElementById('modalDownloadUrlInput').value = "https://cdn.mysite.com/downloads/CosmicWarp.mcaddon";
+            document.getElementById('modalTitleInput').value = "Cổng Dịch Chuyển Không Thời Gian (Cosmic Warp)";
+            document.getElementById('modalCategoryInput').value = "addon";
+            document.getElementById('modalCoverInput').value = "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=600&q=80";
+            document.getElementById('modalAuthorInput').value = "KhangMC";
+            document.getElementById('modalFileSizeInput').value = "8.4 MB";
+            document.getElementById('modalDescInput').value = "Thêm các vòng cổng dịch chuyển lượng tử giữa các chiều không gian Bedrock.";
+            document.getElementById('modalInstructionsInput').value = "Đặt 4 khối obsidian xung quanh 1 mắt ender để tạo cổng.";
+            showToast("Đã điền thông số nguồn riêng!", "info");
+        }
+
+        function openProxyConfigModal() {
+            document.getElementById('configProxyUrlInput').value = currentProxy;
+            document.getElementById('configProxyMethodSelect').value = proxyMethod;
+            document.getElementById('proxyConfigModal').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closeProxyConfigModal() {
+            document.getElementById('proxyConfigModal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        function saveProxyConfig() {
+            const val = document.getElementById('configProxyUrlInput').value.trim();
+            if (!val) return showToast("Địa chỉ không được để trống", "error");
+            currentProxy = val;
+            proxyMethod = document.getElementById('configProxyMethodSelect').value;
+            localStorage.setItem('cf_proxy_url', currentProxy);
+            localStorage.setItem('cf_proxy_method', proxyMethod);
+            updateProxyBadgeText();
+            closeProxyConfigModal();
+            showToast("Đã lưu cấu hình Proxy!", "success");
+        }
+
+        function resetProxyConfig() {
+            currentProxy = DEFAULT_PROXY;
+            proxyMethod = 'query';
+            localStorage.removeItem('cf_proxy_url');
+            localStorage.removeItem('cf_proxy_method');
+            updateProxyBadgeText();
+            closeProxyConfigModal();
+            showToast("Đã đặt lại mặc định", "info");
+        }
+
+        function copyToClipboardText(text) {
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = text;
+            dummy.select();
+            try {
+                document.execCommand('copy');
+                showToast("Đã sao chép liên kết!", "success");
+            } catch (e) {
+                showToast("Không thể sao chép", "error");
+            }
+            document.body.removeChild(dummy);
+        }
+
+        async function copyShareLink() {
+            if (!activeItem) return;
+            // Ưu tiên Native Web Share API trên mobile
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: activeItem.title,
+                        text: `Tải ${activeItem.title} cho Minecraft Bedrock:`,
+                        url: activeItem.link
+                    });
+                    return;
+                } catch (err) {
+                    // Người dùng hủy bỏ hoặc không hỗ trợ, fallback copy
+                }
+            }
+            copyToClipboardText(activeItem.link);
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMsg.textContent = msg;
+            if (type === 'success') {
+                toastIcon.className = 'fa-solid fa-circle-check text-amber-400';
+            } else if (type === 'error') {
+                toastIcon.className = 'fa-solid fa-triangle-exclamation text-red-400';
+            } else {
+                toastIcon.className = 'fa-solid fa-circle-info text-sky-400';
+            }
+
+            toast.classList.remove('translate-y-16', 'opacity-0', 'pointer-events-none');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.add('translate-y-16', 'opacity-0', 'pointer-events-none');
+                toast.classList.remove('translate-y-0', 'opacity-100');
+            }, 2200);
+        }
+
+        function initStarfieldCanvas() {
+            const canvas = document.getElementById('starfieldCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            let stars = [];
+            let w, h;
+
+            function resize() {
+                w = canvas.width = window.innerWidth;
+                h = canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            // Giảm số lượng hạt trên mobile để tiết kiệm pin
+            const isMobile = window.innerWidth < 768;
+            const count = isMobile ? 18 : 36;
+
+            for (let i = 0; i < count; i++) {
+                stars.push({
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    size: Math.random() * 1.1 + 0.3,
+                    speedY: (Math.random() * 0.12 + 0.04),
+                    opacity: Math.random() * 0.4 + 0.15,
+                    color: Math.random() > 0.4 ? '#f59e0b' : '#38bdf8'
+                });
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, w, h);
+                for (let s of stars) {
+                    s.y += s.speedY;
+                    if (s.y > h) s.y = 0;
+                    ctx.fillStyle = s.color;
+                    ctx.globalAlpha = s.opacity;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            updateProxyBadgeText();
+            initStarfieldCanvas();
+            renderItems();
+
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeDetailModal();
+                    closeSubmitModal();
+                    closeProxyConfigModal();
+                    document.getElementById('favoritesModal').classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
