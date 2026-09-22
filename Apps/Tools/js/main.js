@@ -1,91 +1,90 @@
 // js/main.js
-import { initDeviceMode, detectDeviceMode } from './device.js';
-import { initSpotlight } from './spotlight.js';
-import { initAppManager, showHomescreen, renderDesktopTabs } from './app-manager.js';
+import { initDeviceMode } from './device.js';
 import { 
     initSettings, 
-    applySystemAccent, 
-    applyDarkMode, 
+    checkFirstLaunchChoice, 
     syncWallpaperDisplay, 
+    applyDarkMode, 
+    applySystemAccent, 
     isDarkMode 
 } from './settings.js';
 import { 
     initLauncher, 
     initHomescreenPages, 
     renderDock, 
-    applyPureMinimalMode, 
-    updatePureMinimalClock, 
-    goToPage, 
-    getTargetHomePageIndex 
+    applyPureMinimalMode,
+    initMinimalSidebarEvents 
 } from './launcher.js';
+import { initAppManager, showHomescreen } from './app-manager.js';
+import { initSpotlight } from './spotlight.js';
 
-// Cập nhật đồng hồ hệ thống
-function updateOSClock() {
-    const clock = document.getElementById('os-clock');
-    const now = new Date();
-    if (clock) {
-        clock.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+function startClockTick() {
+    const osClock = document.getElementById('os-clock');
+    const updateTime = () => {
+        const d = new Date();
+        const str = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        if (osClock) osClock.textContent = str;
+    };
+    updateTime();
+    setInterval(updateTime, 1000);
+}
+
+function initBatteryMonitor() {
+    const pEl = document.getElementById('battery-percent');
+    if (!pEl) return;
+    if (navigator.getBattery) {
+        navigator.getBattery().then(battery => {
+            const updateBat = () => {
+                pEl.textContent = `${Math.round(battery.level * 100)}%`;
+            };
+            updateBat();
+            battery.addEventListener('levelchange', updateBat);
+        }).catch(() => {});
     }
-    const isPure = localStorage.getItem('hunqos_pure_minimal') === 'true';
-    if (isPure) updatePureMinimalClock();
-}
-setInterval(updateOSClock, 1000);
-updateOSClock();
-
-// Hiển thị trạng thái pin
-if ('getBattery' in navigator) {
-    navigator.getBattery().then(battery => {
-        const update = () => {
-            const el = document.getElementById('battery-percent');
-            if (el) el.textContent = `${Math.round(battery.level * 100)}%`;
-        };
-        update();
-        battery.addEventListener('levelchange', update);
-    });
 }
 
-// Khởi chạy hệ điều hành HunqOS
-async function initHunqOS() {
-    // 1. Khởi tạo thiết bị & form factor
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Khởi tạo accent & dark mode
+    const savedAccent = localStorage.getItem('hunqos_accent_color') || '#10b981';
+    applySystemAccent(savedAccent);
+    applyDarkMode(isDarkMode);
+
+    // 2. Đồng bộ Wallpaper
+    await syncWallpaperDisplay();
+
+    // 3. Khởi tạo Device Form Factor
     initDeviceMode(() => {
         initHomescreenPages();
-        renderDesktopTabs();
     });
 
-    // 2. Khởi tạo App Manager & đa nhiệm
+    // 4. Khởi tạo App Manager
     initAppManager({
         onGoHomePage: () => {
-            goToPage(getTargetHomePageIndex());
+            import('./launcher.js').then(m => {
+                const targetIdx = m.getTargetHomePageIndex();
+                m.goToPage(targetIdx);
+            });
         }
     });
 
-    // 3. Khởi tạo Spotlight & Cài đặt hệ thống
-    initSpotlight();
-    initSettings();
-
-    // 4. Khởi tạo Launcher & Bố cục icon
+    // 5. Khởi tạo Launcher & Dock
     initLauncher();
-
-    // 5. Nạp cấu hình lưu trữ
-    const isPure = localStorage.getItem('hunqos_pure_minimal') === 'true';
-    const accent = localStorage.getItem('hunqos_accent_color') || '#10b981';
-
-    applyPureMinimalMode(isPure);
-    applySystemAccent(accent);
-    applyDarkMode(isDarkMode);
-    detectDeviceMode();
-    await syncWallpaperDisplay();
-
-    // 6. Hiển thị Homescreen & Dock
+    initHomescreenPages();
     renderDock();
-    initHomescreenPages();
+
+    // 6. Khởi tạo Cài đặt & Spotlight
+    initSettings();
+    initSpotlight();
+
+    // 7. Đồng hồ & Pin
+    startClockTick();
+    initBatteryMonitor();
+
+    // 8. Áp dụng chế độ giao diện hiện tại
+    const isPureMinimal = localStorage.getItem('hunqos_pure_minimal') === 'true';
+    applyPureMinimalMode(isPureMinimal);
     showHomescreen();
-}
 
-window.addEventListener('resize', () => {
-    detectDeviceMode();
-    initHomescreenPages();
-    renderDesktopTabs();
+    // 9. Kiểm tra lần đầu tiên truy cập để hỏi người dùng chọn giao diện
+    checkFirstLaunchChoice();
 });
-
-initHunqOS();

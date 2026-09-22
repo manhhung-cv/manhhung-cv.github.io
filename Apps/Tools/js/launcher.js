@@ -3,12 +3,17 @@ import { CATEGORIES as CONFIG_CATEGORIES, TOOLS } from './config.js';
 import { UI } from './ui.js';
 import { getGridColumns } from './device.js';
 import { getRecentToolIds, getToolData } from './app-manager.js';
-import { isPureMinimal } from './settings.js';
+import { syncWallpaperDisplay } from './settings.js';
 
+// Trạng thái HunqOS
 let isCompactGridMode = localStorage.getItem('hunqos_compact_grid') === 'true';
-let minimalSelectedCategory = 'all';
 let currentPageIndex = 0;
 let totalPages = 1;
+
+// Trạng thái Pure Minimal Web Portal
+let minimalCurrentCat = 'all';
+let minimalFavorites = JSON.parse(localStorage.getItem('hunqos_min_favs') || '[]');
+let minimalViewMode = localStorage.getItem('hunqos_min_view') || 'grid';
 
 function resolveColorCss(colorValue, isBackground = true) {
     if (!colorValue || typeof colorValue !== 'string') return '';
@@ -25,6 +30,9 @@ export function computeIconStyles(tool) {
     return { bgStyle, iconStyle, iconClass: '' };
 }
 
+/* ========================================================
+   1. BỐ CỤC HUNQOS OS LAUNCHER
+   ======================================================== */
 function createLayoutFromCategories() {
     const layout = {};
     let pageIdx = 0;
@@ -452,119 +460,293 @@ export function renderDock() {
     }).join('');
 }
 
-// Pure Minimal Functions
-export function updatePureMinimalClock() {
-    const clock = document.getElementById('minimal-clock');
-    const date = document.getElementById('minimal-date');
-    const now = new Date();
-    if (clock) clock.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    if (date) {
-        const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
-        date.textContent = `${days[now.getDay()]}, ${now.getDate()} tháng ${now.getMonth() + 1}`;
-    }
+/* ========================================================
+   2. BỐ CỤC PURE MINIMAL (SAAS RESPONSIVE DASHBOARD)
+   ======================================================== */
+function saveMinimalFavorites() {
+    localStorage.setItem('hunqos_min_favs', JSON.stringify(minimalFavorites));
+    updateMinimalBadges();
 }
 
-function renderPureMinimalCategories() {
-    const tabContainer = document.getElementById('minimal-category-tabs');
-    if (!tabContainer) return;
-    const allCats = [{ id: 'all', name: 'Tất cả', icon: 'fas fa-border-all' }, ...CONFIG_CATEGORIES];
+window.toggleMinimalFav = (toolId, event) => {
+    if (event) event.stopPropagation();
+    if (minimalFavorites.includes(toolId)) {
+        minimalFavorites = minimalFavorites.filter(id => id !== toolId);
+    } else {
+        minimalFavorites.push(toolId);
+    }
+    saveMinimalFavorites();
+    renderPureMinimalDashboard(document.getElementById('minimal-search-input')?.value || '');
+};
 
-    tabContainer.innerHTML = allCats.map(cat => {
-        const isActive = minimalSelectedCategory === cat.id;
+function updateMinimalBadges() {
+    const totalBadge = document.getElementById('min-badge-total');
+    const favsBadge = document.getElementById('min-badge-favs');
+    if (totalBadge) totalBadge.textContent = TOOLS.length;
+    if (favsBadge) favsBadge.textContent = minimalFavorites.length;
+}
+
+function renderPureMinimalSidebar() {
+    const container = document.getElementById('minimal-sidebar-categories');
+    if (!container) return;
+
+    container.innerHTML = CONFIG_CATEGORIES.map(cat => {
+        const count = TOOLS.filter(t => t.catId === cat.id).length;
+        const isActive = minimalCurrentCat === cat.id;
         return `
-            <button onclick="window.filterMinimalCategory('${cat.id}')" 
-                    class="flat-category-chip ${isActive ? 'active' : ''}">
-                <i class="${cat.icon || 'fas fa-folder'} mr-1.5 text-[11px]"></i>
-                <span>${cat.name}</span>
+            <button onclick="window.filterMinimalCategory('${cat.id}')" id="min-nav-${cat.id}"
+                class="min-sidebar-btn ${isActive ? 'active' : ''} w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all">
+                <div class="flex items-center gap-2.5 truncate">
+                    <i class="${cat.icon || 'fas fa-cube'} text-xs opacity-70"></i>
+                    <span class="truncate">${cat.name}</span>
+                </div>
+                <span class="text-[10px] min-badge-pill px-1.5 py-0.5 rounded font-mono">${count}</span>
+            </button>
+        `;
+    }).join('');
+
+    renderPureMinimalMobilePills();
+    updateMinimalBadges();
+}
+
+function renderPureMinimalMobilePills() {
+    const pillsContainer = document.getElementById('minimal-mobile-pills');
+    if (!pillsContainer) return;
+
+    const allOptions = [
+        { id: 'all', name: 'Tất cả', icon: 'fas fa-border-all' },
+        { id: 'favorites', name: 'Yêu thích', icon: 'fas fa-star' },
+        ...CONFIG_CATEGORIES
+    ];
+
+    pillsContainer.innerHTML = allOptions.map(cat => {
+        const isActive = minimalCurrentCat === cat.id;
+        return `
+            <button onclick="window.filterMinimalCategory('${cat.id}')"
+                class="min-mobile-pill shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${isActive ? 'active' : ''}">
+                <i class="${cat.icon || 'fas fa-cube'} text-[10px]"></i>
+                <span class="whitespace-nowrap">${cat.name}</span>
             </button>
         `;
     }).join('');
 }
 
-function renderPureMinimalAppList(filterText = '') {
+function createToolCardHtml(tool) {
+    const { bgStyle, iconStyle, iconClass } = computeIconStyles(tool);
+    const cat = CONFIG_CATEGORIES.find(c => c.id === tool.catId);
+    const catName = cat ? cat.name : 'Tiện ích';
+    const isFav = minimalFavorites.includes(tool.id);
+
+    // Chế độ Danh sách (List View Mode)
+    if (minimalViewMode === 'list') {
+        return `
+            <div onclick="window.openToolGlobal('${tool.id}')"
+                 class="min-tool-card min-tool-card-list group relative border rounded-xl p-3 sm:p-3.5 transition-all duration-200 cursor-pointer flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-base shrink-0 border border-white/10 group-hover:scale-105 transition-transform" style="${bgStyle}">
+                        <i class="${tool.icon} ${iconClass}" style="${iconStyle}"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <h3 class="text-xs sm:text-sm font-semibold truncate transition-colors min-text-main group-hover:min-accent-text">${tool.name}</h3>
+                            <span class="text-[9px] font-medium tracking-wide uppercase px-1.5 py-0.2 rounded min-badge-pill border min-border-color shrink-0 hidden sm:inline-block">
+                                ${catName}
+                            </span>
+                        </div>
+                        <p class="text-[11px] min-text-muted truncate max-w-sm">${tool.desc || 'Mở tiện ích để làm việc.'}</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                    <button onclick="window.toggleMinimalFav('${tool.id}', event)" class="p-2 rounded-lg min-text-muted hover:text-amber-400 transition-colors" title="${isFav ? 'Bỏ ghim' : 'Ghim'}">
+                        <i class="${isFav ? 'fas fa-star text-amber-400' : 'far fa-star'} text-xs"></i>
+                    </button>
+                    <i class="fas fa-arrow-right text-[10px] min-text-muted group-hover:min-text-main group-hover:translate-x-0.5 transition-all"></i>
+                </div>
+            </div>
+        `;
+    }
+
+    // Chế độ Lưới Card (Grid View Mode)
+    return `
+        <div onclick="window.openToolGlobal('${tool.id}')"
+             class="min-tool-card group relative border rounded-2xl p-4 transition-all duration-200 cursor-pointer flex flex-col justify-between">
+            <div>
+                <div class="flex items-start justify-between gap-3 mb-3">
+                    <div class="w-11 h-11 rounded-xl flex items-center justify-center text-lg shrink-0 border border-white/10 group-hover:scale-105 transition-transform" style="${bgStyle}">
+                        <i class="${tool.icon} ${iconClass}" style="${iconStyle}"></i>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[10px] font-medium tracking-wide uppercase px-2 py-0.5 rounded-md min-badge-pill border min-border-color">
+                            ${catName}
+                        </span>
+                        <button onclick="window.toggleMinimalFav('${tool.id}', event)" class="p-1.5 rounded-lg min-text-muted hover:text-amber-400 transition-colors" title="${isFav ? 'Bỏ ghim' : 'Ghim ưu tiên'}">
+                            <i class="${isFav ? 'fas fa-star text-amber-400' : 'far fa-star'} text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <h3 class="text-sm font-semibold mb-1 truncate transition-colors min-text-main group-hover:min-accent-text">${tool.name}</h3>
+                <p class="text-xs min-text-muted line-clamp-2 leading-relaxed mb-4">${tool.desc || 'Mở tiện ích để làm việc.'}</p>
+            </div>
+
+            <div class="pt-3 border-t min-border-color flex items-center justify-between text-[11px] min-text-muted group-hover:min-text-main transition-colors">
+                <span class="inline-flex items-center gap-1 font-mono text-[10px]">
+                    <i class="fas fa-play text-[8px] min-accent-text"></i> Khởi chạy
+                </span>
+                <i class="fas fa-arrow-right text-[10px] -translate-x-1 group-hover:translate-x-0 transition-transform"></i>
+            </div>
+        </div>
+    `;
+}
+
+function renderPureMinimalDashboard(filterQuery = '') {
     const listEl = document.getElementById('minimal-app-list');
+    const favsList = document.getElementById('minimal-favs-list');
+    const favsSection = document.getElementById('minimal-favs-section');
     const countBadge = document.getElementById('minimal-count-badge');
-    const titleEl = document.getElementById('minimal-section-title');
+    const gridTitle = document.getElementById('minimal-grid-title');
+    const breadcrumb = document.getElementById('minimal-breadcrumb');
+    const heroBanner = document.getElementById('minimal-hero-banner');
+    const clearSearchBtn = document.getElementById('minimal-search-clear');
+
     if (!listEl) return;
 
-    const query = filterText.trim().toLowerCase();
-    let filtered = TOOLS.filter(t => {
-        const matchesQuery = !query || t.name.toLowerCase().includes(query) || (t.desc && t.desc.toLowerCase().includes(query));
-        const matchesCategory = minimalSelectedCategory === 'all' || t.catId === minimalSelectedCategory;
-        return matchesQuery && matchesCategory;
-    });
+    const query = filterQuery.trim().toLowerCase();
+    if (clearSearchBtn) clearSearchBtn.classList.toggle('hidden', !query);
 
-    if (countBadge) countBadge.textContent = filtered.length;
-    if (titleEl) {
-        if (minimalSelectedCategory === 'all') {
-            titleEl.textContent = query ? `Kết quả tìm kiếm ("${query}")` : 'Tất cả tiện ích';
+    // Đồng bộ tab Sidebar và Mobile Pills
+    document.querySelectorAll('.min-sidebar-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.min-mobile-pill').forEach(btn => btn.classList.remove('active'));
+
+    const currentSideBtn = document.getElementById(`min-nav-${minimalCurrentCat}`);
+    if (currentSideBtn) currentSideBtn.classList.add('active');
+
+    // Chuyển đổi class Grid dựa vào view mode
+    if (minimalViewMode === 'list') {
+        listEl.className = 'grid grid-cols-1 gap-2 pb-28 md:pb-12';
+        if (favsList) favsList.className = 'grid grid-cols-1 gap-2';
+    } else {
+        listEl.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 pb-28 md:pb-12';
+        if (favsList) favsList.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3';
+    }
+
+    if (heroBanner) heroBanner.classList.toggle('hidden', minimalCurrentCat !== 'all' || query.length > 0);
+
+    let toolsToDisplay = TOOLS;
+    if (minimalCurrentCat === 'favorites') {
+        toolsToDisplay = TOOLS.filter(t => minimalFavorites.includes(t.id));
+        if (breadcrumb) breadcrumb.textContent = 'Yêu thích & Đã ghim';
+        if (gridTitle) gridTitle.textContent = 'Danh sách đã ghim';
+    } else if (minimalCurrentCat !== 'all') {
+        const cat = CONFIG_CATEGORIES.find(c => c.id === minimalCurrentCat);
+        toolsToDisplay = TOOLS.filter(t => t.catId === minimalCurrentCat);
+        if (breadcrumb) breadcrumb.textContent = cat ? cat.name : 'Danh mục';
+        if (gridTitle) gridTitle.textContent = cat ? cat.name : 'Danh mục';
+    } else {
+        if (breadcrumb) breadcrumb.textContent = 'Tất cả tiện ích';
+        if (gridTitle) gridTitle.textContent = query ? `Kết quả tìm kiếm ("${query}")` : 'Tất cả tiện ích';
+    }
+
+    if (query) {
+        toolsToDisplay = toolsToDisplay.filter(t => t.name.toLowerCase().includes(query) || (t.desc && t.desc.toLowerCase().includes(query)));
+    }
+
+    if (countBadge) countBadge.textContent = toolsToDisplay.length;
+
+    // Hiển thị phần Pins khi ở All và không search
+    if (favsSection && favsList) {
+        if (minimalCurrentCat === 'all' && !query && minimalFavorites.length > 0) {
+            favsSection.classList.remove('hidden');
+            const favTools = minimalFavorites.map(id => getToolData(id)).filter(Boolean);
+            favsList.innerHTML = favTools.map(t => createToolCardHtml(t)).join('');
         } else {
-            const currentCat = CONFIG_CATEGORIES.find(c => c.id === minimalSelectedCategory);
-            titleEl.textContent = currentCat ? currentCat.name : 'Danh mục tiện ích';
+            favsSection.classList.add('hidden');
         }
     }
 
-    if (filtered.length === 0) {
+    if (toolsToDisplay.length === 0) {
         listEl.innerHTML = `
             <div class="col-span-full py-16 text-center text-zinc-500 text-xs flex flex-col items-center justify-center gap-2">
-                <i class="fas fa-inbox text-2xl opacity-40"></i>
-                <span>Không tìm thấy tiện ích phù hợp</span>
+                <i class="fas fa-search text-3xl opacity-30 mb-1"></i>
+                <span class="font-medium text-zinc-400">Không tìm thấy tiện ích nào</span>
+                <span class="text-[11px] text-zinc-500">Thử kiểm tra lại từ khóa hoặc chuyển sang danh mục khác</span>
             </div>
         `;
         return;
     }
 
-    listEl.innerHTML = filtered.map(tool => {
-        const { bgStyle, iconStyle, iconClass } = computeIconStyles(tool);
-        const catInfo = CONFIG_CATEGORIES.find(c => c.id === tool.catId);
-        const catName = catInfo ? catInfo.name : 'Tiện ích';
-
-        return `
-            <div class="flat-tool-card" onclick="window.openToolGlobal('${tool.id}')">
-                <div class="flat-tool-icon" style="${bgStyle}">
-                    <i class="${tool.icon} ${iconClass}" style="${iconStyle}"></i>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between gap-1.5 mb-1">
-                        <div class="text-xs font-semibold text-zinc-100 truncate">${tool.name}</div>
-                        <span class="flat-tool-badge">${catName}</span>
-                    </div>
-                    <div class="text-[11px] text-zinc-400 truncate leading-relaxed">${tool.desc || 'Mở công cụ'}</div>
-                </div>
-                <i class="fas fa-arrow-up-right-from-square text-[10px] text-zinc-600 shrink-0 ml-1"></i>
-            </div>
-        `;
-    }).join('');
+    listEl.innerHTML = toolsToDisplay.map(tool => createToolCardHtml(tool)).join('');
 }
 
 export function applyPureMinimalMode(enable) {
     document.body.classList.toggle('pure-minimal-mode', enable);
     const toggleBtn = document.getElementById('toggle-minimal-setting');
     toggleBtn?.classList.toggle('active', enable);
+
+    const topBar = document.getElementById('top-system-bar');
+    if (topBar) topBar.style.display = enable ? 'none' : '';
+
+    const deviceSettingsBlock = document.getElementById('device-mode-settings-block');
+    const organizerSettingsBlock = document.getElementById('hunqos-organizer-settings-group');
+    if (deviceSettingsBlock) deviceSettingsBlock.style.display = enable ? 'none' : '';
+    if (organizerSettingsBlock) organizerSettingsBlock.style.display = enable ? 'none' : '';
+
+    syncWallpaperDisplay();
+
     if (enable) {
-        renderPureMinimalCategories();
-        renderPureMinimalAppList();
-        updatePureMinimalClock();
+        renderPureMinimalSidebar();
+        renderPureMinimalDashboard();
     }
 }
 
-export function initLauncher() {
-    window.filterMinimalCategory = (catId) => {
-        minimalSelectedCategory = catId;
-        renderPureMinimalCategories();
-        const searchInput = document.getElementById('minimal-search-input');
-        renderPureMinimalAppList(searchInput ? searchInput.value : '');
-    };
+window.applyPureMinimalModeGlobal = applyPureMinimalMode;
 
-    document.getElementById('minimal-search-input')?.addEventListener('input', (e) => {
-        renderPureMinimalAppList(e.target.value);
+export function initMinimalSidebarEvents() {
+    const viewToggleBtn = document.getElementById('minimal-view-toggle');
+    const viewIcon = document.getElementById('min-view-icon');
+
+    const updateViewIcon = () => {
+        if (!viewIcon) return;
+        viewIcon.className = minimalViewMode === 'list' ? 'fas fa-grip-vertical text-xs' : 'fas fa-list text-xs';
+    };
+    updateViewIcon();
+
+    viewToggleBtn?.addEventListener('click', () => {
+        minimalViewMode = minimalViewMode === 'grid' ? 'list' : 'grid';
+        localStorage.setItem('hunqos_min_view', minimalViewMode);
+        updateViewIcon();
+        renderPureMinimalDashboard(document.getElementById('minimal-search-input')?.value || '');
     });
 
+    window.filterMinimalCategory = (catId) => {
+        minimalCurrentCat = catId;
+        renderPureMinimalSidebar();
+        renderPureMinimalDashboard(document.getElementById('minimal-search-input')?.value || '');
+    };
+
+    const searchInput = document.getElementById('minimal-search-input');
+    const clearBtn = document.getElementById('minimal-search-clear');
+
+    searchInput?.addEventListener('input', (e) => {
+        renderPureMinimalDashboard(e.target.value);
+    });
+
+    clearBtn?.addEventListener('click', () => {
+        if (searchInput) searchInput.value = '';
+        renderPureMinimalDashboard('');
+    });
+}
+
+/* ========================================================
+   3. KHỞI TẠO CHUNG
+   ======================================================== */
+export function initLauncher() {
     document.getElementById('toggle-minimal-setting')?.addEventListener('click', () => {
         const newState = !(localStorage.getItem('hunqos_pure_minimal') === 'true');
         localStorage.setItem('hunqos_pure_minimal', newState);
         applyPureMinimalMode(newState);
-        UI.showAlert('Pure Minimal', newState ? 'Đã bật chế độ Minimal Flat Utility.' : 'Đã trở lại giao diện chuẩn.', 'info');
+        UI.showAlert('Giao diện', newState ? 'Đã chuyển sang Web Portal.' : 'Đã trở lại HunqOS Workspace.', 'info');
     });
 
     const compactToggleBtn = document.getElementById('toggle-compact-setting');
@@ -576,7 +758,7 @@ export function initLauncher() {
             compactToggleBtn.classList.toggle('active', isCompactGridMode);
             currentPageIndex = 0;
             initHomescreenPages();
-            UI.showAlert('Bố cục Launcher', isCompactGridMode ? 'Đã bật chế độ gom gọn toàn bộ app.' : 'Đã phân trang riêng theo từng danh mục.', 'info');
+            UI.showAlert('Bố cục Launcher', isCompactGridMode ? 'Đã gom gọn tất cả ứng dụng.' : 'Đã chia trang theo từng danh mục.', 'info');
         });
     }
 
@@ -586,7 +768,7 @@ export function initLauncher() {
         selectedToolsForBatch.clear();
         savePageLayout();
         initHomescreenPages();
-        UI.showAlert('Bố cục', 'Đã tự động gom nhóm ứng dụng theo danh mục.', 'success');
+        UI.showAlert('Bố cục', 'Đã gom nhóm ứng dụng theo danh mục.', 'success');
     };
 
     window.toggleToolSelection = (toolId) => {
@@ -667,7 +849,6 @@ export function initLauncher() {
         initHomescreenPages();
     };
 
-    // Lắng nghe sự kiện scroll của launcher viewport
     const launcherViewport = document.getElementById('launcher-viewport');
     if (launcherViewport) {
         let scrollTimeout = null;
@@ -691,4 +872,6 @@ export function initLauncher() {
             }
         }, { passive: true });
     }
+
+    initMinimalSidebarEvents();
 }
