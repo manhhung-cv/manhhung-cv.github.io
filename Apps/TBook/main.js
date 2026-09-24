@@ -6,6 +6,11 @@ const CONFIG = {
   WORKER_CONCURRENCY: 2
 };
 
+// Vô hiệu hóa khôi phục cuộn tự động của Safari WebKit
+if ('scrollRestoration' in history) {
+  history.scrollRestoration = 'manual';
+}
+
 const db = new Dexie('TruyenVoiceDB_TBZ');
 db.version(1).stores({
   books: '++id, title, author, totalChapters, rawBlob, rawExt, lastReadChapterIndex, lastReadChunkIndex, updatedAt',
@@ -52,6 +57,53 @@ const State = {
   }
 };
 
+// ==========================================
+// 1. MODULE GIỮ TIẾN TRÌNH ÂM THANH NỀN TRÊN IOS 16
+// ==========================================
+const IOSBackgroundKeeper = {
+  audioEl: null,
+  audioCtx: null,
+  isActivated: false,
+
+  init() {
+    if (!this.audioEl) {
+      this.audioEl = document.createElement('audio');
+      this.audioEl.id = 'ios-background-audio-keeper';
+      this.audioEl.setAttribute('playsinline', '');
+      this.audioEl.setAttribute('webkit-playsinline', '');
+      this.audioEl.loop = true;
+      // Đoạn mã WAV im lặng 1 giây chuẩn base64
+      this.audioEl.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+      this.audioEl.style.display = 'none';
+      document.body.appendChild(this.audioEl);
+    }
+  },
+
+  unlock() {
+    if (this.isActivated) return;
+    this.init();
+    try {
+      this.audioEl.volume = 0.005;
+      this.audioEl.play().catch(() => {});
+
+      // Kích hoạt thêm Web Audio Context để ngăn Safari đóng băng JS Thread
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        this.audioCtx = new AudioContextClass();
+        const osc = this.audioCtx.createOscillator();
+        const gain = this.audioCtx.createGain();
+        gain.gain.value = 0.0001; // Không nghe thấy nhưng audio stream luôn active
+        osc.connect(gain);
+        gain.connect(this.audioCtx.destination);
+        osc.start();
+      }
+      this.isActivated = true;
+    } catch (e) {
+      console.warn('Không thể bật âm thanh nền:', e);
+    }
+  }
+};
+
 const AudioEngine = {
   playerA: new Audio(),
   playerB: new Audio(),
@@ -61,9 +113,12 @@ const AudioEngine = {
   offlineObjectUrl: null,
 
   init() {
-    this.playerA.preload = 'auto';
-    this.playerB.preload = 'auto';
-    this.offlinePlayer.preload = 'auto';
+    // Khởi tạo thẻ audio cho iOS
+    [this.playerA, this.playerB, this.offlinePlayer].forEach(p => {
+      p.preload = 'auto';
+      p.setAttribute('playsinline', '');
+      p.setAttribute('webkit-playsinline', '');
+    });
 
     const onTimeUpdate = (e) => {
       if (e.target.duration && !isNaN(e.target.duration)) {
@@ -105,7 +160,13 @@ const AudioEngine = {
       }
     };
 
-    const errorHandler = (e) => console.warn('Audio tag event handled:', e);
+    const errorHandler = (e) => {
+      console.warn('Audio tag event handled:', e);
+      // Tự động bỏ qua lỗi để phát tiếp khi chạy ngầm trên iOS
+      if (State.isPlaying && !State.isReadingOnly) {
+        setTimeout(() => ActionController.stepSentence(1, true), 800);
+      }
+    };
     this.playerA.onerror = errorHandler;
     this.playerB.onerror = errorHandler;
     this.offlinePlayer.onerror = errorHandler;
@@ -157,8 +218,13 @@ function updateMediaSessionMetadata(title, chapterName) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: chapterName || 'Chương',
       artist: title || 'Truyện Voice',
-      album: 'Truyện Voice Offline'
+      album: 'Truyện Voice Offline',
+      artwork: [
+        { src: 'icon-192.png', sizes: '192x192', type: 'image/png' }
+      ]
     });
+
+    navigator.mediaSession.playbackState = State.isPlaying ? 'playing' : 'paused';
 
     navigator.mediaSession.setActionHandler('play', () => ActionController.resume());
     navigator.mediaSession.setActionHandler('pause', () => ActionController.pause());
@@ -1182,6 +1248,33 @@ const PaginationEngine = {
 };
 
 const ActionController = {
+  // ==========================================
+  // 2. HÀM RESET CUỘN VÀ CHỈ SỐ TRANG VỀ ĐỈNH
+  // ==========================================
+  resetScrollAndPositionToTop() {
+    const single = document.getElementById('reading-content-scroll-single');
+    const infinite = document.getElementById('reading-content-scroll-infinite');
+    const dropzone = document.getElementById('reader-dropzone');
+
+    if (single) single.scrollTop = 0;
+    if (infinite) infinite.scrollTop = 0;
+    if (dropzone) dropzone.scrollTop = 0;
+    window.scrollTo(0, 0);
+
+    requestAnimationFrame(() => {
+      if (single) single.scrollTop = 0;
+      if (infinite) infinite.scrollTop = 0;
+      if (dropzone) dropzone.scrollTop = 0;
+      window.scrollTo(0, 0);
+    });
+
+    setTimeout(() => {
+      if (single) single.scrollTop = 0;
+      if (infinite) infinite.scrollTop = 0;
+      if (dropzone) dropzone.scrollTop = 0;
+    }, 50);
+  },
+
   async loadChapterByIndex(chapIndex, autoPlay = false, targetChunkIdx = 0) {
     if (chapIndex < 0 || chapIndex >= State.chapters.length) return;
 
@@ -1201,7 +1294,13 @@ const ActionController = {
     const { paragraphs } = parseTextToParagraphsAndChunks(State.currentChapter.content);
 
     PaginationEngine.paginateCurrentChapter(paragraphs);
-    State.currentPageIndex = PaginationEngine.findPageForSentence(targetChunkIdx);
+    
+    // Nếu chuyển sang chương mới từ đầu, luôn gán về trang 0
+    if (targetChunkIdx === 0) {
+      State.currentPageIndex = 0;
+    } else {
+      State.currentPageIndex = PaginationEngine.findPageForSentence(targetChunkIdx);
+    }
 
     const singleBox = document.getElementById('reading-content-scroll-single');
     if (singleBox) {
@@ -1235,6 +1334,9 @@ const ActionController = {
     this.updateTOCActiveItem();
     await this.checkOfflineStatus();
     await BookManager.persistReadingProgress();
+
+    // Reset cuộn lên đỉnh đầu sau khi đã render DOM
+    this.resetScrollAndPositionToTop();
 
     triggerRollingBuffer(chapIndex);
 
@@ -1377,6 +1479,9 @@ const ActionController = {
       return;
     }
 
+    // Mở khoá luồng audio background cho iOS 16 ngay tại đây
+    IOSBackgroundKeeper.unlock();
+
     State.currentChunkIndex = idx;
     this.highlightActiveSentence();
     this.syncSentenceToView(idx);
@@ -1465,6 +1570,7 @@ const ActionController = {
       AudioEngine.applySpeed(State.playbackSpeed);
       await player.play();
 
+      // Nạp gối đầu câu kế tiếp vào player chờ để tránh bị gián đoạn khi tắt màn hình
       if (idx + 1 < chunks.length) {
         const nextText = chunks[idx + 1];
         this.getOnlineAudio(nextText, State.currentChapter.id).then(nextRes => {
@@ -1535,6 +1641,7 @@ const ActionController = {
       showToast('Đang ở chế độ Chỉ Đọc. Bật tai nghe để nghe đọc');
       return;
     }
+    IOSBackgroundKeeper.unlock();
     if (State.isPlaying) this.pause();
     else this.resume();
   },
@@ -1543,13 +1650,16 @@ const ActionController = {
     State.isPlaying = false;
     AudioEngine.getActivePlayer().pause();
     updatePlayPauseButton();
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   },
 
   resume() {
+    IOSBackgroundKeeper.unlock();
     const player = AudioEngine.getActivePlayer();
     if (player.src && player.src !== window.location.href && !player.error) {
       State.isPlaying = true;
       updatePlayPauseButton();
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
       AudioEngine.applySpeed(State.playbackSpeed);
       player.play().catch(() => {
         this.playSentence(State.currentChunkIndex);
@@ -1969,6 +2079,7 @@ function showUpdateBanner() {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
+  IOSBackgroundKeeper.init();
   AudioEngine.init();
   loadSettings();
   await FontManager.loadAllCustomFonts();

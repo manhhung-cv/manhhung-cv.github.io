@@ -1,5 +1,5 @@
 // sw.js
-const CACHE_NAME = 'truyen-voice-v1.1.2';
+const CACHE_NAME = 'truyen-voice-v1.1.3';
 
 // Danh sách tài nguyên cần cache
 const STATIC_ASSETS = [
