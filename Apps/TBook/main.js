@@ -2074,9 +2074,25 @@ function showUpdateBanner() {
   const banner = document.getElementById('update-notification-banner');
   if (banner) {
     banner.classList.remove('hidden');
-    banner.classList.add('flex');
+    // Kích hoạt animation mượt mà
+    requestAnimationFrame(() => {
+      banner.classList.remove('-translate-y-8', 'opacity-0');
+      banner.classList.add('translate-y-0', 'opacity-100');
+    });
   }
 }
+
+// Xử lý đóng banner mượt mà
+document.getElementById('btn-dismiss-update')?.addEventListener('click', () => {
+  const banner = document.getElementById('update-notification-banner');
+  if (banner) {
+    banner.classList.remove('translate-y-0', 'opacity-100');
+    banner.classList.add('-translate-y-8', 'opacity-0');
+    setTimeout(() => {
+      banner.classList.add('hidden');
+    }, 300);
+  }
+});
 
 window.addEventListener('DOMContentLoaded', async () => {
   IOSBackgroundKeeper.init();
