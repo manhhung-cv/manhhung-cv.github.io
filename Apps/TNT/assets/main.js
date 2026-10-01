@@ -290,35 +290,52 @@ function splitSentences(text) {
 // ==========================================================================
 // 5. APPLICATION STATE
 // ==========================================================================
+// Audio Element tái sử dụng duy nhất nhằm duy trì User Gesture cho Safari 16+ / iOS
+const sharedAudioElement = new Audio();
+sharedAudioElement.preload = 'auto';
+
 const state = {
+    // Thông tin sách & tiến trình đọc
     currentBook: null,
     currentChapterIndex: 0,
     currentSentenceIndex: 0,
-    readingMode: 'scroll-single',
+    savedScrollTop: 0,
+    isRestoringScroll: false,
+
+    // Chế độ hiển thị & cuộn
+    readingMode: 'scroll-single', // 'scroll-single' | 'scroll-infinite'
+    loadedInfiniteChapters: new Set(),
+    isLoadingNextChapter: false,
+
+    // Trạng thái phát âm thanh & Media
     isMuted: true,
     isPlaying: false,
     playbackRate: 1.0,
     currentVoiceName: 'Hoài My',
+    activeAudioElement: null,
+    consecutiveErrors: 0,
+    autoBufferCount: 5,
+
+    // Tải & đóng gói ngoại tuyến
     audioFormat: 'standard',
     downloadConcurrency: 3,
-    autoBufferCount: 5,
-    fontSize: 18,
-    fontFamily: "'Be Vietnam Pro', sans-serif",
-    currentTheme: 'theme-light',
-    loadedInfiniteChapters: new Set(),
-    isLoadingNextChapter: false,
-    activeAudioElement: null,
     isBatchDownloading: false,
     abortBatchDownload: false,
-    consecutiveErrors: 0,
-    savedScrollTop: 0,
-    isRestoringScroll: false,
-    searchResults: [],
-    currentSearchIndex: -1,
-    hlStyle: 'fill',
+
+    // Kiểu chữ, kích thước & Giao diện sách
+    fontSize: 18,
+    fontFamily: "'Be Vietnam Pro', sans-serif",
+    currentTheme: 'theme-light', // 'theme-light' | 'theme-sepia' | 'theme-gray' | 'theme-dark'
+
+    // Cấu hình Highlight & Hệ màu sắc
+    hlStyle: 'fill',             // 'fill' | 'underline' | 'outline'
     hlTextColor: '#1d4ed8',
     hlBgColor: '#eff6ff',
-    hlBorderColor: '#2563eb'
+    hlBorderColor: '#2563eb',
+
+    // Tìm kiếm trong sách
+    searchResults: [],
+    currentSearchIndex: -1
 };
 
 const audioManager = new WebAudioManager();
@@ -819,6 +836,10 @@ async function playCurrentSentence() {
     stopCurrentAudio();
     bufferUpcomingSentences(sentences, state.currentSentenceIndex + 1);
 
+    // Kỹ thuật dành riêng cho Safari 16: "Mở khoá" trước audio element
+    const audio = sharedAudioElement;
+    state.activeAudioElement = audio;
+
     try {
         const audioUrl = await getOrFetchSentenceAudio(
             state.currentBook.id,
@@ -828,8 +849,7 @@ async function playCurrentSentence() {
         );
 
         if (audioUrl) {
-            const audio = new Audio(audioUrl);
-            state.activeAudioElement = audio;
+            audio.src = audioUrl;
             audio.playbackRate = state.playbackRate;
 
             audio.onended = function () {
@@ -843,6 +863,7 @@ async function playCurrentSentence() {
                 handleSentenceAudioError('Lỗi phát âm thanh', e, sentenceRaw, sentenceClean);
             };
 
+            // Thực thi play
             await audio.play();
             state.consecutiveErrors = 0;
             audioManager.setPlaybackState(true);
@@ -899,6 +920,11 @@ function togglePlayPause(forcedState = null) {
     audioManager.unlockAudioSession();
 
     if (state.isPlaying) {
+        // "Mồi" quyền phát trực tiếp ngay trong User Gesture cho Safari 16
+        sharedAudioElement.play().then(() => {
+            sharedAudioElement.pause();
+        }).catch(() => {});
+
         if (state.isMuted) {
             state.isMuted = false;
             updateMuteUI();
