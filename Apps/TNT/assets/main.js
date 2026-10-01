@@ -1,11 +1,133 @@
+// ==========================================================================
+// TRUYỆN VOICE - MAIN.JS (Full Updated with DevLog & Color Presets)
+// ==========================================================================
+
 let APP_VERSION = 'Đang đồng bộ...';
 
 function sleep(ms) {
-    return new Promise(function(resolve) {
+    return new Promise(function (resolve) {
         setTimeout(resolve, ms);
     });
 }
 
+// ==========================================================================
+// 1. DEVLOG & CONSOLE MONITOR ENGINE
+// ==========================================================================
+const DevLogger = {
+    logs: [],
+    maxLogs: 250,
+    screenEl: null,
+    badgeEl: null,
+
+    init() {
+        const self = this;
+        this.screenEl = document.getElementById('devlog-screen');
+        this.badgeEl = document.getElementById('devlog-count-badge');
+
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+
+        function appendLog(type, args) {
+            const time = new Date().toLocaleTimeString('vi-VN');
+            const message = Array.from(args).map(arg => {
+                if (typeof arg === 'object' && arg !== null) {
+                    try { return JSON.stringify(arg); } catch (e) { return String(arg); }
+                }
+                return String(arg);
+            }).join(' ');
+
+            self.logs.push({ time, type, message });
+            if (self.logs.length > self.maxLogs) self.logs.shift();
+            self.renderEntry(time, type, message);
+        }
+
+        console.log = function (...args) {
+            originalLog.apply(console, args);
+            appendLog('log', args);
+        };
+        console.warn = function (...args) {
+            originalWarn.apply(console, args);
+            appendLog('warn', args);
+        };
+        console.error = function (...args) {
+            originalError.apply(console, args);
+            appendLog('error', args);
+        };
+
+        // Bắt lỗi toàn cục của trang web
+        window.addEventListener('error', function (event) {
+            appendLog('error', [`[Runtime Error] ${event.message} (${event.filename}:${event.lineno})`]);
+        });
+
+        window.addEventListener('unhandledrejection', function (event) {
+            appendLog('error', [`[Promise Rejection] ${event.reason ? (event.reason.message || event.reason) : 'Unknown'}`]);
+        });
+    },
+
+    renderEntry(time, type, msg) {
+        if (!this.screenEl) {
+            this.screenEl = document.getElementById('devlog-screen');
+        }
+        if (!this.screenEl) return;
+
+        const colorClass = type === 'error' ? 'text-rose-400' : (type === 'warn' ? 'text-amber-300' : 'text-emerald-400');
+        const icon = type === 'error' ? '✖' : (type === 'warn' ? '⚠' : 'ℹ');
+
+        const row = document.createElement('div');
+        row.className = `leading-relaxed border-b border-neutral-800/40 pb-0.5 ${colorClass}`;
+        row.innerHTML = `<span class="opacity-50 text-[10px]">[${time}]</span> <span class="font-bold">${icon}</span> <span>${this.escapeHtml(msg)}</span>`;
+
+        this.screenEl.appendChild(row);
+        this.screenEl.scrollTop = this.screenEl.scrollHeight;
+
+        if (!this.badgeEl) this.badgeEl = document.getElementById('devlog-count-badge');
+        if (this.badgeEl) {
+            this.badgeEl.textContent = `${this.logs.length} log`;
+        }
+    },
+
+    escapeHtml(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    },
+
+    clear() {
+        this.logs = [];
+        if (this.screenEl) this.screenEl.innerHTML = '<div class="text-neutral-500 italic">[Đã dọn sạch nhật ký]</div>';
+        if (this.badgeEl) this.badgeEl.textContent = '0 log';
+    },
+
+    copy() {
+        if (this.logs.length === 0) {
+            showToast("Chưa có nhật ký nào để sao chép!");
+            return;
+        }
+        const textToCopy = this.logs.map(l => `[${l.time}] [${l.type.toUpperCase()}] ${l.message}`).join('\n');
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            showToast("Đã sao chép toàn bộ DevLog!");
+        }).catch(() => {
+            showToast("Không thể truy cập clipboard!");
+        });
+    },
+
+    evalCode(code) {
+        if (!code || !code.trim()) return;
+        this.renderEntry(new Date().toLocaleTimeString('vi-VN'), 'log', `> ${code}`);
+        try {
+            const result = window.eval(code);
+            console.log(result);
+        } catch (err) {
+            console.error(`Eval Error: ${err.message}`);
+        }
+    }
+};
+
+// Khởi chạy bắt log ngay khi mã được tải
+DevLogger.init();
+
+// ==========================================================================
+// 2. AUDIO & MEDIA SESSION MANAGER
+// ==========================================================================
 class WebAudioManager {
     constructor() {
         this.silentAudio = document.getElementById('silent-keeper-audio');
@@ -32,7 +154,7 @@ class WebAudioManager {
             if (this.silentAudio) {
                 const playPromise = this.silentAudio.play();
                 if (playPromise !== undefined) {
-                    playPromise.catch(function() { });
+                    playPromise.catch(function () { });
                 }
             }
 
@@ -93,11 +215,14 @@ class WebAudioManager {
         if (!('mediaSession' in navigator)) return;
         navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
         if (isPlaying && this.silentAudio && this.silentAudio.paused) {
-            this.silentAudio.play().catch(function() { });
+            this.silentAudio.play().catch(function () { });
         }
     }
 }
 
+// ==========================================================================
+// 3. DATABASE SETUP (DEXIE.JS)
+// ==========================================================================
 const db = new Dexie('TruyenVoiceDB_v3');
 db.version(1).stores({
     books: 'id, title, author, totalChapters, currentChapter, currentSentence, scrollTop, createdAt',
@@ -115,13 +240,12 @@ db.version(2).stores({
     app_backups: 'id, createdAt, version'
 });
 
-const SAMPLE_BOOK = {
+const SAMPLE_BOOK = {};
+const SAMPLE_CHAPTERS = [];
 
-};
-
-const SAMPLE_CHAPTERS = [
-];
-
+// ==========================================================================
+// 4. UTILITIES & TEXT SANITIZATION
+// ==========================================================================
 function decodeHtmlEntities(str) {
     if (!str) return '';
     return str
@@ -132,8 +256,8 @@ function decodeHtmlEntities(str) {
         .replace(/&#39;/g, "'")
         .replace(/&#34;/g, '"')
         .replace(/&nbsp;/g, ' ')
-        .replace(/&#(\d+);/g, function(match, dec) { return String.fromCharCode(dec); })
-        .replace(/&#x([0-9a-fA-F]+);/g, function(match, hex) { return String.fromCharCode(parseInt(hex, 16)); });
+        .replace(/&#(\d+);/g, function (match, dec) { return String.fromCharCode(dec); })
+        .replace(/&#x([0-9a-fA-F]+);/g, function (match, hex) { return String.fromCharCode(parseInt(hex, 16)); });
 }
 
 function cleanTextForTTS(text) {
@@ -159,10 +283,13 @@ function splitSentences(text) {
     const cleaned = text.replace(/\r\n/g, '\n').trim();
     const rawSentences = cleaned.match(/[^.!?…\n]+[.!?…\n]+|[^.!?…\n]+$/g) || [text];
     return rawSentences
-        .map(function(s) { return s.trim(); })
-        .filter(function(s) { return s.length > 0; });
+        .map(function (s) { return s.trim(); })
+        .filter(function (s) { return s.length > 0; });
 }
 
+// ==========================================================================
+// 5. APPLICATION STATE
+// ==========================================================================
 const state = {
     currentBook: null,
     currentChapterIndex: 0,
@@ -196,6 +323,9 @@ const state = {
 
 const audioManager = new WebAudioManager();
 
+// ==========================================================================
+// 6. DOM ELEMENTS REFERENCES
+// ==========================================================================
 const DOM = {
     app: document.getElementById('app'),
     viewport: document.getElementById('reader-viewport'),
@@ -212,6 +342,7 @@ const DOM = {
     btnPrevChapter: document.getElementById('btn-prev-chapter'),
     btnNextChapter: document.getElementById('btn-next-chapter'),
     btnOnTop: document.getElementById('btn-on-top'),
+    btnOnTopMobile: document.getElementById('btn-ontop-mobile'),
     btnQuickSpeed: document.getElementById('btn-quick-speed'),
     labelVoice: document.getElementById('label-current-voice'),
     sentenceIdxLabel: document.getElementById('player-sentence-idx'),
@@ -226,6 +357,13 @@ const DOM = {
     drawerToc: document.getElementById('drawer-toc'),
     modalTypography: document.getElementById('modal-typography'),
     modalStorage: document.getElementById('modal-storage'),
+    modalDevLog: document.getElementById('modal-devlog'),
+    btnDevLogMobile: document.getElementById('btn-devlog-mobile'),
+    btnDevLogDesktop: document.getElementById('btn-devlog'),
+    btnDevLogCopy: document.getElementById('btn-devlog-copy'),
+    btnDevLogClear: document.getElementById('btn-devlog-clear'),
+    inputDevLog: document.getElementById('devlog-input'),
+    btnDevLogEval: document.getElementById('btn-devlog-eval'),
     btnLibrary: document.getElementById('btn-library'),
     btnToc: document.getElementById('btn-toc'),
     btnStorageModal: document.getElementById('btn-storage-modal'),
@@ -239,8 +377,6 @@ const DOM = {
     btnExportTbz: document.getElementById('btn-export-tbz'),
     sliderFontSize: document.getElementById('slider-font-size'),
     labelFontSize: document.getElementById('label-font-size'),
-    selectBufferCount: document.getElementById('select-buffer-count'),
-    selectThreadCount: document.getElementById('select-thread-count'),
     toast: document.getElementById('toast'),
     toastText: document.getElementById('toast-text'),
     statBooks: document.getElementById('stat-total-books'),
@@ -286,6 +422,9 @@ const DOM = {
     cacheNameLabel: document.getElementById('cache-name-label')
 };
 
+// ==========================================================================
+// 7. UI HELPERS & NOTIFICATIONS
+// ==========================================================================
 function showToast(message) {
     if (DOM.toastText) {
         DOM.toastText.textContent = message;
@@ -296,7 +435,7 @@ function showToast(message) {
         DOM.toast.classList.remove('-translate-y-full', 'opacity-0');
         DOM.toast.classList.add('translate-y-0', 'opacity-100');
         clearTimeout(window.__toastTimer);
-        window.__toastTimer = setTimeout(function() {
+        window.__toastTimer = setTimeout(function () {
             DOM.toast.classList.remove('translate-y-0', 'opacity-100');
             DOM.toast.classList.add('-translate-y-full', 'opacity-0');
         }, 2200);
@@ -304,7 +443,7 @@ function showToast(message) {
 }
 
 function askConfirmation(title, message) {
-    return new Promise(function(resolve) {
+    return new Promise(function (resolve) {
         DOM.confirmTitle.textContent = title;
         DOM.confirmDesc.textContent = message;
         DOM.modalConfirm.classList.remove('hidden');
@@ -361,7 +500,7 @@ function updateMuteUI() {
 
     const mobileIcon = document.getElementById('icon-mute-state-mobile');
     if (mobileIcon) {
-        mobileIcon.className = state.isMuted ? 'fa-solid fa-book-open-reader text-xs' : 'fa-solid fa-file-audio text-xs text-emerald-600';
+        mobileIcon.className = state.isMuted ? 'fa-solid fa-volume-xmark text-xs' : 'fa-solid fa-volume-high text-xs text-emerald-500';
     }
 }
 
@@ -384,7 +523,7 @@ function applyHighlightCustomization() {
     if (DOM.pickerHlBg) DOM.pickerHlBg.value = state.hlBgColor;
     if (DOM.pickerHlBorder) DOM.pickerHlBorder.value = state.hlBorderColor;
 
-    document.querySelectorAll('.btn-hl-style').forEach(function(btn) {
+    document.querySelectorAll('.btn-hl-style').forEach(function (btn) {
         if (btn.getAttribute('data-style') === state.hlStyle) {
             btn.className = 'btn-hl-style py-1.5 rounded-lg border border-[var(--accent-color)] text-[var(--accent-color)] bg-neutral-500/5 text-xs font-semibold';
         } else {
@@ -393,6 +532,16 @@ function applyHighlightCustomization() {
     });
 }
 
+function openDevLogModal() {
+    if (DOM.modalDevLog) {
+        DOM.modalDevLog.classList.remove('hidden');
+        DOM.modalDevLog.classList.add('flex');
+    }
+}
+
+// ==========================================================================
+// 8. STORAGE & SETTINGS PERSISTENCE
+// ==========================================================================
 async function saveProgressState() {
     try {
         if (!state.currentBook) return;
@@ -472,7 +621,7 @@ async function loadSettings() {
             DOM.btnQuickSpeed.textContent = state.playbackRate + '×';
         }
 
-        document.querySelectorAll('.btn-voice-opt').forEach(function(b) {
+        document.querySelectorAll('.btn-voice-opt').forEach(function (b) {
             if (b.getAttribute('data-voice') === state.currentVoiceName) {
                 b.className = 'btn-voice-opt py-1.5 rounded-lg border border-[var(--accent-color)] text-[var(--accent-color)] text-xs font-semibold';
             } else {
@@ -484,6 +633,9 @@ async function loadSettings() {
     }
 }
 
+// ==========================================================================
+// 9. TTS ENGINE & CONCURRENT BUFFERING
+// ==========================================================================
 async function fetchTTSAudio(text, voiceName, rate = 1.0) {
     const sanitizedText = cleanTextForTTS(text);
     if (!hasPronounceableContent(sanitizedText)) {
@@ -549,11 +701,11 @@ async function runConcurrentPool(items, concurrency, taskHandler) {
     const executing = [];
     for (const item of items) {
         if (state.abortBatchDownload) break;
-        const p = Promise.resolve().then(function() { return taskHandler(item); });
+        const p = Promise.resolve().then(function () { return taskHandler(item); });
         results.push(p);
 
         if (concurrency <= items.length) {
-            const e = p.then(function() { return executing.splice(executing.indexOf(e), 1); });
+            const e = p.then(function () { return executing.splice(executing.indexOf(e), 1); });
             executing.push(e);
             if (executing.length >= concurrency) {
                 await Promise.race(executing);
@@ -573,7 +725,7 @@ async function bufferUpcomingSentences(sentences, startIndex) {
         tasks.push({ sentenceIndex: i, text: sClean });
     }
 
-    await runConcurrentPool(tasks, state.downloadConcurrency || 3, async function(task) {
+    await runConcurrentPool(tasks, state.downloadConcurrency || 3, async function (task) {
         const cacheId = state.currentBook.id + '-ch' + state.currentChapterIndex + '-s' + task.sentenceIndex + '-' + state.currentVoiceName;
         const exists = await db.sentence_audio.get(cacheId);
         if (!exists) {
@@ -603,7 +755,7 @@ function stopCurrentAudio() {
 }
 
 function highlightActiveSentence(shouldScroll = false) {
-    document.querySelectorAll('.sentence-block.is-active').forEach(function(el) {
+    document.querySelectorAll('.sentence-block.is-active').forEach(function (el) {
         el.classList.remove('is-active');
     });
 
@@ -617,6 +769,9 @@ function highlightActiveSentence(shouldScroll = false) {
     }
 }
 
+// ==========================================================================
+// 10. PLAYBACK CONTROLLER
+// ==========================================================================
 async function playCurrentSentence() {
     if (!state.currentBook || state.isMuted) return;
 
@@ -650,7 +805,7 @@ async function playCurrentSentence() {
 
     if (!hasPronounceableContent(sentenceClean)) {
         state.currentSentenceIndex++;
-        setTimeout(function() {
+        setTimeout(function () {
             if (state.isPlaying) playCurrentSentence();
         }, 15);
         saveProgressState();
@@ -677,14 +832,14 @@ async function playCurrentSentence() {
             state.activeAudioElement = audio;
             audio.playbackRate = state.playbackRate;
 
-            audio.onended = function() {
+            audio.onended = function () {
                 state.consecutiveErrors = 0;
                 if (!state.isPlaying) return;
                 state.currentSentenceIndex++;
                 playCurrentSentence();
             };
 
-            audio.onerror = function(e) {
+            audio.onerror = function (e) {
                 handleSentenceAudioError('Lỗi phát âm thanh', e, sentenceRaw, sentenceClean);
             };
 
@@ -701,19 +856,20 @@ async function playCurrentSentence() {
 
 function handleSentenceAudioError(reason, errObj, rawText, cleanedText) {
     state.consecutiveErrors = (state.consecutiveErrors || 0) + 1;
+    console.error(`[Audio Error #${state.consecutiveErrors}] ${reason}:`, errObj);
 
     if ('speechSynthesis' in window && state.consecutiveErrors <= 3) {
         try {
             const utterance = new SpeechSynthesisUtterance(cleanedText || rawText);
             utterance.lang = 'vi-VN';
             utterance.rate = state.playbackRate;
-            utterance.onend = function() {
+            utterance.onend = function () {
                 state.consecutiveErrors = 0;
                 if (!state.isPlaying) return;
                 state.currentSentenceIndex++;
                 playCurrentSentence();
             };
-            utterance.onerror = function() { skipToNextSentenceOnError(); };
+            utterance.onerror = function () { skipToNextSentenceOnError(); };
             window.speechSynthesis.speak(utterance);
             audioManager.setPlaybackState(true);
             return;
@@ -733,7 +889,7 @@ function skipToNextSentenceOnError() {
 
     showToast('Tự động bỏ qua câu ' + (state.currentSentenceIndex + 1));
     state.currentSentenceIndex++;
-    setTimeout(function() {
+    setTimeout(function () {
         if (state.isPlaying) playCurrentSentence();
     }, 70);
 }
@@ -800,6 +956,9 @@ async function changeChapter(targetIndex) {
     }
 }
 
+// ==========================================================================
+// 11. CONTENT RENDERING & DOM BUILDERS
+// ==========================================================================
 async function renderReaderContent(restoreScroll = false) {
     if (!state.currentBook) return;
 
@@ -837,7 +996,7 @@ async function renderReaderContent(restoreScroll = false) {
 
     if (restoreScroll && state.savedScrollTop > 0) {
         state.isRestoringScroll = true;
-        setTimeout(function() {
+        setTimeout(function () {
             DOM.viewport.scrollTo({ top: state.savedScrollTop, behavior: 'auto' });
             state.isRestoringScroll = false;
         }, 80);
@@ -847,7 +1006,7 @@ async function renderReaderContent(restoreScroll = false) {
 }
 
 function buildChapterHTML(chapter) {
-    const paragraphs = chapter.content.split(/\n+/).filter(function(p) { return p.trim().length > 0; });
+    const paragraphs = chapter.content.split(/\n+/).filter(function (p) { return p.trim().length > 0; });
     let sentenceCounter = 0;
     let chapterBodyHTML = '';
 
@@ -897,7 +1056,7 @@ function setupInfiniteScrollObserver() {
         infiniteObserver.disconnect();
     }
 
-    infiniteObserver = new IntersectionObserver(async function(entries) {
+    infiniteObserver = new IntersectionObserver(async function (entries) {
         const entry = entries[0];
         if (!entry || !entry.isIntersecting) return;
         if (state.readingMode !== 'scroll-infinite') return;
@@ -931,8 +1090,8 @@ function setupInfiniteScrollObserver() {
 }
 
 function attachSentenceClickListeners() {
-    document.querySelectorAll('.sentence-block').forEach(function(el) {
-        el.onclick = function(e) {
+    document.querySelectorAll('.sentence-block').forEach(function (el) {
+        el.onclick = function (e) {
             e.stopPropagation();
             const cIdx = parseInt(el.getAttribute('data-chapter'), 10);
             const sIdx = parseInt(el.getAttribute('data-sentence'), 10);
@@ -953,8 +1112,11 @@ function attachSentenceClickListeners() {
     });
 }
 
+// ==========================================================================
+// 12. TEXT SEARCH ENGINE
+// ==========================================================================
 function clearSearchHighlights() {
-    document.querySelectorAll('.sentence-block.search-match').forEach(function(el) {
+    document.querySelectorAll('.sentence-block.search-match').forEach(function (el) {
         el.classList.remove('search-match', 'search-focus');
     });
     state.searchResults = [];
@@ -972,7 +1134,7 @@ function executeInBookSearch(query) {
     const sentenceBlocks = Array.from(document.querySelectorAll('.sentence-block'));
     const matches = [];
 
-    sentenceBlocks.forEach(function(el) {
+    sentenceBlocks.forEach(function (el) {
         const text = el.textContent.toLowerCase();
         if (text.includes(q)) {
             el.classList.add('search-match');
@@ -995,7 +1157,7 @@ function focusSearchResult(index) {
     if (state.searchResults.length === 0) return;
     if (index < 0 || index >= state.searchResults.length) return;
 
-    state.searchResults.forEach(function(el) { el.classList.remove('search-focus'); });
+    state.searchResults.forEach(function (el) { el.classList.remove('search-focus'); });
     state.currentSearchIndex = index;
 
     const targetEl = state.searchResults[index];
@@ -1022,55 +1184,9 @@ function openSearchAction() {
     }
 }
 
-if (DOM.btnSearchOpen) DOM.btnSearchOpen.onclick = openSearchAction;
-const btnSearchMobile = document.getElementById('btn-search-open-mobile');
-if (btnSearchMobile) btnSearchMobile.onclick = openSearchAction;
-
-DOM.btnSearchClose.onclick = function() {
-    DOM.searchBarDrawer.classList.add('hidden');
-    clearSearchHighlights();
-};
-
-DOM.inputSearchQuery.addEventListener('input', function(e) {
-    executeInBookSearch(e.target.value);
-});
-
-DOM.btnSearchNext.onclick = function() {
-    if (state.searchResults.length === 0) return;
-    const nextIdx = (state.currentSearchIndex + 1) % state.searchResults.length;
-    focusSearchResult(nextIdx);
-};
-
-DOM.btnSearchPrev.onclick = function() {
-    if (state.searchResults.length === 0) return;
-    const prevIdx = (state.currentSearchIndex - 1 + state.searchResults.length) % state.searchResults.length;
-    focusSearchResult(prevIdx);
-};
-
-const btnTocMobile = document.getElementById('btn-toc-mobile');
-if (btnTocMobile) {
-    btnTocMobile.onclick = function() {
-        renderTocList();
-        DOM.drawerToc.classList.remove('hidden');
-        DOM.drawerToc.classList.add('flex');
-    };
-}
-
-const btnMuteMobile = document.getElementById('btn-mute-toggle-mobile');
-if (btnMuteMobile) {
-    btnMuteMobile.onclick = function() {
-        state.isMuted = !state.isMuted;
-        updateMuteUI();
-        if (state.isMuted) {
-            if (state.isPlaying) togglePlayPause(false);
-            showToast("Đã bật chế độ Chỉ Đọc (Tắt tiếng)");
-        } else {
-            showToast("Đã bật chế độ Nghe (Phát tiếng)");
-        }
-        saveProgressState();
-    };
-}
-
+// ==========================================================================
+// 13. LIBRARY, TOC & OFFLINE CACHE MANAGEMENT
+// ==========================================================================
 async function deleteBookById(bookId, e) {
     if (e) e.stopPropagation();
     const targetBook = await db.books.get(bookId);
@@ -1122,11 +1238,11 @@ async function renderLibraryList() {
         return;
     }
 
-    books.forEach(function(b) {
+    books.forEach(function (b) {
         const isCurrent = state.currentBook && state.currentBook.id === b.id;
         const div = document.createElement('div');
         div.className = 'p-2.5 rounded-lg border transition cursor-pointer flex items-center justify-between ' + (isCurrent ? 'border-[var(--accent-color)] bg-neutral-500/5 font-semibold' : 'border-neutral-500/15 hover:bg-neutral-500/5');
-        
+
         const readingProgress = b.currentChapter ? ' (Đang đọc C.' + (b.currentChapter + 1) + ')' : '';
         const authorName = b.author || 'Tác giả';
         const checkIcon = isCurrent ? '<i class="fa-solid fa-check text-xs text-[var(--accent-color)]"></i>' : '';
@@ -1142,7 +1258,7 @@ async function renderLibraryList() {
             '</button>' +
             '</div>';
 
-        div.onclick = async function() {
+        div.onclick = async function () {
             state.currentBook = b;
             state.currentChapterIndex = b.currentChapter || 0;
             state.currentSentenceIndex = b.currentSentence || 0;
@@ -1154,7 +1270,7 @@ async function renderLibraryList() {
         };
 
         const delBtn = div.querySelector('.btn-delete-book-row');
-        delBtn.onclick = function(e) { deleteBookById(b.id, e); };
+        delBtn.onclick = function (e) { deleteBookById(b.id, e); };
 
         DOM.libraryBookList.appendChild(div);
     });
@@ -1165,7 +1281,7 @@ async function renderTocList() {
     const chapters = await db.chapters.where('bookId').equals(state.currentBook.id).sortBy('chapterIndex');
     DOM.tocChapterList.innerHTML = '';
 
-    chapters.forEach(function(ch) {
+    chapters.forEach(function (ch) {
         const isCurrent = ch.chapterIndex === state.currentChapterIndex;
         const div = document.createElement('div');
         div.className = 'py-2 px-2.5 cursor-pointer text-xs transition flex items-center justify-between ' + (isCurrent ? 'font-bold text-[var(--accent-color)] bg-neutral-500/5 rounded' : 'hover:bg-neutral-500/5 rounded opacity-80');
@@ -1173,7 +1289,7 @@ async function renderTocList() {
 
         div.innerHTML = '<span class="truncate">' + ch.title + '</span>' + iconPlaying;
 
-        div.onclick = async function() {
+        div.onclick = async function () {
             state.currentChapterIndex = ch.chapterIndex;
             state.currentSentenceIndex = 0;
             state.savedScrollTop = 0;
@@ -1200,7 +1316,7 @@ async function renderCachedChaptersList() {
 
         const row = document.createElement('div');
         row.className = 'flex items-center justify-between p-2 rounded border border-neutral-500/10 text-[11px]';
-        
+
         const badgeClass = cachedCount > 0 ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold' : 'opacity-50';
         const delBtn = cachedCount > 0 ? '<button data-del-ch="' + ch.chapterIndex + '" class="btn-del-ch-audio text-rose-500 p-1" title="Xóa audio"><i class="fa-solid fa-trash-can text-xs"></i></button>' : '';
 
@@ -1213,8 +1329,8 @@ async function renderCachedChaptersList() {
         DOM.cachedChaptersList.appendChild(row);
     }
 
-    document.querySelectorAll('.btn-del-ch-audio').forEach(function(btn) {
-        btn.onclick = async function() {
+    document.querySelectorAll('.btn-del-ch-audio').forEach(function (btn) {
+        btn.onclick = async function () {
             const chIdx = parseInt(btn.getAttribute('data-del-ch'), 10);
             await db.sentence_audio
                 .where({ bookId: state.currentBook.id, chapterIndex: chIdx })
@@ -1248,6 +1364,9 @@ async function refreshStorageStats() {
     }
 }
 
+// ==========================================================================
+// 14. FILE PARSING & IMPORT (EPUB, TBZ, TXT)
+// ==========================================================================
 function normalizeZipPath(path) {
     const parts = path.split('/');
     const stack = [];
@@ -1292,7 +1411,7 @@ async function parseEpubFile(file) {
     const bookAuthor = creatorEl ? creatorEl.textContent.trim() : "Tác giả EPUB";
 
     const manifestItems = {};
-    opfDoc.querySelectorAll("manifest > item").forEach(function(item) {
+    opfDoc.querySelectorAll("manifest > item").forEach(function (item) {
         manifestItems[item.getAttribute("id")] = item.getAttribute("href");
     });
 
@@ -1313,7 +1432,7 @@ async function parseEpubFile(file) {
         const htmlContent = await chapterFile.async("string");
         const htmlDoc = parser.parseFromString(htmlContent, "text/html");
 
-        htmlDoc.querySelectorAll("script, style, noscript, svg, nav").forEach(function(el) { el.remove(); });
+        htmlDoc.querySelectorAll("script, style, noscript, svg, nav").forEach(function (el) { el.remove(); });
 
         let chTitle = "";
         const h1 = htmlDoc.querySelector("h1, h2, h3");
@@ -1330,7 +1449,7 @@ async function parseEpubFile(file) {
         let chapterText = "";
         if (blockElements.length > 0) {
             const paragraphs = [];
-            blockElements.forEach(function(el) {
+            blockElements.forEach(function (el) {
                 const t = el.textContent.trim();
                 if (t.length > 0) {
                     paragraphs.push(t);
@@ -1468,7 +1587,7 @@ async function handleImportFile(file) {
                 sentences: splitSentences(text)
             });
         } else {
-            rawChapters.forEach(function(chText, idx) {
+            rawChapters.forEach(function (chText, idx) {
                 if (chText.trim().length > 0) {
                     const lines = chText.trim().split('\n');
                     const chTitle = lines[0].slice(0, 60);
@@ -1513,6 +1632,9 @@ async function handleImportFile(file) {
     }
 }
 
+// ==========================================================================
+// 15. BATCH DOWNLOAD & ARCHIVE EXPORT
+// ==========================================================================
 async function runBatchDownload() {
     if (!state.currentBook || state.isBatchDownloading) return;
 
@@ -1525,14 +1647,14 @@ async function runBatchDownload() {
     const allChapters = await db.chapters.where('bookId').equals(state.currentBook.id).sortBy('chapterIndex');
 
     if (scope === 'chapter') {
-        const ch = allChapters.find(function(c) { return c.chapterIndex === state.currentChapterIndex; });
+        const ch = allChapters.find(function (c) { return c.chapterIndex === state.currentChapterIndex; });
         if (ch) targetChapters = [ch];
     } else if (scope === 'all') {
         targetChapters = allChapters;
     } else if (scope === 'range') {
         const from = Math.max(1, parseInt(DOM.inputRangeFrom.value, 10)) - 1;
         const to = Math.min(allChapters.length, parseInt(DOM.inputRangeTo.value, 10)) - 1;
-        targetChapters = allChapters.filter(function(c) { return c.chapterIndex >= from && c.chapterIndex <= to; });
+        targetChapters = allChapters.filter(function (c) { return c.chapterIndex >= from && c.chapterIndex <= to; });
     }
 
     if (targetChapters.length === 0) {
@@ -1541,7 +1663,7 @@ async function runBatchDownload() {
     }
 
     const downloadTasks = [];
-    targetChapters.forEach(function(c) {
+    targetChapters.forEach(function (c) {
         const sList = c.sentences || splitSentences(c.content);
         for (let i = 0; i < sList.length; i++) {
             const sClean = cleanTextForTTS(sList[i]);
@@ -1573,7 +1695,7 @@ async function runBatchDownload() {
     DOM.dlStatusPercent.textContent = '0%';
     DOM.dlCountText.textContent = '0 / ' + totalSentencesCount + ' câu';
 
-    await runConcurrentPool(downloadTasks, threads, async function(item) {
+    await runConcurrentPool(downloadTasks, threads, async function (item) {
         if (state.abortBatchDownload) return;
 
         DOM.dlStatusText.textContent = '[' + threads + ' luồng] ' + item.chapterTitle;
@@ -1732,21 +1854,51 @@ async function exportFullTbzArchive() {
     showToast("Đã xuất gói .TBZ hoàn chỉnh!");
 }
 
-DOM.btnPrevChapter.onclick = function() { changeChapter(state.currentChapterIndex - 1); };
-DOM.btnNextChapter.onclick = function() { changeChapter(state.currentChapterIndex + 1); };
+// ==========================================================================
+// 16. EVENT LISTENERS SETUP
+// ==========================================================================
 
-DOM.btnOnTop.onclick = function() {
+// Điều hướng chương
+DOM.btnPrevChapter.onclick = function () { changeChapter(state.currentChapterIndex - 1); };
+DOM.btnNextChapter.onclick = function () { changeChapter(state.currentChapterIndex + 1); };
+
+// Lên đầu trang (Ontop Desktop & Mobile)
+function scrollToTop() {
     DOM.viewport.scrollTo({ top: 0, behavior: 'smooth' });
-};
+}
+if (DOM.btnOnTop) DOM.btnOnTop.onclick = scrollToTop;
+if (DOM.btnOnTopMobile) DOM.btnOnTopMobile.onclick = scrollToTop;
 
-DOM.btnToggleHud.onclick = function(e) {
+// DevLog Open (Desktop & Mobile)
+if (DOM.btnDevLogDesktop) DOM.btnDevLogDesktop.onclick = openDevLogModal;
+if (DOM.btnDevLogMobile) DOM.btnDevLogMobile.onclick = openDevLogModal;
+
+if (DOM.btnDevLogCopy) DOM.btnDevLogCopy.onclick = () => DevLogger.copy();
+if (DOM.btnDevLogClear) DOM.btnDevLogClear.onclick = () => DevLogger.clear();
+
+if (DOM.btnDevLogEval && DOM.inputDevLog) {
+    DOM.btnDevLogEval.onclick = () => {
+        DevLogger.evalCode(DOM.inputDevLog.value);
+        DOM.inputDevLog.value = '';
+    };
+    DOM.inputDevLog.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            DevLogger.evalCode(DOM.inputDevLog.value);
+            DOM.inputDevLog.value = '';
+        }
+    };
+}
+
+// Ẩn/Hiện HUD
+DOM.btnToggleHud.onclick = function (e) {
     e.stopPropagation();
     DOM.app.classList.toggle('ui-hidden');
     const isHidden = DOM.app.classList.contains('ui-hidden');
     showToast(isHidden ? "Đã ẩn thanh công cụ (F)" : "Đã hiện thanh công cụ");
 };
 
-DOM.btnMuteToggle.onclick = function() {
+// Tắt/bật tiếng
+DOM.btnMuteToggle.onclick = function () {
     state.isMuted = !state.isMuted;
     updateMuteUI();
     if (state.isMuted) {
@@ -1758,7 +1910,15 @@ DOM.btnMuteToggle.onclick = function() {
     saveProgressState();
 };
 
-DOM.btnReadingMode.onclick = function() {
+const btnMuteMobile = document.getElementById('btn-mute-toggle-mobile');
+if (btnMuteMobile) {
+    btnMuteMobile.onclick = function () {
+        DOM.btnMuteToggle.click();
+    };
+}
+
+// Chế độ đọc (1 chương / cuộn vô cực)
+DOM.btnReadingMode.onclick = function () {
     if (state.readingMode === 'scroll-single') {
         state.readingMode = 'scroll-infinite';
         DOM.labelReadingMode.textContent = 'Vô cực';
@@ -1772,12 +1932,14 @@ DOM.btnReadingMode.onclick = function() {
     renderReaderContent(false);
 };
 
-DOM.btnPlayPause.onclick = function() { togglePlayPause(); };
-DOM.btnPrevSentence.onclick = function() { skipSentence(-1); };
-DOM.btnNextSentence.onclick = function() { skipSentence(1); };
+// Play/Pause & chuyển câu
+DOM.btnPlayPause.onclick = function () { togglePlayPause(); };
+DOM.btnPrevSentence.onclick = function () { skipSentence(-1); };
+DOM.btnNextSentence.onclick = function () { skipSentence(1); };
 
+// Tốc độ đọc
 const SPEEDS = [0.8, 1.0, 1.25, 1.5, 2.0];
-DOM.btnQuickSpeed.onclick = function() {
+DOM.btnQuickSpeed.onclick = function () {
     let idx = SPEEDS.indexOf(state.playbackRate);
     idx = (idx + 1) % SPEEDS.length;
     state.playbackRate = SPEEDS[idx];
@@ -1787,43 +1949,52 @@ DOM.btnQuickSpeed.onclick = function() {
     saveProgressState();
 };
 
-DOM.btnLibrary.onclick = function() {
+// Mở các ngăn & hộp thoại
+DOM.btnLibrary.onclick = function () {
     renderLibraryList();
     DOM.drawerLibrary.classList.remove('hidden');
     DOM.drawerLibrary.classList.add('flex');
 };
 
-DOM.btnToc.onclick = function() {
+DOM.btnToc.onclick = function () {
     renderTocList();
     DOM.drawerToc.classList.remove('hidden');
     DOM.drawerToc.classList.add('flex');
 };
 
-DOM.btnAaOpen.onclick = function() {
+const btnTocMobile = document.getElementById('btn-toc-mobile');
+if (btnTocMobile) {
+    btnTocMobile.onclick = function () {
+        DOM.btnToc.click();
+    };
+}
+
+DOM.btnAaOpen.onclick = function () {
     DOM.modalTypography.classList.remove('hidden');
     DOM.modalTypography.classList.add('flex');
 };
 
-DOM.btnStorageModal.onclick = async function() {
+DOM.btnStorageModal.onclick = async function () {
     await refreshStorageStats();
     await renderCachedChaptersList();
     DOM.modalStorage.classList.remove('hidden');
     DOM.modalStorage.classList.add('flex');
 };
 
-document.querySelectorAll('.btn-close-drawer').forEach(function(btn) {
-    btn.onclick = function() {
-        document.querySelectorAll('#drawer-library, #drawer-toc, #modal-typography, #modal-storage').forEach(function(el) {
+// Đóng modal
+document.querySelectorAll('.btn-close-drawer').forEach(function (btn) {
+    btn.onclick = function () {
+        document.querySelectorAll('#drawer-library, #drawer-toc, #modal-typography, #modal-storage, #modal-devlog').forEach(function (el) {
             el.classList.add('hidden');
             el.classList.remove('flex');
         });
     };
 });
 
-['drawer-library', 'drawer-toc', 'modal-typography', 'modal-storage'].forEach(function(id) {
+['drawer-library', 'drawer-toc', 'modal-typography', 'modal-storage', 'modal-devlog'].forEach(function (id) {
     const modalEl = document.getElementById(id);
     if (modalEl) {
-        modalEl.addEventListener('click', function(e) {
+        modalEl.addEventListener('click', function (e) {
             if (e.target === modalEl) {
                 modalEl.classList.add('hidden');
                 modalEl.classList.remove('flex');
@@ -1832,8 +2003,9 @@ document.querySelectorAll('.btn-close-drawer').forEach(function(btn) {
     }
 });
 
-document.querySelectorAll('.btn-theme-select').forEach(function(btn) {
-    btn.onclick = function() {
+// Giao diện màu nền sách
+document.querySelectorAll('.btn-theme-select').forEach(function (btn) {
+    btn.onclick = function () {
         state.currentTheme = btn.getAttribute('data-theme');
         document.body.className = state.currentTheme + ' h-full overflow-hidden select-none hl-mode-' + state.hlStyle;
         showToast('Chủ đề: ' + btn.textContent.trim());
@@ -1841,16 +2013,17 @@ document.querySelectorAll('.btn-theme-select').forEach(function(btn) {
     };
 });
 
-DOM.sliderFontSize.oninput = function(e) {
+// Kiểu cỡ chữ & Phông chữ
+DOM.sliderFontSize.oninput = function (e) {
     state.fontSize = parseInt(e.target.value, 10);
     DOM.labelFontSize.textContent = state.fontSize + 'px';
     DOM.container.style.fontSize = state.fontSize + 'px';
     saveProgressState();
 };
 
-document.querySelectorAll('.btn-font-chip').forEach(function(btn) {
-    btn.onclick = function() {
-        document.querySelectorAll('.btn-font-chip').forEach(function(b) {
+document.querySelectorAll('.btn-font-chip').forEach(function (btn) {
+    btn.onclick = function () {
+        document.querySelectorAll('.btn-font-chip').forEach(function (b) {
             b.className = 'btn-font-chip py-1.5 rounded-lg border border-neutral-500/20 text-xs font-medium';
         });
         btn.className = 'btn-font-chip py-1.5 rounded-lg border border-[var(--accent-color)] text-xs font-semibold text-[var(--accent-color)]';
@@ -1860,33 +2033,55 @@ document.querySelectorAll('.btn-font-chip').forEach(function(btn) {
     };
 });
 
-document.querySelectorAll('.btn-hl-style').forEach(function(btn) {
-    btn.onclick = function() {
+// Kiểu highlight (tô khối / gạch chân / viền)
+document.querySelectorAll('.btn-hl-style').forEach(function (btn) {
+    btn.onclick = function () {
         state.hlStyle = btn.getAttribute('data-style');
         applyHighlightCustomization();
         saveProgressState();
     };
 });
 
-DOM.pickerHlText.oninput = function(e) {
-    state.hlTextColor = e.target.value;
-    applyHighlightCustomization();
-    saveProgressState();
-};
-DOM.pickerHlBg.oninput = function(e) {
-    state.hlBgColor = e.target.value;
-    applyHighlightCustomization();
-    saveProgressState();
-};
-DOM.pickerHlBorder.oninput = function(e) {
-    state.hlBorderColor = e.target.value;
-    applyHighlightCustomization();
-    saveProgressState();
-};
+// Hệ màu có sẵn (Color Presets Palette)
+document.querySelectorAll('.btn-hl-preset').forEach(function (btn) {
+    btn.onclick = function () {
+        state.hlTextColor = btn.getAttribute('data-text');
+        state.hlBgColor = btn.getAttribute('data-bg');
+        state.hlBorderColor = btn.getAttribute('data-border');
 
-document.querySelectorAll('.btn-voice-opt').forEach(function(btn) {
-    btn.onclick = function() {
-        document.querySelectorAll('.btn-voice-opt').forEach(function(b) {
+        applyHighlightCustomization();
+        saveProgressState();
+        showToast('Hệ màu: ' + btn.textContent.trim());
+    };
+});
+
+// Color Pickers thủ công
+if (DOM.pickerHlText) {
+    DOM.pickerHlText.oninput = function (e) {
+        state.hlTextColor = e.target.value;
+        applyHighlightCustomization();
+        saveProgressState();
+    };
+}
+if (DOM.pickerHlBg) {
+    DOM.pickerHlBg.oninput = function (e) {
+        state.hlBgColor = e.target.value;
+        applyHighlightCustomization();
+        saveProgressState();
+    };
+}
+if (DOM.pickerHlBorder) {
+    DOM.pickerHlBorder.oninput = function (e) {
+        state.hlBorderColor = e.target.value;
+        applyHighlightCustomization();
+        saveProgressState();
+    };
+}
+
+// Chọn giọng đọc
+document.querySelectorAll('.btn-voice-opt').forEach(function (btn) {
+    btn.onclick = function () {
+        document.querySelectorAll('.btn-voice-opt').forEach(function (b) {
             b.className = 'btn-voice-opt py-1.5 rounded-lg border border-neutral-500/20 text-xs font-medium';
         });
         btn.className = 'btn-voice-opt py-1.5 rounded-lg border border-[var(--accent-color)] text-xs font-semibold text-[var(--accent-color)]';
@@ -1898,11 +2093,33 @@ document.querySelectorAll('.btn-voice-opt').forEach(function(btn) {
     };
 });
 
-DOM.storageDownloadScope.onchange = function(e) {
-    DOM.storageRangeBox.classList.toggle('hidden', e.target.value !== 'range');
-    DOM.storageRangeBox.classList.toggle('flex', e.target.value === 'range');
+// Tìm kiếm văn bản
+if (DOM.btnSearchOpen) DOM.btnSearchOpen.onclick = openSearchAction;
+const btnSearchMobile = document.getElementById('btn-search-open-mobile');
+if (btnSearchMobile) btnSearchMobile.onclick = openSearchAction;
+
+DOM.btnSearchClose.onclick = function () {
+    DOM.searchBarDrawer.classList.add('hidden');
+    clearSearchHighlights();
 };
 
+DOM.inputSearchQuery.addEventListener('input', function (e) {
+    executeInBookSearch(e.target.value);
+});
+
+DOM.btnSearchNext.onclick = function () {
+    if (state.searchResults.length === 0) return;
+    const nextIdx = (state.currentSearchIndex + 1) % state.searchResults.length;
+    focusSearchResult(nextIdx);
+};
+
+DOM.btnSearchPrev.onclick = function () {
+    if (state.searchResults.length === 0) return;
+    const prevIdx = (state.currentSearchIndex - 1 + state.searchResults.length) % state.searchResults.length;
+    focusSearchResult(prevIdx);
+};
+
+// Storage Tabs
 const storageTabs = [
     { btn: document.getElementById('tab-btn-download'), pane: document.getElementById('tab-pane-download') },
     { btn: document.getElementById('tab-btn-manage'), pane: document.getElementById('tab-pane-manage') },
@@ -1910,10 +2127,10 @@ const storageTabs = [
     { btn: document.getElementById('tab-btn-system'), pane: document.getElementById('tab-pane-system') }
 ];
 
-storageTabs.forEach(function(t) {
+storageTabs.forEach(function (t) {
     if (!t.btn || !t.pane) return;
-    t.btn.onclick = function() {
-        storageTabs.forEach(function(item) {
+    t.btn.onclick = function () {
+        storageTabs.forEach(function (item) {
             if (item.btn && item.pane) {
                 item.btn.className = 'storage-tab-btn py-1.5 rounded opacity-60 hover:opacity-100';
                 item.pane.classList.add('hidden');
@@ -1924,23 +2141,26 @@ storageTabs.forEach(function(t) {
     };
 });
 
-DOM.btnStartBatchDownload.onclick = function() { runBatchDownload(); };
-DOM.btnCancelDownload.onclick = function() {
-    state.abortBatchDownload = true;
+DOM.storageDownloadScope.onchange = function (e) {
+    DOM.storageRangeBox.classList.toggle('hidden', e.target.value !== 'range');
+    DOM.storageRangeBox.classList.toggle('flex', e.target.value === 'range');
 };
 
-DOM.btnExportAudioFile.onclick = function() { exportSingleChapterAudio(); };
-DOM.btnExportFullTbz.onclick = function() { exportFullTbzArchive(); };
-DOM.btnExportTbz.onclick = function() { exportFullTbzArchive(); };
+DOM.btnStartBatchDownload.onclick = function () { runBatchDownload(); };
+DOM.btnCancelDownload.onclick = function () { state.abortBatchDownload = true; };
 
-DOM.btnTriggerImport.onclick = function() { DOM.fileInput.click(); };
-DOM.fileInput.onchange = function(e) {
+DOM.btnExportAudioFile.onclick = function () { exportSingleChapterAudio(); };
+DOM.btnExportFullTbz.onclick = function () { exportFullTbzArchive(); };
+DOM.btnExportTbz.onclick = function () { exportFullTbzArchive(); };
+
+DOM.btnTriggerImport.onclick = function () { DOM.fileInput.click(); };
+DOM.fileInput.onchange = function (e) {
     if (e.target.files.length > 0) {
         handleImportFile(e.target.files[0]);
     }
 };
 
-DOM.btnSaveBookMeta.onclick = async function() {
+DOM.btnSaveBookMeta.onclick = async function () {
     if (!state.currentBook) return;
     state.currentBook.title = DOM.editBookTitle.value.trim() || state.currentBook.title;
     state.currentBook.author = DOM.editBookAuthor.value.trim() || state.currentBook.author;
@@ -1950,7 +2170,7 @@ DOM.btnSaveBookMeta.onclick = async function() {
     await renderLibraryList();
 };
 
-DOM.btnCleanAudioCache.onclick = async function() {
+DOM.btnCleanAudioCache.onclick = async function () {
     if (!state.currentBook) return;
     await db.sentence_audio.where('bookId').equals(state.currentBook.id).delete();
     showToast("Đã xoá toàn bộ Audio đệm cuốn này!");
@@ -1958,14 +2178,14 @@ DOM.btnCleanAudioCache.onclick = async function() {
     await renderCachedChaptersList();
 };
 
-DOM.btnDeleteCurrentBook.onclick = async function() {
+DOM.btnDeleteCurrentBook.onclick = async function () {
     if (!state.currentBook) return;
     await deleteBookById(state.currentBook.id);
     DOM.modalStorage.classList.add('hidden');
     DOM.modalStorage.classList.remove('flex');
 };
 
-DOM.btnPurgeAll.onclick = async function() {
+DOM.btnPurgeAll.onclick = async function () {
     const ok = await askConfirmation("Xoá toàn bộ dữ liệu?", "Thao tác này sẽ xoá sạch mọi cuốn sách và file âm thanh.");
     if (ok) {
         await db.sentence_audio.clear();
@@ -1977,7 +2197,8 @@ DOM.btnPurgeAll.onclick = async function() {
     }
 };
 
-window.addEventListener('keydown', function(e) {
+// Phím tắt bàn phím
+window.addEventListener('keydown', function (e) {
     const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
     if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') {
         if (e.key === 'Escape') {
@@ -2013,7 +2234,7 @@ window.addEventListener('keydown', function(e) {
     } else if (e.key === 'Home') {
         DOM.viewport.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (e.key === 'Escape') {
-        document.querySelectorAll('#drawer-library, #drawer-toc, #modal-typography, #modal-storage, #search-bar-drawer').forEach(function(el) {
+        document.querySelectorAll('#drawer-library, #drawer-toc, #modal-typography, #modal-storage, #search-bar-drawer, #modal-devlog').forEach(function (el) {
             el.classList.add('hidden');
             el.classList.remove('flex');
         });
@@ -2022,16 +2243,18 @@ window.addEventListener('keydown', function(e) {
 });
 
 let scrollSaveTimer = null;
-DOM.viewport.addEventListener('scroll', function() {
+DOM.viewport.addEventListener('scroll', function () {
     if (state.isRestoringScroll) return;
     clearTimeout(scrollSaveTimer);
-    scrollSaveTimer = setTimeout(function() {
+    scrollSaveTimer = setTimeout(function () {
         state.savedScrollTop = DOM.viewport.scrollTop;
         saveProgressState();
     }, 150);
 });
 
-// Đồng bộ phiên bản và sao lưu .HunqWeb
+// ==========================================================================
+// 17. VERSIONING & .HUNQWEB BACKUP SYSTEM
+// ==========================================================================
 const btnCheckUpdate = document.getElementById('btn-check-app-update');
 const btnCreateHunqWeb = document.getElementById('btn-create-hunqweb-backup');
 const btnDownloadHunqWeb = document.getElementById('btn-download-cached-hunqweb');
@@ -2047,7 +2270,7 @@ function syncVersionLabels(version) {
 function fetchVersionFromSW() {
     if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
         if ('caches' in window) {
-            caches.keys().then(function(keys) {
+            caches.keys().then(function (keys) {
                 if (keys.length > 0) syncVersionLabels(keys[0]);
             });
         }
@@ -2055,7 +2278,7 @@ function fetchVersionFromSW() {
     }
 
     const messageChannel = new MessageChannel();
-    messageChannel.port1.onmessage = function(event) {
+    messageChannel.port1.onmessage = function (event) {
         if (event.data && event.data.version) {
             syncVersionLabels(event.data.version);
         }
@@ -2070,13 +2293,13 @@ async function updateBackupButtonState() {
         if (lastBackup && btnDownloadHunqWeb) {
             btnDownloadHunqWeb.classList.remove('hidden');
             btnDownloadHunqWeb.classList.add('block');
-            
+
             const backupDate = new Date(lastBackup.createdAt).toLocaleDateString('vi-VN');
             const backupVer = lastBackup.version ? lastBackup.version : APP_VERSION;
-            
+
             btnDownloadHunqWeb.textContent = 'Tải bản sao lưu ' + backupDate + ' (' + backupVer + ')';
-            
-            btnDownloadHunqWeb.onclick = function() {
+
+            btnDownloadHunqWeb.onclick = function () {
                 const url = URL.createObjectURL(lastBackup.blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -2094,7 +2317,7 @@ async function updateBackupButtonState() {
 }
 
 if (btnCreateHunqWeb) {
-    btnCreateHunqWeb.onclick = async function() {
+    btnCreateHunqWeb.onclick = async function () {
         showToast("Đang đóng gói mã nguồn .HunqWeb...");
         try {
             const zip = new JSZip();
@@ -2145,12 +2368,12 @@ if (btnCreateHunqWeb) {
 }
 
 if (btnCheckUpdate) {
-    btnCheckUpdate.onclick = async function() {
+    btnCheckUpdate.onclick = async function () {
         showToast("Đang kiểm tra cập nhật...");
         if ('caches' in window) {
             try {
                 const keys = await caches.keys();
-                await Promise.all(keys.map(function(k) { return caches.delete(k); }));
+                await Promise.all(keys.map(function (k) { return caches.delete(k); }));
                 if ('serviceWorker' in navigator) {
                     const registrations = await navigator.serviceWorker.getRegistrations();
                     for (let reg of registrations) {
@@ -2158,7 +2381,7 @@ if (btnCheckUpdate) {
                     }
                 }
                 showToast("Đã làm mới bộ đệm! Đang tải lại...");
-                setTimeout(function() { location.reload(true); }, 800);
+                setTimeout(function () { location.reload(true); }, 800);
             } catch (err) {
                 location.reload(true);
             }
@@ -2169,9 +2392,9 @@ if (btnCheckUpdate) {
 }
 
 if (btnTriggerUploadHunq && inputUploadHunq) {
-    btnTriggerUploadHunq.onclick = function() { inputUploadHunq.click(); };
+    btnTriggerUploadHunq.onclick = function () { inputUploadHunq.click(); };
 
-    inputUploadHunq.onchange = async function(e) {
+    inputUploadHunq.onchange = async function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -2208,19 +2431,30 @@ if (btnTriggerUploadHunq && inputUploadHunq) {
     };
 }
 
+// ==========================================================================
+// 18. INITIALIZATION
+// ==========================================================================
 async function initApp() {
     applyHighlightCustomization();
 
     const bookCount = await db.books.count();
     if (bookCount === 0) {
-        await db.books.put(SAMPLE_BOOK);
-        for (const ch of SAMPLE_CHAPTERS) {
-            await db.chapters.put({
-                ...ch,
-                sentences: splitSentences(ch.content)
-            });
+        state.currentBook = null;
+        state.currentChapterIndex = 0;
+        state.currentSentenceIndex = 0;
+        state.savedScrollTop = 0;
+
+        if (DOM.headerBookTitle) DOM.headerBookTitle.textContent = "Tủ sách trống";
+        if (DOM.headerChapterTitle) DOM.headerChapterTitle.textContent = "Chưa có sách";
+        if (DOM.container) {
+            DOM.container.innerHTML = `
+                <div class="text-center py-20 space-y-3 opacity-60">
+                    <i class="fa-solid fa-book-open text-4xl mb-2"></i>
+                    <p class="text-sm font-semibold">Tủ sách hiện đang trống</p>
+                    <p class="text-xs">Vui lòng bấm vào <b>Tủ Sách</b> ở góc trên để nạp file (.epub, .txt, .tbz).</p>
+                </div>
+            `;
         }
-        state.currentBook = SAMPLE_BOOK;
     } else {
         const savedPrefs = await db.settings.get('user_preferences');
         if (savedPrefs && savedPrefs.lastBookId) {
@@ -2239,34 +2473,34 @@ async function initApp() {
                 state.savedScrollTop = state.currentBook.scrollTop || 0;
             }
         }
+        await renderReaderContent(true);
     }
 
     await loadSettings();
-    await renderReaderContent(true);
     setupInfiniteScrollObserver();
     await updateBackupButtonState();
 }
 
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js').then(function(reg) {
-            console.log('[SW] Đã đăng ký:', reg.scope);
+    window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js').then(function (reg) {
+            console.log('[SW] Đã đăng ký Service Worker:', reg.scope);
             fetchVersionFromSW();
-        }).catch(function(err) {
-            console.warn('[SW] Đăng ký thất bại:', err);
+        }).catch(function (err) {
+            console.warn('[SW] Đăng ký Service Worker thất bại:', err);
         });
 
-        navigator.serviceWorker.addEventListener('controllerchange', function() {
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
             fetchVersionFromSW();
         });
     });
 }
 
-window.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('DOMContentLoaded', function () {
     initApp();
-    window.addEventListener('touchstart', function() { audioManager.unlockAudioSession(); }, { once: true });
-    window.addEventListener('click', function() { audioManager.unlockAudioSession(); }, { once: true });
-    window.addEventListener('beforeunload', function() {
+    window.addEventListener('touchstart', function () { audioManager.unlockAudioSession(); }, { once: true });
+    window.addEventListener('click', function () { audioManager.unlockAudioSession(); }, { once: true });
+    window.addEventListener('beforeunload', function () {
         state.savedScrollTop = DOM.viewport.scrollTop;
         saveProgressState();
     });

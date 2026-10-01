@@ -1,5 +1,5 @@
 // === NƠI DUY NHẤT BẠN CẦN ĐỔI PHIÊN BẢN KHI CÓ BẢN MỚI ===
-const CACHE_NAME = '1.2.2';
+const CACHE_NAME = '1.2.3';
 
 const STATIC_ASSETS = [
     './',
