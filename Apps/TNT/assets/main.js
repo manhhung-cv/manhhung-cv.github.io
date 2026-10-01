@@ -206,7 +206,7 @@ class WebAudioManager {
             artist: title || 'Giọng đọc AI',
             album: 'Truyện Voice Reader',
             artwork: [
-                { src: 'https://placehold.co/512x512/2563eb/ffffff?text=TruyenVoice', sizes: '512x512', type: 'image/png' }
+                { src: './assets/logo.png', sizes: '512x512', type: 'image/png' }
             ]
         });
     }
