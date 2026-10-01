@@ -565,5 +565,15 @@ export const TOOLS = [
         iconColor: '#ffffff',
         desc: 'Trình soạn thảo ghi chú nhanh, gọn gàng và lưu trữ dữ liệu an toàn trên máy.',
         tags: ['ghi chú', 'note', 'soạn thảo', 'lưu trữ']
+    },
+    {
+        id: 'tally',
+        catId: 'entertainment',
+        name: 'Bộ đếm',
+        icon: 'fas fa-sticky-note',
+        bgColor: 'linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #78350f 100%)',
+        iconColor: '#ffffff',
+        desc: 'Trình soạn thảo ghi chú nhanh, gọn gàng và lưu trữ dữ liệu an toàn trên máy.',
+        tags: ['ghi chú', 'note', 'soạn thảo', 'lưu trữ']
     }
 ];

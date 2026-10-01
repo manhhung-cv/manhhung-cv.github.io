@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TNT</title>
+    <meta name="description" content="Đọc &amp; nghe truyện audio">
+    <meta name="author" content="Hunq">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="./assets/logo.svg">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="TNT">
+    <meta property="og:description" content="Đọc &amp; nghe truyện audio">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="TNT">
+    <meta name="twitter:description" content="Đọc &amp; nghe truyện audio">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="TNT">
+    <link rel="apple-touch-icon" href="./assets/logo.svg">
+    <!-- External CDNs -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap"
+        rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            blue: '#1e40af',
+                            dark: '#0f172a'
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #0f172a;
+            --secondary-text: #64748b;
+            --bar-bg: #ffffff;
+            --bar-border: #e2e8f0;
+            --accent-color: #2563eb;
+            --reader-font: 'Be Vietnam Pro', sans-serif;
+            --reader-size: 18px;
+            --reader-lh: 1.85;
+            --reader-width: 680px;
+
+            --hl-style: 'fill';
+            --hl-bg: #eff6ff;
+            --hl-text: #1d4ed8;
+            --hl-border: #2563eb;
+        }
+
+        body.theme-light {
+            --bg-color: #ffffff;
+            --text-color: #0f172a;
+            --secondary-text: #64748b;
+            --bar-bg: #ffffff;
+            --bar-border: #e2e8f0;
+        }
+
+        body.theme-sepia {
+            --bg-color: #fcf8f2;
+            --text-color: #291e13;
+            --secondary-text: #786553;
+            --bar-bg: #f4ede2;
+            --bar-border: #e2d7c5;
+        }
+
+        body.theme-gray {
+            --bg-color: #1e293b;
+            --text-color: #f8fafc;
+            --secondary-text: #94a3b8;
+            --bar-bg: #0f172a;
+            --bar-border: #334155;
+        }
+
+        body.theme-dark {
+            --bg-color: #050505;
+            --text-color: #e5e5e5;
+            --secondary-text: #737373;
+            --bar-bg: #121212;
+            --bar-border: #262626;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--reader-font);
+            transition: background-color 0.15s ease, color 0.15s ease;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Minimal Flat Layout Bars */
+        .minimal-bar {
+            background-color: var(--bar-bg);
+            border: 1px solid var(--bar-border);
+        }
+
+        .sentence-block {
+            display: inline;
+            padding: 1px 3px;
+            margin: 0 1px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .sentence-block:hover {
+            background-color: rgba(128, 128, 128, 0.1);
+        }
+
+        .hl-mode-fill .sentence-block.is-active {
+            background-color: var(--hl-bg) !important;
+            color: var(--hl-text) !important;
+            font-weight: 600;
+            border: 1px solid var(--hl-border);
+        }
+
+        .hl-mode-underline .sentence-block.is-active {
+            background-color: transparent !important;
+            color: var(--hl-text) !important;
+            font-weight: 600;
+            border-bottom: 2px solid var(--hl-border) !important;
+            border-radius: 0;
+        }
+
+        .hl-mode-outline .sentence-block.is-active {
+            background-color: transparent !important;
+            color: var(--hl-text) !important;
+            font-weight: 600;
+            border: 1px solid var(--hl-border) !important;
+        }
+
+        .sentence-block.search-match {
+            background-color: #fef08a !important;
+            color: #854d0e !important;
+        }
+
+        .sentence-block.search-focus {
+            background-color: #facc15 !important;
+            color: #713f12 !important;
+            outline: 2px solid #ca8a04;
+        }
+
+        .minimal-modal-bg {
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+
+        .ui-hidden #app-top-header {
+            transform: translateY(-100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .ui-hidden #search-bar-drawer {
+            opacity: 0;
+            transform: translate(-50%, 20px);
+            pointer-events: none;
+        }
+
+        .ui-hidden #app-bottom-controller {
+            transform: translateY(100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #btn-toggle-hud {
+            transition: all 0.2s ease;
+        }
+
+        .ui-hidden #btn-toggle-hud #icon-toggle-hud {
+            transform: rotate(180deg);
+        }
+
+        @media (min-width: 768px) {
+            :root {
+                --reader-width: 760px;
+                --reader-size: 19px;
+            }
+        }
+
+        .audio-wave-bar {
+            width: 2px;
+            height: 4px;
+            background-color: var(--accent-color);
+            transition: height 0.2s ease;
+        }
+
+        .is-playing .audio-wave-bar:nth-child(1) {
+            animation: wave 0.6s infinite alternate;
+        }
+
+        .is-playing .audio-wave-bar:nth-child(2) {
+            animation: wave 0.4s infinite alternate 0.1s;
+        }
+
+        .is-playing .audio-wave-bar:nth-child(3) {
+            animation: wave 0.7s infinite alternate 0.2s;
+        }
+
+        .is-playing .audio-wave-bar:nth-child(4) {
+            animation: wave 0.5s infinite alternate 0.15s;
+        }
+
+        @keyframes wave {
+            0% {
+                height: 3px;
+            }
+
+            100% {
+                height: 12px;
+            }
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+
+<body class="theme-light h-full overflow-hidden select-none hl-mode-fill">
+    <div id="app" class="relative w-full h-full flex flex-col overflow-hidden">
+
+        <!-- Top Header -->
+        <header id="app-top-header"
+            class="fixed top-0 left-0 right-0 z-40 transition-all duration-200 pt-2 px-3 sm:px-6">
+            <div class="max-w-4xl mx-auto relative">
+                <div class="flex items-center justify-between h-12 minimal-bar rounded-xl px-3 sm:px-4">
+
+                    <button id="btn-library"
+                        class="h-9 px-3 rounded-lg flex items-center gap-2 hover:bg-neutral-500/10 active:bg-neutral-500/20 text-xs font-semibold"
+                        title="Tủ sách (L)">
+                        <i class="fa-solid fa-book text-sm text-[var(--accent-color)]"></i>
+                        <span class="hidden sm:inline">Tủ Sách</span>
+                    </button>
+
+                    <div class="flex-1 px-3 text-center cursor-pointer min-w-0" id="header-book-info">
+                        <p id="header-chapter-title" class="text-xs sm:text-sm font-bold truncate leading-tight">Chương
+                            1</p>
+                        <p id="header-book-title" class="text-[11px] truncate opacity-60 leading-tight mt-0.5">Truyện
+                            Voice</p>
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                        <button id="btn-reading-mode"
+                            class="h-9 px-2.5 rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-neutral-500/10">
+                            <i class="fa-solid fa-scroll text-xs opacity-70"></i>
+                            <span id="label-reading-mode" class="hidden md:inline">1 Chương</span>
+                        </button>
+
+                        <button id="btn-aa-open"
+                            class="h-9 w-9 rounded-lg flex items-center justify-center hover:bg-neutral-500/10 font-bold text-sm"
+                            title="Giao diện & Chữ">
+                            aA
+                        </button>
+
+                        <button id="btn-storage-modal"
+                            class="h-9 w-9 rounded-lg flex items-center justify-center hover:bg-neutral-500/10 relative"
+                            title="Quản lý & Dữ liệu">
+                            <i class="fa-solid fa-sliders text-xs"></i>
+                            <span id="header-offline-dot"
+                                class="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- Toast -->
+                <div id="toast"
+                    class="absolute left-1/2 -translate-x-1/2 top-full -translate-y-full opacity-0 pointer-events-none transition-all duration-200 z-50 px-3.5 py-1.5 rounded-lg minimal-bar text-xs font-medium shadow-md flex items-center gap-2 text-[var(--accent-color)] mt-2">
+                    <i class="fa-solid fa-info-circle text-xs"></i>
+                    <span id="toast-text">Thông báo</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Viewport đọc -->
+        <main id="reader-viewport"
+            class="flex-1 w-full h-full overflow-y-auto no-scrollbar pt-20 pb-28 px-4 sm:px-12 md:px-16">
+            <div id="reader-container" class="mx-auto leading-relaxed select-text font-normal"
+                style="max-width: var(--reader-width); font-size: var(--reader-size); line-height: var(--reader-lh);">
+            </div>
+
+            <!-- Infinite Scroll Sentinel -->
+            <div id="infinite-sentinel" class="w-full py-8 text-center hidden">
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg minimal-bar text-xs opacity-75">
+                    <i class="fa-solid fa-spinner fa-spin text-xs"></i>
+                    <span id="infinite-sentinel-text">Đang nạp chương tiếp theo...</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- Tìm kiếm nhanh -->
+        <div id="search-bar-drawer" class="fixed bottom-32 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-md hidden">
+            <div class="minimal-bar rounded-xl p-2.5 shadow-lg flex items-center gap-2">
+                <i class="fa-solid fa-magnifying-glass text-xs opacity-50 ml-1 text-[var(--accent-color)]"></i>
+                <input type="text" id="input-search-query" placeholder="Tìm kiếm văn bản..."
+                    class="flex-1 bg-transparent text-xs outline-none">
+                <button id="btn-search-prev"
+                    class="h-7 w-7 rounded flex items-center justify-center hover:bg-neutral-500/10 disabled:opacity-30"
+                    disabled>
+                    <i class="fa-solid fa-chevron-up text-xs"></i>
+                </button>
+                <span id="search-results-counter" class="text-xs font-mono opacity-60">0/0</span>
+                <button id="btn-search-next"
+                    class="h-7 w-7 rounded flex items-center justify-center hover:bg-neutral-500/10 disabled:opacity-30"
+                    disabled>
+                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                </button>
+                <button id="btn-search-close"
+                    class="h-7 w-7 rounded flex items-center justify-center hover:bg-neutral-500/10">
+                    <i class="fa-solid fa-xmark text-xs opacity-70"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Toggle Thanh điều khiển -->
+        <button id="btn-toggle-hud"
+            class="fixed bottom-4 right-4 z-50 h-9 w-9 rounded-lg minimal-bar flex items-center justify-center hover:bg-neutral-500/10 cursor-pointer"
+            title="Ẩn/Hiện thanh công cụ (F)">
+            <i class="fa-solid fa-chevron-down text-xs text-[var(--accent-color)]" id="icon-toggle-hud"></i>
+        </button>
+
+        <!-- Bottom Controller -->
+        <div id="app-bottom-controller"
+            class="fixed bottom-0 left-0 right-0 z-40 transition-all duration-200 pb-3 px-3 sm:px-6 pointer-events-auto">
+            <div id="bottom-bar-inner"
+                class="max-w-4xl mx-auto minimal-bar rounded-xl p-2 sm:px-3 shadow-md flex flex-col md:flex-row items-center justify-between gap-2">
+
+                <!-- Phân vùng 1: Trạng thái & Giọng -->
+                <div
+                    class="flex items-center justify-between w-full md:w-auto md:min-w-[180px] border-b md:border-b-0 border-neutral-500/10 pb-1.5 md:pb-0">
+                    <div class="flex items-center gap-2">
+                        <div>
+                            <p id="player-sentence-idx" class="text-xs font-bold font-mono">0 / 0</p>
+                            <p id="label-current-voice" class="text-[10px] opacity-60 truncate max-w-[100px]">Hoài My
+                            </p>
+                        </div>
+                        <div class="mt-auto h-full mb-0.5">
+                            <div id="audio-wave-box"
+                                class="flex items-end gap-0.5 h-full px-1.5 py-0.5 rounded opacity-60">
+                                <div class="audio-wave-bar"></div>
+                                <div class="audio-wave-bar"></div>
+                                <div class="audio-wave-bar"></div>
+                                <div class="audio-wave-bar"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1 md:hidden">
+                        <button id="btn-search-open-mobile"
+                            class="h-7 w-7 rounded flex items-center justify-center hover:bg-neutral-500/10">
+                            <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                        </button>
+                        <button id="btn-toc-mobile"
+                            class="h-7 w-7 rounded flex items-center justify-center hover:bg-neutral-500/10">
+                            <i class="fa-solid fa-list text-xs"></i>
+                        </button>
+                        <button id="btn-mute-toggle-mobile"
+                            class="h-7 w-7 rounded flex items-center justify-center hover:bg-neutral-500/10">
+                            <i class="fa-solid fa-volume-xmark text-xs" id="icon-mute-state-mobile"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Phân vùng 2: Phím điều hướng chính -->
+                <div class="flex items-center justify-center gap-1.5">
+                    <button id="btn-prev-chapter"
+                        class="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-neutral-500/10 disabled:opacity-30">
+                        <i class="fa-solid fa-angles-left text-xs"></i>
+                    </button>
+                    <button id="btn-prev-sentence"
+                        class="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-neutral-500/10">
+                        <i class="fa-solid fa-backward-step text-xs"></i>
+                    </button>
+                    <button id="btn-play-pause"
+                        class="h-9 w-9 rounded-lg bg-[var(--accent-color)] text-white flex items-center justify-center active:opacity-80">
+                        <i class="fa-solid fa-play text-xs ml-0.5" id="icon-play-state"></i>
+                    </button>
+                    <button id="btn-next-sentence"
+                        class="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-neutral-500/10">
+                        <i class="fa-solid fa-forward-step text-xs"></i>
+                    </button>
+                    <button id="btn-next-chapter"
+                        class="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-neutral-500/10 disabled:opacity-30">
+                        <i class="fa-solid fa-angles-right text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Phân vùng 3: Tiện ích -->
+                <div class="hidden md:flex items-center gap-1">
+                    <button id="btn-search-open"
+                        class="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-neutral-500/10"
+                        title="Tìm kiếm (S)">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                    </button>
+                    <button id="btn-toc"
+                        class="h-8 px-2.5 rounded-lg text-xs font-medium hover:bg-neutral-500/10 flex items-center gap-1"
+                        title="Mục lục (M)">
+                        <i class="fa-solid fa-list text-xs"></i>
+                        <span>Mục lục</span>
+                    </button>
+                    <button id="btn-quick-speed"
+                        class="h-8 px-2 rounded-lg text-xs font-mono font-bold hover:bg-neutral-500/10" title="Tốc độ">
+                        1.0×
+                    </button>
+                    <button id="btn-mute-toggle"
+                        class="h-8 px-2 rounded-lg text-xs font-medium hover:bg-neutral-500/10 flex items-center gap-1">
+                        <i class="fa-solid fa-volume-xmark text-xs" id="icon-mute-state"></i>
+                        <span id="label-mute-state">Chỉ đọc</span>
+                    </button>
+                    <button id="btn-on-top"
+                        class="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-neutral-500/10"
+                        title="Lên đầu trang">
+                        <i class="fa-solid fa-arrow-up text-xs"></i>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Modal Giao diện & Kiểu chữ -->
+        <div id="modal-typography" class="fixed inset-0 z-50 minimal-modal-bg hidden items-center justify-center p-3">
+            <div class="w-full max-w-md minimal-bar rounded-xl p-5 space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar">
+
+                <div class="flex items-center justify-between pb-2 border-b border-neutral-500/10">
+                    <h3 class="text-xs font-bold uppercase tracking-wider opacity-80">Cấu hình Đọc & Highlight</h3>
+                    <button
+                        class="btn-close-drawer h-7 w-7 rounded flex items-center justify-center hover:bg-neutral-500/10">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Kiểu Highlight -->
+                <div class="space-y-2">
+                    <label class="text-xs font-semibold opacity-75">Đánh dấu câu</label>
+                    <div class="grid grid-cols-3 gap-1.5" id="hl-style-chips">
+                        <button data-style="fill"
+                            class="btn-hl-style py-1.5 rounded-lg border border-[var(--accent-color)] text-[var(--accent-color)] bg-neutral-500/5 text-xs font-medium">Tô
+                            khối</button>
+                        <button data-style="underline"
+                            class="btn-hl-style py-1.5 rounded-lg border border-neutral-500/20 text-xs font-medium">Gạch
+                            chân</button>
+                        <button data-style="outline"
+                            class="btn-hl-style py-1.5 rounded-lg border border-neutral-500/20 text-xs font-medium">Viền
+                            khung</button>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 pt-1 text-xs">
+                        <div>
+                            <span class="opacity-60 text-[11px] block mb-1">Màu chữ</span>
+                            <input type="color" id="picker-hl-text"
+                                class="w-full h-7 rounded border border-neutral-500/20 bg-transparent cursor-pointer p-0.5">
+                        </div>
+                        <div>
+                            <span class="opacity-60 text-[11px] block mb-1">Màu nền</span>
+                            <input type="color" id="picker-hl-bg"
+                                class="w-full h-7 rounded border border-neutral-500/20 bg-transparent cursor-pointer p-0.5">
+                        </div>
+                        <div>
+                            <span class="opacity-60 text-[11px] block mb-1">Màu viền</span>
+                            <input type="color" id="picker-hl-border"
+                                class="w-full h-7 rounded border border-neutral-500/20 bg-transparent cursor-pointer p-0.5">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Màu nền sách -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold opacity-75">Giao diện sách</label>
+                    <div class="grid grid-cols-4 gap-1.5">
+                        <button data-theme="theme-light"
+                            class="btn-theme-select py-1.5 rounded-lg border border-neutral-300 text-xs font-semibold bg-white text-slate-900">Sáng</button>
+                        <button data-theme="theme-sepia"
+                            class="btn-theme-select py-1.5 rounded-lg border border-amber-200 text-xs font-semibold bg-[#fcf8f2] text-[#291e13]">Giấy</button>
+                        <button data-theme="theme-gray"
+                            class="btn-theme-select py-1.5 rounded-lg border border-slate-700 text-xs font-semibold bg-slate-800 text-slate-100">Xám</button>
+                        <button data-theme="theme-dark"
+                            class="btn-theme-select py-1.5 rounded-lg border border-neutral-800 text-xs font-semibold bg-neutral-950 text-neutral-200">Đêm</button>
+                    </div>
+                </div>
+
+                <!-- Cỡ chữ -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs font-medium">
+                        <span class="opacity-75">Cỡ chữ</span>
+                        <span id="label-font-size" class="font-mono font-bold text-[var(--accent-color)]">18px</span>
+                    </div>
+                    <input type="range" id="slider-font-size" min="15" max="30" value="18"
+                        class="w-full accent-[var(--accent-color)] h-1.5 cursor-pointer">
+                </div>
+
+                <!-- Phông chữ -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold opacity-75">Phông chữ</label>
+                    <div class="grid grid-cols-3 gap-1.5" id="font-family-chips">
+                        <button data-font="'Be Vietnam Pro', sans-serif"
+                            class="btn-font-chip py-1.5 rounded-lg border border-[var(--accent-color)] text-xs font-medium text-[var(--accent-color)]">Sans</button>
+                        <button data-font="'Lora', serif"
+                            class="btn-font-chip py-1.5 rounded-lg border border-neutral-500/20 text-xs font-serif">Lora</button>
+                        <button data-font="'Newsreader', serif"
+                            class="btn-font-chip py-1.5 rounded-lg border border-neutral-500/20 text-xs font-serif">Cổ
+                            điển</button>
+                    </div>
+                </div>
+
+                <!-- Giọng đọc -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold opacity-75">Giọng đọc</label>
+                    <div class="grid grid-cols-2 gap-1.5" id="voice-selector-group">
+                        <button data-voice="Hoài My"
+                            class="btn-voice-opt py-1.5 rounded-lg border border-[var(--accent-color)] text-[var(--accent-color)] text-xs font-medium">Hoài
+                            My (Nữ)</button>
+                        <button data-voice="Nam Minh"
+                            class="btn-voice-opt py-1.5 rounded-lg border border-neutral-500/20 text-xs font-medium">Nam
+                            Minh (Nam)</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Drawer: Tủ sách -->
+        <div id="drawer-library" class="fixed inset-0 z-50 minimal-modal-bg hidden items-center justify-center p-3">
+            <div class="w-full max-w-sm minimal-bar rounded-xl p-4 space-y-3 max-h-[85vh] flex flex-col">
+                <div class="flex items-center justify-between pb-2 border-b border-neutral-500/10">
+                    <h3 class="font-bold text-xs uppercase tracking-wider opacity-80">Tủ Sách</h3>
+                    <button
+                        class="btn-close-drawer h-7 w-7 rounded flex items-center justify-center hover:bg-neutral-500/10">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-1.5">
+                    <input type="file" id="file-import-input" accept=".epub,.txt,.json,.tbz" class="hidden">
+                    <div class="flex gap-1.5">
+                        <button id="btn-trigger-import"
+                            class="flex-1 py-2 px-3 rounded-lg bg-[var(--accent-color)] text-white text-xs font-medium flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                            <span>Nhập file</span>
+                        </button>
+                        <button id="btn-export-tbz"
+                            class="py-2 px-3 rounded-lg border border-neutral-500/20 text-xs font-medium hover:bg-neutral-500/10"
+                            title="Xuất sao lưu .TBZ">
+                            <i class="fa-solid fa-file-zipper text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto no-scrollbar space-y-1.5" id="library-book-list"></div>
+            </div>
+        </div>
+
+        <!-- Drawer: Mục lục -->
+        <div id="drawer-toc" class="fixed inset-0 z-50 minimal-modal-bg hidden items-center justify-center p-3">
+            <div class="w-full max-w-sm minimal-bar rounded-xl p-4 space-y-3 max-h-[85vh] flex flex-col">
+                <div class="flex items-center justify-between pb-2 border-b border-neutral-500/10">
+                    <h3 class="font-bold text-xs uppercase tracking-wider opacity-80">Mục Lục</h3>
+                    <button
+                        class="btn-close-drawer h-7 w-7 rounded flex items-center justify-center hover:bg-neutral-500/10">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto no-scrollbar divide-y divide-neutral-500/10 text-xs"
+                    id="toc-chapter-list"></div>
+            </div>
+        </div>
+
+        <!-- Modal Quản trị & Hệ thống Minimalist -->
+        <div id="modal-storage" class="fixed inset-0 z-50 minimal-modal-bg hidden items-center justify-center p-3">
+            <div class="w-full max-w-md minimal-bar rounded-xl p-5 space-y-4 max-h-[88vh] flex flex-col">
+
+                <div class="flex items-center justify-between pb-2 border-b border-neutral-500/10">
+                    <h3 class="font-bold text-xs uppercase tracking-wider opacity-80">Quản Lý & Hệ Thống</h3>
+                    <button
+                        class="btn-close-drawer h-7 w-7 rounded flex items-center justify-center hover:bg-neutral-500/10">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Phân đoạn Tab phẳng đơn giản -->
+                <div class="grid grid-cols-4 gap-1 p-1 bg-neutral-500/10 rounded-lg text-xs font-semibold text-center">
+                    <button id="tab-btn-download"
+                        class="storage-tab-btn py-1.5 rounded bg-[var(--bar-bg)] text-[var(--accent-color)] shadow-sm">Tải
+                        Offline</button>
+                    <button id="tab-btn-manage"
+                        class="storage-tab-btn py-1.5 rounded opacity-60 hover:opacity-100">Sách</button>
+                    <button id="tab-btn-backup" class="storage-tab-btn py-1.5 rounded opacity-60 hover:opacity-100">Gói
+                        TBZ</button>
+                    <button id="tab-btn-system" class="storage-tab-btn py-1.5 rounded opacity-60 hover:opacity-100">Hệ
+                        Thống</button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto no-scrollbar space-y-3 text-xs">
+
+                    <!-- TAB 1: Tải Offline -->
+                    <div id="tab-pane-download" class="storage-pane space-y-2.5">
+                        <div class="p-3 rounded-lg border border-neutral-500/20 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="opacity-70">Phạm vi tải:</span>
+                                <select id="storage-download-scope"
+                                    class="bg-transparent font-semibold outline-none cursor-pointer">
+                                    <option value="chapter">Chương hiện tại</option>
+                                    <option value="all">Toàn bộ truyện</option>
+                                    <option value="range">Khoảng chương...</option>
+                                </select>
+                            </div>
+
+                            <div id="storage-range-box"
+                                class="hidden items-center justify-between pt-2 border-t border-neutral-500/10">
+                                <span class="opacity-60 text-[11px]">Từ chương:</span>
+                                <input type="number" id="input-range-from" min="1" value="1"
+                                    class="w-14 px-1.5 py-0.5 rounded border border-neutral-500/20 text-center bg-transparent">
+                                <span class="opacity-60 text-[11px]">Đến:</span>
+                                <input type="number" id="input-range-to" min="1" value="1"
+                                    class="w-14 px-1.5 py-0.5 rounded border border-neutral-500/20 text-center bg-transparent">
+                            </div>
+
+                            <div class="flex justify-between items-center pt-2 border-t border-neutral-500/10">
+                                <span class="opacity-70">Giọng đọc:</span>
+                                <select id="storage-select-voice" class="bg-transparent font-semibold outline-none">
+                                    <option value="Hoài My">Hoài My (Nữ)</option>
+                                    <option value="Nam Minh">Nam Minh (Nam)</option>
+                                </select>
+                            </div>
+
+                            <div class="flex justify-between items-center pt-2 border-t border-neutral-500/10">
+                                <span class="opacity-70">Số luồng tải:</span>
+                                <select id="storage-download-concurrency"
+                                    class="bg-transparent font-semibold text-[var(--accent-color)] outline-none">
+                                    <option value="1">1 luồng</option>
+                                    <option value="2">2 luồng</option>
+                                    <option value="3" selected>3 luồng</option>
+                                    <option value="5">5 luồng</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="download-progress-card"
+                            class="hidden p-3 rounded-lg border border-[var(--accent-color)] bg-neutral-500/5 space-y-1.5">
+                            <div class="flex justify-between font-bold text-[var(--accent-color)]">
+                                <span id="dl-status-text">Đang tải...</span>
+                                <span id="dl-status-percent">0%</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-neutral-500/20 rounded-full overflow-hidden">
+                                <div id="dl-progress-bar-fill" class="h-full bg-[var(--accent-color)]"
+                                    style="width: 0%"></div>
+                            </div>
+                            <div class="flex justify-between text-[11px] opacity-75">
+                                <span id="dl-count-text">0 / 0 câu</span>
+                                <button id="btn-cancel-download"
+                                    class="text-rose-500 font-bold hover:underline">Hủy</button>
+                            </div>
+                        </div>
+
+                        <button id="btn-start-batch-download"
+                            class="w-full py-2.5 rounded-lg bg-[var(--accent-color)] text-white font-semibold flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-bolt text-xs"></i>
+                            <span>Bắt đầu tải ngoại tuyến</span>
+                        </button>
+
+                        <div class="p-3 rounded-lg border border-neutral-500/20 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="opacity-70">Định dạng xuất:</span>
+                                <select id="storage-select-ext" class="bg-transparent font-medium outline-none">
+                                    <option value="mp3">.MP3</option>
+                                    <option value="webm">.WEBM</option>
+                                    <option value="wav">.WAV</option>
+                                </select>
+                            </div>
+                            <button id="btn-export-audio-file"
+                                class="w-full py-2 rounded-lg border border-neutral-500/20 font-medium hover:bg-neutral-500/10">
+                                Xuất âm thanh chương hiện tại
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: Quản lý sách -->
+                    <div id="tab-pane-manage" class="storage-pane hidden space-y-2.5">
+                        <div class="p-3 rounded-lg border border-neutral-500/20 space-y-2">
+                            <div>
+                                <label class="opacity-60 text-[11px] block mb-1">Tiêu đề sách</label>
+                                <input type="text" id="edit-book-title"
+                                    class="w-full px-2.5 py-1.5 rounded border border-neutral-500/20 bg-transparent outline-none font-semibold">
+                            </div>
+                            <div>
+                                <label class="opacity-60 text-[11px] block mb-1">Tác giả</label>
+                                <input type="text" id="edit-book-author"
+                                    class="w-full px-2.5 py-1.5 rounded border border-neutral-500/20 bg-transparent outline-none">
+                            </div>
+                            <button id="btn-save-book-meta"
+                                class="w-full py-1.5 rounded border border-neutral-500/20 font-semibold hover:bg-neutral-500/10">
+                                Lưu thông tin
+                            </button>
+                        </div>
+
+                        <div id="cached-chapters-list" class="max-h-36 overflow-y-auto space-y-1 no-scrollbar"></div>
+
+                        <div class="space-y-1.5 pt-1">
+                            <button id="btn-clean-audio-cache"
+                                class="w-full py-2 rounded-lg border border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/5 font-semibold">
+                                Xoá audio đệm của cuốn này
+                            </button>
+                            <button id="btn-delete-current-book"
+                                class="w-full py-2 rounded-lg border border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/5 font-semibold">
+                                Xoá cuốn sách này
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: Sao Lưu TBZ -->
+                    <div id="tab-pane-backup" class="storage-pane hidden space-y-2.5">
+                        <div class="p-3 rounded-lg border border-neutral-500/20 space-y-2">
+                            <p class="font-semibold text-xs">Gói dữ liệu hoàn chỉnh (.TBZ)</p>
+                            <p class="text-[11px] opacity-65 leading-relaxed">
+                                Đóng gói toàn bộ sách, chương và âm thanh ngoại tuyến thành một file sao lưu độc lập.
+                            </p>
+                            <button id="btn-export-full-tbz"
+                                class="w-full py-2 rounded-lg bg-[var(--accent-color)] text-white font-semibold">
+                                Xuất file sao lưu .TBZ
+                            </button>
+                        </div>
+
+                        <div class="p-3 rounded-lg border border-neutral-500/20 space-y-1">
+                            <div class="flex justify-between py-0.5">
+                                <span class="opacity-70">Tổng số sách:</span>
+                                <span id="stat-total-books" class="font-bold">0</span>
+                            </div>
+                            <div class="flex justify-between py-0.5">
+                                <span class="opacity-70">Số câu audio đã lưu:</span>
+                                <span id="stat-total-chapters" class="font-bold">0</span>
+                            </div>
+                            <div class="flex justify-between py-0.5">
+                                <span class="opacity-70">Dung lượng ước lượng:</span>
+                                <span id="stat-total-bytes" class="font-bold font-mono text-[var(--accent-color)]">0.0
+                                    MB</span>
+                            </div>
+                        </div>
+
+                        <button id="btn-purge-all-data"
+                            class="w-full py-2 rounded-lg border border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/5 font-semibold">
+                            Xoá toàn bộ dữ liệu & Đặt lại
+                        </button>
+                    </div>
+
+                    <!-- TAB 4: Quản lý Phiên bản & .HunqWeb -->
+                    <div id="tab-pane-system" class="storage-pane hidden space-y-2.5">
+                        <div class="p-3 rounded-lg border border-neutral-500/20 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="font-semibold text-xs">Phiên bản hiện tại</p>
+                                    <p id="cache-name-label" class="text-[11px] opacity-60 font-mono">truyenvoice-pwa-v2
+                                    </p>
+                                </div>
+                                <span id="app-version-badge"
+                                    class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-neutral-500/10 border border-neutral-500/20">
+                                    truyenvoice-pwa-v2
+                                </span>
+                            </div>
+
+                            <button id="btn-check-app-update"
+                                class="w-full py-2 rounded-lg border border-neutral-500/20 font-semibold hover:bg-neutral-500/10 flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-arrows-rotate text-xs"></i>
+                                <span>Kiểm tra & Cập nhật phiên bản mới</span>
+                            </button>
+                        </div>
+
+                        <!-- Khối sao lưu .HunqWeb -->
+                        <div class="p-3 rounded-lg border border-neutral-500/20 space-y-2">
+                            <p class="font-semibold text-xs">Gói mã nguồn (.HunqWeb)</p>
+                            <p class="text-[11px] opacity-65 leading-relaxed">
+                                Đóng gói toàn bộ mã nguồn web hiện tại thành tệp <b>.HunqWeb</b> để sao lưu hoặc khôi
+                                phục phiên bản trước.
+                            </p>
+
+                            <button id="btn-create-hunqweb-backup"
+                                class="w-full py-2 rounded-lg bg-[var(--accent-color)] text-white font-semibold">
+                                Sao lưu mã nguồn hiện tại (.HunqWeb)
+                            </button>
+
+                            <button id="btn-download-cached-hunqweb"
+                                class="hidden w-full py-2 rounded-lg border border-[var(--accent-color)] text-[var(--accent-color)] font-semibold">
+                                Tải xuống tệp .HunqWeb đã sao lưu
+                            </button>
+
+                            <div class="pt-1.5 border-t border-neutral-500/10">
+                                <input type="file" id="input-upload-hunqweb" accept=".HunqWeb,.zip" class="hidden">
+                                <button id="btn-trigger-upload-hunqweb"
+                                    class="w-full py-2 rounded-lg border border-amber-500/40 text-amber-600 dark:text-amber-400 font-semibold hover:bg-amber-500/5">
+                                    Tải lên phiên bản cũ (.HunqWeb)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Hướng dẫn cài đặt độc lập -->
+                        <div class="p-3 rounded-lg border border-neutral-500/20 space-y-1">
+                            <p class="font-semibold text-xs uppercase tracking-wider opacity-75">Cài đặt ứng dụng trên
+                                thiết bị</p>
+                            <p class="text-[11px] opacity-65 leading-relaxed">
+                                Mở menu trình duyệt trên thiết bị di động của bạn, chọn chức năng <b>"Cài đặt ứng
+                                    dụng"</b> hoặc <b>"Thêm vào Màn hình chính"</b> để sử dụng ngoại tuyến toàn diện.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Hộp thoại xác nhận -->
+        <div id="modal-confirm" class="fixed inset-0 z-50 minimal-modal-bg hidden items-center justify-center p-4">
+            <div class="w-full max-w-xs minimal-bar rounded-xl p-4 space-y-3 text-center">
+                <h4 id="confirm-title" class="font-bold text-sm">Xác nhận</h4>
+                <p id="confirm-desc" class="text-xs opacity-70 leading-relaxed">Bạn có chắc chắn muốn thực hiện?</p>
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button id="btn-confirm-cancel"
+                        class="py-1.5 rounded border border-neutral-500/20 text-xs font-semibold hover:bg-neutral-500/10">Huỷ</button>
+                    <button id="btn-confirm-ok" class="py-1.5 rounded bg-rose-600 text-white text-xs font-semibold">Đồng
+                        ý</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Silent keeper audio -->
+        <audio id="silent-keeper-audio" loop playsinline preload="auto" class="hidden w-full"></audio>
+    </div>
+
+    <script src="./assets/main.js"></script>
+</body>
+
+</html>
