@@ -116,6 +116,7 @@ db.version(2).stores({
 });
 
 const SAMPLE_BOOK = {
+
 };
 
 const SAMPLE_CHAPTERS = [
