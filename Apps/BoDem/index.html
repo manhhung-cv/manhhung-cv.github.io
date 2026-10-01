@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="vi"
+    class="h-full antialiased selection:bg-neutral-500/20 selection:text-neutral-900 dark:selection:text-white">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <title>Tally — Bộ đếm điểm số</title>
+
+    <link rel="icon" href="/Asset/logo/logo.png" />
+    <link rel="apple-touch-icon" href="/Asset/logo/iconApps.png" sizes="150x150" />
+
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Tally" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro Display"', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Ẩn con trỏ tăng giảm số mặc định */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        html.font-sm {
+            font-size: 14px;
+        }
+
+        html.font-md {
+            font-size: 16px;
+        }
+
+        html.font-lg {
+            font-size: 18px;
+        }
+    </style>
+</head>
+
+<body
+    class="flex min-h-full flex-col bg-[#f5f5f7] text-neutral-900 transition-colors duration-200 dark:bg-[#09090b] dark:text-neutral-100 font-sans pb-28 md:pb-24">
+
+    <!-- Header: Cố định, phẳng đặc, giãn rộng theo Tablet/Desktop -->
+    <header
+        class="sticky top-0 z-30 border-b border-black/[0.08] bg-white transition-colors duration-200 dark:border-white/[0.08] dark:bg-[#121215]">
+        <div class="mx-auto flex max-w-5xl items-center justify-between px-4 sm:px-6 py-3">
+
+            <!-- Logo và Tiêu đề -->
+            <div class="flex items-center gap-3">
+                <div
+                    class="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900 text-white dark:bg-white dark:text-black font-black text-sm shadow-sm">
+                    <img src="/Asset/logo/logo.png" alt="LOGO" >
+                </div>
+                <div>
+                    <h1 id="headerTitle" class="text-sm sm:text-base font-bold tracking-tight">Tally - Bộ đếm</h1>
+                    <p id="headerSubtitle"
+                        class="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400 font-medium">Bảng theo dõi điểm số</p>
+                </div>
+            </div>
+
+            <!-- Cụm chức năng trên Header -->
+            <div class="flex items-center gap-2">
+                <!-- Đồng hồ bấm giờ (Nhấp để mở menu điều khiển) -->
+                <button id="timerBtn" onclick="openTimerActionModal()"
+                    class="flex items-center gap-1.5 rounded-full border border-black/[0.08] bg-neutral-100 px-3 py-1 font-mono text-xs sm:text-sm font-semibold text-neutral-700 transition hover:bg-neutral-200 active:scale-95 dark:border-white/[0.1] dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                    title="Tùy chọn thời gian">
+                    <span id="timerIndicatorDot" class="h-2 w-2 rounded-full bg-neutral-400"></span>
+                    <span id="timerText">00:00:00</span>
+                </button>
+
+                <!-- Icon Luật chơi (i) -->
+                <button onclick="showRulesModal()"
+                    class="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-black/[0.08] bg-neutral-100 text-neutral-600 transition hover:bg-neutral-200 active:scale-95 dark:border-white/[0.1] dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                    title="Luật chơi & Hướng dẫn">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </button>
+
+                <!-- Nút chuyển đổi Dark/Light -->
+                <button id="themeToggleBtn" onclick="toggleTheme()"
+                    class="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-black/[0.08] bg-neutral-100 text-neutral-600 transition hover:bg-neutral-200 active:scale-95 dark:border-white/[0.1] dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                    title="Chuyển chế độ sáng/tối">
+                    <svg id="themeIconSun" class="hidden h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <svg id="themeIconMoon" class="hidden h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- NỘI DUNG CHÍNH (Độ rộng thích ứng Tablet md: và Desktop lg:) -->
+    <main class="mx-auto w-full max-w-5xl flex-1 px-4 sm:px-6 pt-4 space-y-4">
+
+        <!-- ==========================================
+         TAB 1: BỘ ĐẾM
+         ========================================== -->
+        <div id="tabContentCounter" class="tab-pane space-y-4">
+
+            <!-- BẢNG ĐIỀU KHIỂN SIÊU GỌN -->
+            <section
+                class="rounded-2xl border border-black/[0.08] bg-white p-3.5 shadow-sm dark:border-white/[0.08] dark:bg-[#121215] transition-all space-y-3">
+
+                <!-- Khu vực nhập tên & mốc điểm thắng (Sẽ ẩn khi thu gọn) -->
+                <div id="inputSectionArea" class="space-y-2.5 transition-all duration-200">
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <!-- Ô nhập tên -->
+                        <input type="text" id="itemName" placeholder="Tên người chơi... (hoặc A, B, C, D)"
+                            autocomplete="off"
+                            class="flex-1 rounded-xl border border-black/[0.1] bg-neutral-50 px-4 py-2.5 text-xs sm:text-sm font-semibold outline-none transition focus:border-neutral-500 focus:bg-white dark:border-white/[0.1] dark:bg-neutral-800/60 dark:focus:border-neutral-400 placeholder-neutral-400" />
+
+                        <!-- Mốc điểm thắng ván -->
+                        <div
+                            class="flex items-center justify-between sm:justify-start gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
+                            <span
+                                class="text-amber-800 dark:text-amber-300 font-semibold flex items-center gap-1.5 whitespace-nowrap">
+                                <span>🎯</span> Điểm thắng:
+                            </span>
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="inlineWinScoreInput" placeholder="0 (Tắt)" min="0"
+                                    class="w-16 bg-white dark:bg-neutral-900 border border-amber-500/30 rounded-lg px-2 py-1 text-center font-mono text-xs font-bold text-amber-600 dark:text-amber-400 outline-none"
+                                    onchange="handleInlineWinScoreChange(this.value)" />
+                                <span class="text-[10px] text-neutral-500 dark:text-neutral-400 font-semibold">đ</span>
+                            </div>
+                        </div>
+
+                        <!-- Nút Thêm -->
+                        <button onclick="addTally()"
+                            class="h-10 px-5 rounded-xl bg-neutral-900 text-white font-bold text-xs sm:text-sm transition hover:bg-neutral-800 active:scale-95 dark:bg-white dark:text-black">
+                            Thêm
+                        </button>
+                    </div>
+                </div>
+
+                <!-- HÀNG CÔNG CỤ (LUÔN HIỂN THỊ KHI THU GỌN) -->
+                <div
+                    class="flex items-center justify-between gap-2 pt-1 border-t border-black/[0.04] dark:border-white/[0.06] text-xs font-semibold">
+                    <button id="smartpointBtn" onclick="toggleSmartPoint()"
+                        class="flex-1 py-2 rounded-xl border border-black/[0.06] bg-neutral-50 text-neutral-600 transition hover:bg-neutral-100 active:scale-95 dark:border-white/[0.08] dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 truncate px-2">
+                        <span id="smartPointLabel">Smart Point</span>
+                    </button>
+                    <button id="resetButton"
+                        class="flex-1 py-2 rounded-xl border border-black/[0.06] bg-neutral-50 text-neutral-600 transition hover:bg-neutral-100 active:scale-95 dark:border-white/[0.08] dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700">
+                        Ván mới
+                    </button>
+                    <button id="deleteAllButton"
+                        class="flex-1 py-2 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-600 transition hover:bg-rose-500/20 active:scale-95 dark:text-rose-400">
+                        Xoá hết
+                    </button>
+
+                    <!-- Nút Thu gọn / Mở rộng bảng điều khiển -->
+                    <button onclick="toggleControlPanel()" id="togglePanelBtn"
+                        class="h-8 w-8 flex items-center justify-center rounded-xl border border-black/[0.06] bg-neutral-50 text-neutral-500 hover:text-neutral-800 active:scale-95 dark:border-white/[0.08] dark:bg-neutral-800 dark:text-neutral-400 dark:hover:text-white transition flex-shrink-0"
+                        title="Ẩn / Hiện ô nhập tên">
+                        <svg id="collapseArrow" class="h-4 w-4 transform transition-transform" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7" />
+                        </svg>
+                    </button>
+                </div>
+
+            </section>
+
+            <!-- Danh sách thẻ người chơi (1 cột ở Mobile, 2 cột ở Tablet/Desktop) -->
+            <section id="Tally" class="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-2 gap-3"></section>
+
+            <!-- Trạng thái trống -->
+            <div id="emptyState"
+                class="hidden rounded-2xl border border-dashed border-black/[0.1] dark:border-white/[0.1] py-16 text-center bg-white dark:bg-[#121215]">
+                <p class="text-sm sm:text-base font-bold text-neutral-500 dark:text-neutral-400">Bàn đấu chưa có người
+                    chơi</p>
+                <p class="text-xs text-neutral-400 mt-1 dark:text-neutral-500">Nhập tên vào ô phía trên để bắt đầu ván
+                    đấu.</p>
+            </div>
+
+            <!-- 5 LỊCH SỬ GẦN NHẤT TRÊN BỘ ĐẾM -->
+            <section id="recentHistorySection" class="hidden space-y-2 pt-2">
+                <div class="flex items-center justify-between px-1">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Lượt gần nhất
+                        (5)</span>
+                    <button onclick="switchTab('history')"
+                        class="text-xs text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 font-bold">Xem
+                        tất cả →</button>
+                </div>
+                <div id="RecentHistoryList"
+                    class="divide-y divide-black/[0.04] overflow-hidden rounded-2xl border border-black/[0.08] bg-white p-2 font-mono text-xs shadow-sm dark:divide-white/[0.06] dark:border-white/[0.08] dark:bg-[#121215]">
+                </div>
+            </section>
+
+        </div>
+
+        <!-- ==========================================
+         TAB 2: LỊCH SỬ TOÀN BỘ
+         ========================================== -->
+        <div id="tabContentHistory" class="tab-pane hidden space-y-3">
+            <div class="flex items-center justify-between px-1">
+                <h2 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-400">Lịch sử toàn trận
+                </h2>
+                <button onclick="clearHistoryOnly()"
+                    class="text-xs sm:text-sm text-rose-500 hover:text-rose-600 transition font-bold">Làm trống</button>
+            </div>
+
+            <div id="FullHistoryList"
+                class="divide-y divide-black/[0.04] overflow-hidden rounded-2xl border border-black/[0.08] bg-white p-3 font-mono text-xs sm:text-sm shadow-sm dark:divide-white/[0.06] dark:border-white/[0.08] dark:bg-[#121215] min-h-[160px]">
+            </div>
+
+            <div id="fullHistoryEmpty" class="hidden text-center py-16 text-xs sm:text-sm text-neutral-400">
+                Chưa có thay đổi điểm số nào được ghi lại.
+            </div>
+        </div>
+
+        <!-- ==========================================
+         TAB 3: CÀI ĐẶT
+         ========================================== -->
+        <div id="tabContentSettings" class="tab-pane hidden space-y-4 max-w-2xl mx-auto">
+
+            <!-- Cài đặt Chế độ hiển thị Tally Card -->
+            <div
+                class="rounded-2xl border border-black/[0.08] bg-white p-4 dark:border-white/[0.08] dark:bg-[#121215] space-y-3">
+                <span class="text-xs sm:text-sm font-bold text-neutral-400 uppercase tracking-wider">Chế độ hiển thị thẻ
+                    bài</span>
+                <div class="grid grid-cols-2 gap-2 text-xs sm:text-sm font-semibold">
+                    <button onclick="setLayoutMode('list')" id="layoutListBtn"
+                        class="flex items-center justify-center gap-2 py-2.5 rounded-xl border transition active:scale-95">
+                        <span>☰</span> Danh sách (List)
+                    </button>
+                    <button onclick="setLayoutMode('grid')" id="layoutGridBtn"
+                        class="flex items-center justify-center gap-2 py-2.5 rounded-xl border transition active:scale-95">
+                        <span>☷</span> Lưới thẻ (Grid)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cài đặt Cỡ chữ -->
+            <div
+                class="rounded-2xl border border-black/[0.08] bg-white p-4 dark:border-white/[0.08] dark:bg-[#121215] space-y-3">
+                <span class="text-xs sm:text-sm font-bold text-neutral-400 uppercase tracking-wider">Cỡ chữ hệ
+                    thống</span>
+                <div class="grid grid-cols-3 gap-2 text-xs sm:text-sm font-semibold">
+                    <button onclick="setFontSize('sm')" id="fontSmBtn"
+                        class="py-2.5 rounded-xl border transition active:scale-95">Nhỏ</button>
+                    <button onclick="setFontSize('md')" id="fontMdBtn"
+                        class="py-2.5 rounded-xl border transition active:scale-95">Vừa</button>
+                    <button onclick="setFontSize('lg')" id="fontLgBtn"
+                        class="py-2.5 rounded-xl border transition active:scale-95">Lớn</button>
+                </div>
+            </div>
+
+            <!-- Cài đặt Kiểu Avatar Mặc định -->
+            <div
+                class="rounded-2xl border border-black/[0.08] bg-white p-4 dark:border-white/[0.08] dark:bg-[#121215] space-y-3">
+                <span class="text-xs sm:text-sm font-bold text-neutral-400 uppercase tracking-wider">Kiểu Avatar khởi
+                    tạo</span>
+                <div class="grid grid-cols-2 gap-2 text-xs font-semibold">
+                    <button onclick="setDefaultAvatarType('letter')" id="avtLetterBtn"
+                        class="py-2.5 rounded-xl border transition active:scale-95">
+                        🔤 Chữ cái đầu
+                    </button>
+                    <button onclick="setDefaultAvatarType('emoji')" id="avtEmojiBtn"
+                        class="py-2.5 rounded-xl border transition active:scale-95">
+                        🎭 Emoji ngẫu nhiên
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- THANH BOTTOM NAV DẠNG VIÊN THUỐC NỔI CÓ HIỆU ỨNG TRƯỢT ACTIVE CHUYỂN TAB -->
+    <div class="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
+        <nav
+            class="pointer-events-auto relative flex items-center p-1.5 rounded-full border border-black/[0.1] bg-white/95 shadow-xl dark:border-white/[0.12] dark:bg-[#18181c]/95 w-full max-w-sm sm:max-w-md">
+
+            <!-- Lớp đệm Active Indicator trượt chuyển động mượt mà -->
+            <div id="tabIndicator"
+                class="absolute top-1.5 bottom-1.5 left-1.5 w-[calc((100%-12px)/3)] rounded-full bg-neutral-900 dark:bg-white transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-sm pointer-events-none">
+            </div>
+
+            <!-- Tab 1: Bộ đếm -->
+            <button onclick="switchTab('counter')" id="tabBtnCounter"
+                class="tab-btn relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-full text-xs font-bold transition-colors duration-200 active:scale-95 text-white dark:text-black">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                <span>Bộ đếm</span>
+            </button>
+
+            <!-- Tab 2: Lịch sử -->
+            <button onclick="switchTab('history')" id="tabBtnHistory"
+                class="tab-btn relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-full text-xs font-semibold transition-colors duration-200 active:scale-95 text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Lịch sử</span>
+            </button>
+
+            <!-- Tab 3: Cài đặt -->
+            <button onclick="switchTab('settings')" id="tabBtnSettings"
+                class="tab-btn relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-full text-xs font-semibold transition-colors duration-200 active:scale-95 text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Cài đặt</span>
+            </button>
+
+        </nav>
+    </div>
+
+    <!-- MODAL ĐIỀU KHIỂN ĐỒNG HỒ (ACTION SHEET TIMER) -->
+    <div id="timerModal"
+        class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 opacity-0 pointer-events-none transition-all duration-200">
+        <div class="modal-card w-full max-w-xs rounded-3xl border border-black/[0.08] bg-white p-5 shadow-2xl scale-95 transition-all duration-200 dark:border-white/[0.1] dark:bg-[#18181c] space-y-4"
+            id="timerModalCard">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-1.5">
+                    <span>⏱️</span> Điều khiển thời gian
+                </h3>
+                <button onclick="closeTimerActionModal()"
+                    class="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-white">✕</button>
+            </div>
+
+            <!-- Thời gian hiện hành to bản -->
+            <div
+                class="rounded-2xl bg-neutral-100 dark:bg-neutral-800/80 p-3 text-center border border-black/[0.05] dark:border-white/[0.05]">
+                <span id="modalTimerDisplay"
+                    class="font-mono text-2xl font-black text-neutral-900 dark:text-white tracking-widest">00:00:00</span>
+                <p id="modalTimerStateText"
+                    class="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mt-0.5">Đang chạy</p>
+            </div>
+
+            <!-- Các nút thao tác nhanh -->
+            <div class="grid grid-cols-2 gap-2 text-xs font-semibold">
+                <button id="modalTimerPlayPauseBtn" onclick="handleTimerPlayPause()"
+                    class="py-2.5 rounded-xl border border-black/[0.08] bg-neutral-50 text-neutral-800 dark:border-white/[0.1] dark:bg-neutral-800 dark:text-white hover:bg-neutral-100 transition active:scale-95">
+                    ⏸️ Tạm dừng
+                </button>
+                <button onclick="handleTimerRestart()"
+                    class="py-2.5 rounded-xl border border-black/[0.08] bg-neutral-50 text-neutral-800 dark:border-white/[0.1] dark:bg-neutral-800 dark:text-white hover:bg-neutral-100 transition active:scale-95">
+                    🔁 Đếm lại từ 0
+                </button>
+            </div>
+
+            <!-- Nút đặt lại về 0 và dừng hẳn -->
+            <div class="pt-2 border-t border-black/[0.06] dark:border-white/[0.06] space-y-2">
+                <button onclick="handleTimerResetZero()"
+                    class="w-full py-2.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 active:scale-95 transition">
+                    ⏹️ Đặt về 00:00:00 (Dừng hẳn)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ĐỔI AVATAR (Có hỗ trợ bấm ra ngoài để tắt) -->
+    <div id="avatarModal"
+        class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 opacity-0 pointer-events-none transition-all duration-200">
+        <div class="modal-card w-full max-w-xs rounded-3xl border border-black/[0.08] bg-white p-5 shadow-2xl scale-95 transition-all duration-200 dark:border-white/[0.1] dark:bg-[#18181c] space-y-4"
+            id="avatarModalCard">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-neutral-900 dark:text-white">Đổi ảnh đại diện</h3>
+                <button onclick="closeAvatarModal()"
+                    class="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-white">✕</button>
+            </div>
+
+            <div>
+                <span class="text-[11px] font-medium text-neutral-400 block mb-2">Chọn Emoji nhanh</span>
+                <div class="grid grid-cols-5 gap-2 text-xl" id="quickEmojiList"></div>
+            </div>
+
+            <div class="pt-2 border-t border-black/[0.06] dark:border-white/[0.06] space-y-2">
+                <span class="text-[11px] font-medium text-neutral-400 block">Hoặc tải ảnh từ máy</span>
+                <input type="file" id="avatarFileInput" accept="image/*" class="hidden"
+                    onchange="handleAvatarFileUpload(event)">
+                <button onclick="document.getElementById('avatarFileInput').click()"
+                    class="w-full py-2 rounded-xl border border-black/[0.08] bg-neutral-50 text-xs font-bold text-neutral-700 hover:bg-neutral-100 active:scale-95 dark:border-white/[0.08] dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700 transition">
+                    📁 Tải ảnh từ thư viện
+                </button>
+                <button onclick="resetAvatarToDefault()"
+                    class="w-full py-2 rounded-xl border border-transparent text-xs font-semibold text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition">
+                    ↺ Về chữ cái đầu
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL XÁC NHẬN THUẦN (Có hỗ trợ bấm ra ngoài để tắt) -->
+    <div id="customModal"
+        class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 opacity-0 pointer-events-none transition-all duration-200">
+        <div class="modal-card w-full max-w-xs rounded-3xl border border-black/[0.08] bg-white p-5 shadow-2xl scale-95 transition-all duration-200 dark:border-white/[0.1] dark:bg-[#18181c]"
+            id="modalCard">
+            <h3 id="modalTitle" class="text-base font-bold tracking-tight text-neutral-900 dark:text-white">Xác nhận
+            </h3>
+            <p id="modalDesc" class="mt-2 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400"></p>
+
+            <div class="mt-5 flex items-center justify-end gap-2">
+                <button id="modalCancelBtn"
+                    class="rounded-xl border border-black/[0.08] bg-neutral-100 px-3.5 py-2 text-xs font-semibold text-neutral-600 transition hover:bg-neutral-200 active:scale-95 dark:border-white/[0.08] dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700">
+                    Huỷ
+                </button>
+                <button id="modalConfirmBtn"
+                    class="rounded-xl px-4 py-2 text-xs font-bold transition active:scale-95 shadow-sm">
+                    Đồng ý
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CHIẾN THẮNG: PODIUM & HẠNG CHÓT (Có hỗ trợ click ra ngoài) -->
+    <div id="winnerModal"
+        class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 opacity-0 pointer-events-none transition-all duration-300">
+        <div class="modal-card w-full max-w-sm rounded-[32px] border border-amber-500/30 bg-white p-6 shadow-2xl scale-95 transition-all duration-300 dark:border-amber-400/20 dark:bg-[#18181c] space-y-5 text-center"
+            id="winnerModalCard">
+
+            <div>
+                <div class="text-3xl">👑</div>
+                <h3 class="text-lg font-black text-amber-500 tracking-tight mt-1">KẾT THÚC TRẬN ĐẤU!</h3>
+                <p class="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">Đã tìm ra quán quân ván chơi
+                </p>
+            </div>
+
+            <!-- Bục Vinh Danh Podium -->
+            <div id="podiumStage" class="flex items-end justify-center gap-2 pt-2"></div>
+
+            <!-- Khu vực hiển thị Người Hạng Chót (Đội Sổ) -->
+            <div id="lastPlaceBox"
+                class="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-3 flex items-center justify-between"></div>
+
+            <button onclick="closeWinnerModal()"
+                class="w-full py-3 rounded-2xl bg-amber-500 text-black font-black text-xs hover:bg-amber-400 transition active:scale-95 shadow-lg">
+                Hoàn Tất
+            </button>
+        </div>
+    </div>
+
+    <!-- TOAST THÔNG BÁO -->
+    <div id="toast"
+        class="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-full border border-black/[0.08] bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 px-4 py-2 text-xs font-bold shadow-xl opacity-0 pointer-events-none translate-y-3 transition-all duration-300">
+        <span id="toastMsg"></span>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC TOÀN BỘ -->
+    <script>
+        /* =========================================================
+           1. CÀI ĐẶT & BIẾN TOÀN CỤC
+           ========================================================= */
+        const DEFAULT_EMOJIS = ['🐱', '🦊', '🐼', '🐯', '🦁', '🐸', '🚀', '⭐', '🔥', '🎲'];
+        let targetWinScore = 0;
+        let layoutMode = 'list';
+        let isPanelCollapsed = false;
+
+        function initSettings() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            setThemeMode(savedTheme ? savedTheme === 'dark' : prefersDark, false);
+
+            const savedFontSize = localStorage.getItem('app_fontsize') || 'md';
+            setFontSize(savedFontSize, false);
+
+            layoutMode = localStorage.getItem('app_layout_mode') || 'list';
+            setLayoutMode(layoutMode, false);
+
+            targetWinScore = parseInt(localStorage.getItem('app_target_win') || 0);
+            const inlineInput = document.getElementById('inlineWinScoreInput');
+            if (inlineInput) inlineInput.value = targetWinScore > 0 ? targetWinScore : '';
+
+            const savedAvtType = localStorage.getItem('app_default_avt') || 'letter';
+            setDefaultAvatarType(savedAvtType, false);
+
+            // Render danh sách emoji trong modal
+            const quickEmojiContainer = document.getElementById('quickEmojiList');
+            quickEmojiContainer.innerHTML = DEFAULT_EMOJIS.map(em => `
+        <button onclick="setPlayerEmoji('${em}')" class="h-9 w-9 rounded-xl border border-black/[0.08] bg-neutral-50 dark:border-white/[0.08] dark:bg-neutral-850 flex items-center justify-center hover:scale-110 active:scale-90 transition">
+          ${em}
+        </button>
+      `).join('');
+
+            setupBackdropClickDismiss();
+        }
+
+        /* Bấm ra ngoài vùng modal card để tự động đóng */
+        function setupBackdropClickDismiss() {
+            const modals = document.querySelectorAll('.modal-backdrop');
+            modals.forEach(backdrop => {
+                backdrop.addEventListener('click', (e) => {
+                    if (e.target === backdrop) {
+                        if (backdrop.id === 'customModal') {
+                            const cancelBtn = document.getElementById('modalCancelBtn');
+                            if (cancelBtn) cancelBtn.click();
+                        } else if (backdrop.id === 'avatarModal') {
+                            closeAvatarModal();
+                        } else if (backdrop.id === 'winnerModal') {
+                            closeWinnerModal();
+                        } else if (backdrop.id === 'timerModal') {
+                            closeTimerActionModal();
+                        }
+                    }
+                });
+            });
+        }
+
+        /* Thu gọn / Mở rộng bảng điều khiển */
+        function toggleControlPanel() {
+            isPanelCollapsed = !isPanelCollapsed;
+            const inputArea = document.getElementById('inputSectionArea');
+            const arrow = document.getElementById('collapseArrow');
+
+            if (isPanelCollapsed) {
+                inputArea.classList.add('hidden');
+                arrow.classList.add('rotate-180');
+            } else {
+                inputArea.classList.remove('hidden');
+                arrow.classList.remove('rotate-180');
+            }
+        }
+
+        function setThemeMode(isDark, notify = true) {
+            const root = document.documentElement;
+            const sun = document.getElementById('themeIconSun');
+            const moon = document.getElementById('themeIconMoon');
+
+            if (isDark) {
+                root.classList.add('dark');
+                if (sun) sun.classList.remove('hidden');
+                if (moon) moon.classList.add('hidden');
+            } else {
+                root.classList.remove('dark');
+                if (sun) sun.classList.add('hidden');
+                if (moon) moon.classList.remove('hidden');
+            }
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            if (notify) showToast(isDark ? 'Chế độ Tối' : 'Chế độ Sáng');
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.contains('dark');
+            setThemeMode(!isDark);
+        }
+
+        function setFontSize(size, notify = true) {
+            const root = document.documentElement;
+            root.classList.remove('font-sm', 'font-md', 'font-lg');
+            root.classList.add(`font-${size}`);
+
+            ['sm', 'md', 'lg'].forEach(s => {
+                const btn = document.getElementById(`font${s.charAt(0).toUpperCase() + s.slice(1)}Btn`);
+                if (btn) {
+                    if (s === size) {
+                        btn.className = 'py-2.5 rounded-xl border border-black bg-neutral-900 text-white font-bold dark:border-white dark:bg-white dark:text-black';
+                    } else {
+                        btn.className = 'py-2.5 rounded-xl border border-black/10 bg-neutral-50 text-neutral-500 dark:border-white/10 dark:bg-neutral-800 dark:text-neutral-400';
+                    }
+                }
+            });
+
+            localStorage.setItem('app_fontsize', size);
+            if (notify) showToast(`Cỡ chữ: ${size.toUpperCase()}`);
+        }
+
+        function setLayoutMode(mode, notify = true) {
+            layoutMode = mode;
+            localStorage.setItem('app_layout_mode', mode);
+
+            const listBtn = document.getElementById('layoutListBtn');
+            const gridBtn = document.getElementById('layoutGridBtn');
+            const container = document.getElementById('Tally');
+
+            if (mode === 'grid') {
+                if (gridBtn) gridBtn.className = 'flex items-center justify-center gap-2 py-2.5 rounded-xl border border-black bg-neutral-900 text-white font-bold dark:border-white dark:bg-white dark:text-black';
+                if (listBtn) listBtn.className = 'flex items-center justify-center gap-2 py-2.5 rounded-xl border border-black/10 bg-neutral-50 text-neutral-500 dark:border-white/10 dark:bg-neutral-800 dark:text-neutral-400';
+                container.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3';
+            } else {
+                if (listBtn) listBtn.className = 'flex items-center justify-center gap-2 py-2.5 rounded-xl border border-black bg-neutral-900 text-white font-bold dark:border-white dark:bg-white dark:text-black';
+                if (gridBtn) gridBtn.className = 'flex items-center justify-center gap-2 py-2.5 rounded-xl border border-black/10 bg-neutral-50 text-neutral-500 dark:border-white/10 dark:bg-neutral-800 dark:text-neutral-400';
+                container.className = 'space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-2 gap-3';
+            }
+
+            reapplyCardLayoutStyles();
+            if (notify) showToast(`Chế độ xem: ${mode === 'grid' ? 'Lưới thẻ' : 'Danh sách'}`);
+        }
+
+        function reapplyCardLayoutStyles() {
+            document.querySelectorAll('.tally-card').forEach(card => {
+                if (layoutMode === 'grid') {
+                    card.classList.remove('justify-between', 'items-center');
+                    card.classList.add('flex-col', 'items-stretch', 'gap-3');
+                } else {
+                    card.classList.remove('flex-col', 'items-stretch', 'gap-3');
+                    card.classList.add('justify-between', 'items-center');
+                }
+            });
+        }
+
+        function handleInlineWinScoreChange(value) {
+            const val = parseInt(value || 0);
+            targetWinScore = val > 0 ? val : 0;
+            localStorage.setItem('app_target_win', targetWinScore);
+            showToast(targetWinScore > 0 ? `Đã đặt điểm thắng: ${targetWinScore}` : 'Đã tắt điểm thắng');
+        }
+
+        function setDefaultAvatarType(type, notify = true) {
+            localStorage.setItem('app_default_avt', type);
+            const letterBtn = document.getElementById('avtLetterBtn');
+            const emojiBtn = document.getElementById('avtEmojiBtn');
+
+            if (letterBtn && emojiBtn) {
+                if (type === 'letter') {
+                    letterBtn.className = 'py-2.5 rounded-xl border border-black bg-neutral-900 text-white font-bold dark:border-white dark:bg-white dark:text-black';
+                    emojiBtn.className = 'py-2.5 rounded-xl border border-black/10 bg-neutral-50 text-neutral-500 dark:border-white/10 dark:bg-neutral-800 dark:text-neutral-400';
+                } else {
+                    emojiBtn.className = 'py-2.5 rounded-xl border border-black bg-neutral-900 text-white font-bold dark:border-white dark:bg-white dark:text-black';
+                    letterBtn.className = 'py-2.5 rounded-xl border border-black/10 bg-neutral-50 text-neutral-500 dark:border-white/10 dark:bg-neutral-800 dark:text-neutral-400';
+                }
+            }
+            if (notify) showToast(`Avatar mặc định: ${type === 'letter' ? 'Chữ cái' : 'Emoji'}`);
+        }
+
+        /* =========================================================
+           2. TAB NAVIGATION (CÓ HIỆU ỨNG TRƯỢT ACTIVE CHUYỂN TAB)
+           ========================================================= */
+        function switchTab(tabKey) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+
+            const titleEl = document.getElementById('headerTitle');
+            const subtitleEl = document.getElementById('headerSubtitle');
+            const indicator = document.getElementById('tabIndicator');
+
+            const btnCounter = document.getElementById('tabBtnCounter');
+            const btnHistory = document.getElementById('tabBtnHistory');
+            const btnSettings = document.getElementById('tabBtnSettings');
+
+            const inactiveClass = 'tab-btn relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-full text-xs font-semibold transition-colors duration-200 active:scale-95 text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white';
+            const activeClass = 'tab-btn relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-full text-xs font-bold transition-colors duration-200 active:scale-95 text-white dark:text-black';
+
+            btnCounter.className = inactiveClass;
+            btnHistory.className = inactiveClass;
+            btnSettings.className = inactiveClass;
+
+            if (tabKey === 'counter') {
+                document.getElementById('tabContentCounter').classList.remove('hidden');
+                btnCounter.className = activeClass;
+                if (indicator) indicator.style.transform = 'translateX(0%)';
+                titleEl.innerText = 'Bộ đếm';
+                subtitleEl.innerText = 'Bảng theo dõi ván đấu';
+            } else if (tabKey === 'history') {
+                document.getElementById('tabContentHistory').classList.remove('hidden');
+                btnHistory.className = activeClass;
+                if (indicator) indicator.style.transform = 'translateX(100%)';
+                titleEl.innerText = 'Lịch sử';
+                subtitleEl.innerText = 'Nhật ký biến động điểm';
+                renderFullHistoryTab();
+            } else if (tabKey === 'settings') {
+                document.getElementById('tabContentSettings').classList.remove('hidden');
+                btnSettings.className = activeClass;
+                if (indicator) indicator.style.transform = 'translateX(200%)';
+                titleEl.innerText = 'Cài đặt';
+                subtitleEl.innerText = 'Cấu hình giao diện & tính năng';
+            }
+        }
+
+        /* =========================================================
+           3. MODAL & TOAST
+           ========================================================= */
+        let currentModalConfirm = null;
+        function showModal({ title, desc, confirmText = 'Đồng ý', confirmClass = 'bg-neutral-900 text-white dark:bg-white dark:text-black', onConfirm }) {
+            const modal = document.getElementById('customModal');
+            const card = document.getElementById('modalCard');
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalDesc').innerText = desc;
+
+            const btnConfirm = document.getElementById('modalConfirmBtn');
+            btnConfirm.innerText = confirmText;
+            btnConfirm.className = `rounded-xl px-4 py-2 text-xs font-bold transition active:scale-95 ${confirmClass}`;
+
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-95');
+
+            const close = () => {
+                modal.classList.add('opacity-0', 'pointer-events-none');
+                card.classList.add('scale-95');
+                if (currentModalConfirm) btnConfirm.removeEventListener('click', currentModalConfirm);
+            };
+
+            currentModalConfirm = () => {
+                close();
+                if (typeof onConfirm === 'function') onConfirm();
+            };
+
+            btnConfirm.onclick = currentModalConfirm;
+            document.getElementById('modalCancelBtn').onclick = close;
+        }
+
+        let toastTimer = null;
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            toastMsg.innerText = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-3');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-3');
+            }, 2000);
+        }
+
+        function showRulesModal() {
+            showModal({
+                title: 'Luật chơi & Tính năng',
+                desc: '• Nhập danh sách nhiều người cách nhau bởi dấu phẩy (vd: A, B, C).\n• SmartPoint tự tính bước điểm giảm dần theo số người trong bàn (N-1 về 1).\n• Khi điểm người chơi chạm mốc thắng, bảng vinh danh sẽ lập tức xuất hiện.',
+                confirmText: 'Đã hiểu'
+            });
+        }
+
+        /* =========================================================
+           4. MODAL CHIẾN THẮNG: PODIUM & HẠNG CHÓT
+           ========================================================= */
+        function checkWinCondition(name, score) {
+            if (targetWinScore > 0 && score >= targetWinScore) {
+                renderPodiumWithLastPlace();
+                const modal = document.getElementById('winnerModal');
+                const card = document.getElementById('winnerModalCard');
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                card.classList.remove('scale-95');
+            }
+        }
+
+        function renderPodiumWithLastPlace() {
+            const cards = Array.from(document.querySelectorAll('.tally-card'));
+            const players = cards.map(c => {
+                const avtSlot = c.querySelector('.avatar-slot');
+                return {
+                    name: c.querySelector('.tally-name').innerText,
+                    score: parseInt(c.querySelector('.tally-input').value || 0),
+                    avatarHtml: avtSlot.innerHTML
+                };
+            });
+
+            players.sort((a, b) => b.score - a.score);
+
+            const top1 = players[0] || null;
+            const top2 = players[1] || null;
+            const top3 = players[2] || null;
+            const lastPlace = players.length >= 2 ? players[players.length - 1] : null;
+
+            const stage = document.getElementById('podiumStage');
+            stage.innerHTML = `
+        <!-- HẠNG 2 -->
+        <div class="flex-1 flex flex-col items-center">
+          ${top2 ? `
+            <div class="relative mb-1">
+              <span class="absolute -top-2 left-1/2 -translate-x-1/2 text-sm">🥈</span>
+              <div class="h-12 w-12 rounded-2xl overflow-hidden border-2 border-slate-300 dark:border-slate-500 bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center font-bold text-xs shadow-sm">
+                ${top2.avatarHtml}
+              </div>
+            </div>
+            <p class="text-xs font-bold truncate max-w-[80px]">${top2.name}</p>
+            <span class="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">${top2.score}đ</span>
+            <div class="w-full h-12 bg-slate-200 dark:bg-slate-800 rounded-t-xl mt-1.5 flex items-center justify-center text-xs font-black text-slate-500">2</div>
+          ` : '<div class="w-full h-12"></div>'}
+        </div>
+
+        <!-- HẠNG 1 (TO VƯỢT TRỘI, CHÍNH GIỮA) -->
+        <div class="flex-[1.2] flex flex-col items-center z-10 -mt-3">
+          ${top1 ? `
+            <div class="relative mb-1">
+              <span class="absolute -top-3 left-1/2 -translate-x-1/2 text-lg">👑</span>
+              <div class="h-16 w-16 rounded-3xl overflow-hidden border-4 border-amber-400 bg-amber-500/10 flex items-center justify-center font-black text-sm shadow-md ring-4 ring-amber-400/20">
+                ${top1.avatarHtml}
+              </div>
+            </div>
+            <p class="text-sm font-black text-amber-500 truncate max-w-[100px]">${top1.name}</p>
+            <span class="font-mono text-xs font-black text-amber-600 dark:text-amber-400">${top1.score}đ</span>
+            <div class="w-full h-20 bg-gradient-to-t from-amber-500 to-amber-400 rounded-t-2xl mt-1.5 flex flex-col items-center justify-center text-black font-black shadow-lg">
+              <span class="text-base leading-none">1</span>
+              <span class="text-[9px] uppercase tracking-widest opacity-80">Quán Quân</span>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- HẠNG 3 -->
+        <div class="flex-1 flex flex-col items-center">
+          ${top3 ? `
+            <div class="relative mb-1">
+              <span class="absolute -top-2 left-1/2 -translate-x-1/2 text-sm">🥉</span>
+              <div class="h-12 w-12 rounded-2xl overflow-hidden border-2 border-amber-700/60 bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center font-bold text-xs shadow-sm">
+                ${top3.avatarHtml}
+              </div>
+            </div>
+            <p class="text-xs font-bold truncate max-w-[80px]">${top3.name}</p>
+            <span class="font-mono text-[11px] font-bold text-amber-700 dark:text-amber-500">${top3.score}đ</span>
+            <div class="w-full h-8 bg-amber-800/20 dark:bg-amber-950/60 rounded-t-xl mt-1.5 flex items-center justify-center text-xs font-black text-amber-700 dark:text-amber-400">3</div>
+          ` : '<div class="w-full h-8"></div>'}
+        </div>
+      `;
+
+            // Hạng Chót (Đội Sổ)
+            const lastBox = document.getElementById('lastPlaceBox');
+            if (lastPlace && players.length >= 2 && lastPlace.name !== top1.name) {
+                lastBox.classList.remove('hidden');
+                lastBox.innerHTML = `
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">💩</span>
+            <div class="h-8 w-8 rounded-xl overflow-hidden border border-rose-500/30 flex items-center justify-center text-xs font-bold bg-neutral-100 dark:bg-neutral-800">
+              ${lastPlace.avatarHtml}
+            </div>
+            <div>
+              <p class="text-xs font-bold text-neutral-900 dark:text-white">${lastPlace.name}</p>
+              <p class="text-[10px] text-rose-500 font-bold uppercase tracking-wider">Hạng chót (Đội sổ)</p>
+            </div>
+          </div>
+          <span class="font-mono text-xs font-bold text-rose-500">${lastPlace.score} đ</span>
+        `;
+            } else {
+                lastBox.classList.add('hidden');
+            }
+        }
+
+        function closeWinnerModal() {
+            const modal = document.getElementById('winnerModal');
+            const card = document.getElementById('winnerModalCard');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            card.classList.add('scale-95');
+        }
+
+        /* =========================================================
+           5. ĐỔI AVATAR CHO TỪNG NGƯỜI CHƠI
+           ========================================================= */
+        let currentAvatarTargetCard = null;
+
+        function openAvatarModal(cardEl) {
+            currentAvatarTargetCard = cardEl;
+            const modal = document.getElementById('avatarModal');
+            const card = document.getElementById('avatarModalCard');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-95');
+        }
+
+        function closeAvatarModal() {
+            const modal = document.getElementById('avatarModal');
+            const card = document.getElementById('avatarModalCard');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            card.classList.add('scale-95');
+            currentAvatarTargetCard = null;
+        }
+
+        function setPlayerEmoji(emoji) {
+            if (!currentAvatarTargetCard) return;
+            const avtSlot = currentAvatarTargetCard.querySelector('.avatar-slot');
+            avtSlot.innerHTML = `<span class="text-xl">${emoji}</span>`;
+            avtSlot.dataset.avtType = 'emoji';
+            avtSlot.dataset.avtVal = emoji;
+            saveToLocalStorage();
+            closeAvatarModal();
+            showToast('Đã đổi avatar');
+        }
+
+        function resetAvatarToDefault() {
+            if (!currentAvatarTargetCard) return;
+            const name = currentAvatarTargetCard.querySelector('.tally-name').innerText;
+            const avtSlot = currentAvatarTargetCard.querySelector('.avatar-slot');
+            avtSlot.innerHTML = name.charAt(0);
+            avtSlot.dataset.avtType = 'letter';
+            avtSlot.dataset.avtVal = name.charAt(0);
+            saveToLocalStorage();
+            closeAvatarModal();
+            showToast('Đã chuyển về chữ cái đầu');
+        }
+
+        function handleAvatarFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file || !currentAvatarTargetCard) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const base64Img = e.target.result;
+                const avtSlot = currentAvatarTargetCard.querySelector('.avatar-slot');
+                avtSlot.innerHTML = `<img src="${base64Img}" class="w-full h-full object-cover rounded-xl" />`;
+                avtSlot.dataset.avtType = 'image';
+                avtSlot.dataset.avtVal = base64Img;
+                saveToLocalStorage();
+                closeAvatarModal();
+                showToast('Đã tải ảnh đại diện');
+            };
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        /* =========================================================
+           6. XẾP HẠNG: #XẾP HẠNG + ICON GẮN GÓC AVATAR
+           ========================================================= */
+        function updateRankBadges() {
+            const cards = Array.from(document.querySelectorAll('.tally-card'));
+            if (cards.length === 0) return;
+
+            const scores = cards.map(c => parseInt(c.querySelector('.tally-input').value || 0));
+            const sortedUniqueScores = [...new Set(scores)].sort((a, b) => b - a);
+
+            cards.forEach(card => {
+                const currentScore = parseInt(card.querySelector('.tally-input').value || 0);
+                const rankIndex = sortedUniqueScores.indexOf(currentScore);
+                const textRankBadge = card.querySelector('.rank-text-badge');
+                const iconRankCorner = card.querySelector('.rank-corner-icon');
+
+                if (!textRankBadge || !iconRankCorner) return;
+
+                textRankBadge.innerText = `#${rankIndex + 1}`;
+
+                if (rankIndex === 0 && currentScore > 0) {
+                    iconRankCorner.innerText = '🥇';
+                    iconRankCorner.classList.remove('hidden');
+                } else if (rankIndex === 1 && currentScore > 0) {
+                    iconRankCorner.innerText = '🥈';
+                    iconRankCorner.classList.remove('hidden');
+                } else if (rankIndex === 2 && currentScore > 0) {
+                    iconRankCorner.innerText = '🥉';
+                    iconRankCorner.classList.remove('hidden');
+                } else {
+                    iconRankCorner.classList.add('hidden');
+                }
+            });
+        }
+
+        /* =========================================================
+           7. SMART POINT ENGINE (N-1 -> 1 -> N-1)
+           ========================================================= */
+        let smartPointActive = false;
+        let currentSmartPoint = 1;
+
+        function getMaxSmartPoint() {
+            const totalPlayers = document.querySelectorAll('.tally-card').length;
+            return totalPlayers > 1 ? totalPlayers - 1 : 1;
+        }
+
+        function toggleSmartPoint() {
+            smartPointActive = !smartPointActive;
+            const btn = document.getElementById('smartpointBtn');
+            const label = document.getElementById('smartPointLabel');
+
+            if (smartPointActive) {
+                currentSmartPoint = getMaxSmartPoint();
+                label.innerText = `Smart (+${currentSmartPoint})`;
+                btn.classList.add('border-neutral-900', 'bg-neutral-900', 'text-white', 'dark:border-white', 'dark:bg-white', 'dark:text-black');
+                showToast(`Bật SmartPoint (+${currentSmartPoint})`);
+            } else {
+                currentSmartPoint = 1;
+                label.innerText = 'Smart Point';
+                btn.classList.remove('border-neutral-900', 'bg-neutral-900', 'text-white', 'dark:border-white', 'dark:bg-white', 'dark:text-black');
+                showToast('Tắt SmartPoint (+1)');
+            }
+            updateAllPlusButtonLabels();
+        }
+
+        function advanceSmartPointCycle() {
+            if (!smartPointActive) return;
+            const maxPoint = getMaxSmartPoint();
+            currentSmartPoint--;
+            if (currentSmartPoint < 1) currentSmartPoint = maxPoint;
+
+            const label = document.getElementById('smartPointLabel');
+            if (label) label.innerText = `Smart (+${currentSmartPoint})`;
+            updateAllPlusButtonLabels();
+        }
+
+        function updateAllPlusButtonLabels() {
+            document.querySelectorAll('.plus-btn').forEach(btn => {
+                if (smartPointActive) {
+                    btn.innerHTML = `<span class="font-mono text-xs font-black text-emerald-600 dark:text-emerald-400">+${currentSmartPoint}</span>`;
+                    btn.classList.add('w-auto', 'px-2');
+                } else {
+                    btn.innerHTML = `
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+            </svg>
+          `;
+                    btn.classList.remove('w-auto', 'px-2');
+                }
+            });
+        }
+
+        /* =========================================================
+           8. THẺ BÀI CARD GAME TỐI GIẢN
+           ========================================================= */
+        function checkEmptyState() {
+            const container = document.getElementById('Tally');
+            const empty = document.getElementById('emptyState');
+            if (container.children.length === 0) empty.classList.remove('hidden');
+            else empty.classList.add('hidden');
+        }
+
+        function addTally(name, quantity = 0, avtData = null) {
+            const inputEl = document.getElementById('itemName');
+            const rawInput = name || (inputEl ? inputEl.value.trim() : '');
+
+            if (!rawInput) {
+                showToast('Vui lòng nhập tên người chơi');
+                return;
+            }
+
+            const names = rawInput
+                .split(/[,;|\n]+/)
+                .map(n => n.trim())
+                .filter(n => n.length > 0);
+
+            if (names.length === 0) return;
+
+            names.forEach(playerName => {
+                createTallyCard(playerName, quantity, avtData);
+            });
+
+            if (inputEl) inputEl.value = '';
+            checkEmptyState();
+            saveToLocalStorage();
+            updateRankBadges();
+
+            if (smartPointActive) {
+                currentSmartPoint = getMaxSmartPoint();
+                const label = document.getElementById('smartPointLabel');
+                if (label) label.innerText = `Smart (+${currentSmartPoint})`;
+            }
+            updateAllPlusButtonLabels();
+            startTimer();
+
+            if (names.length > 1) showToast(`Đã thêm ${names.length} người chơi`);
+            else if (!avtData) showToast(`Đã thêm ${names[0]}`);
+        }
+
+        function createTallyCard(name, quantity = 0, avtData = null) {
+            name = name.charAt(0).toUpperCase() + name.slice(1);
+            const container = document.getElementById('Tally');
+
+            const card = document.createElement('div');
+            const isGrid = layoutMode === 'grid';
+            card.className = `tally-card group relative flex ${isGrid ? 'flex-col items-stretch gap-2.5' : 'justify-between items-center'} rounded-2xl border border-black/[0.08] bg-white p-3.5 shadow-sm transition hover:shadow-md hover:border-black/20 dark:border-white/[0.08] dark:bg-[#121215] dark:hover:border-white/20`;
+
+            const defaultAvtSetting = localStorage.getItem('app_default_avt') || 'letter';
+            let avtContent = name.charAt(0);
+            let avtType = 'letter';
+            let avtVal = name.charAt(0);
+
+            if (avtData) {
+                avtType = avtData.type;
+                avtVal = avtData.val;
+                if (avtType === 'image') avtContent = `<img src="${avtVal}" class="w-full h-full object-cover rounded-xl" />`;
+                else if (avtType === 'emoji') avtContent = `<span class="text-xl">${avtVal}</span>`;
+                else avtContent = avtVal;
+            } else if (defaultAvtSetting === 'emoji') {
+                const randomEmoji = DEFAULT_EMOJIS[Math.floor(Math.random() * DEFAULT_EMOJIS.length)];
+                avtType = 'emoji';
+                avtVal = randomEmoji;
+                avtContent = `<span class="text-xl">${randomEmoji}</span>`;
+            }
+
+            card.innerHTML = `
+        <div class="flex items-center gap-2.5">
+          <span class="rank-text-badge flex h-6 px-1.5 items-center justify-center rounded-lg bg-neutral-100 text-[11px] font-black text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400 font-mono">
+            #
+          </span>
+
+          <div class="relative flex-shrink-0">
+            <button type="button" class="avatar-slot relative flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-800 font-black text-base transition active:scale-90 hover:opacity-85 dark:bg-neutral-800 dark:text-neutral-100 overflow-hidden shadow-inner" 
+              data-avt-type="${avtType}" 
+              data-avt-val="${avtVal}" 
+              title="Nhấn để đổi ảnh đại diện">
+              ${avtContent}
+            </button>
+            <span class="rank-corner-icon hidden absolute -top-1.5 -right-1.5 text-xs drop-shadow pointer-events-none"></span>
+          </div>
+
+          <div class="min-w-0 flex-1">
+            <h3 class="tally-name text-sm font-bold tracking-tight truncate">${name}</h3>
+            <button class="del-btn text-[10px] font-medium text-neutral-400 hover:text-rose-500 transition">Rời bàn</button>
+          </div>
+        </div>
+
+        <div class="flex items-center ${isGrid ? 'justify-between' : 'gap-2'}">
+          <input 
+            type="number" 
+            value="${quantity}" 
+            class="tally-input ${isGrid ? 'flex-1 text-left' : 'w-16 text-right'} bg-transparent font-mono text-2xl font-black outline-none" 
+          />
+
+          <div class="flex items-center rounded-xl border border-black/[0.08] bg-neutral-50 p-0.5 dark:border-white/[0.08] dark:bg-neutral-800/80 flex-shrink-0">
+            <button class="minus-btn flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition hover:bg-neutral-200 active:scale-90 dark:text-neutral-400 dark:hover:bg-neutral-700" title="Trừ 1">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 12H4"/>
+              </svg>
+            </button>
+            <div class="h-4 w-px bg-black/[0.06] dark:bg-white/[0.08]"></div>
+            <button class="plus-btn flex h-9 w-9 items-center justify-center rounded-lg text-neutral-900 transition hover:bg-neutral-200 active:scale-90 dark:text-neutral-100 dark:hover:bg-neutral-700" title="Cộng điểm">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      `;
+
+            const minusBtn = card.querySelector('.minus-btn');
+            const plusBtn = card.querySelector('.plus-btn');
+            const numInput = card.querySelector('.tally-input');
+            const delBtn = card.querySelector('.del-btn');
+            const avtSlotBtn = card.querySelector('.avatar-slot');
+
+            avtSlotBtn.addEventListener('click', () => openAvatarModal(card));
+
+            minusBtn.addEventListener('click', () => {
+                numInput.value = Math.max(0, parseInt(numInput.value || 0) - 1);
+                logValueDelayed(name, -1);
+                saveToLocalStorage();
+                updateRankBadges();
+            });
+
+            plusBtn.addEventListener('click', () => {
+                const step = smartPointActive ? currentSmartPoint : 1;
+                const newScore = parseInt(numInput.value || 0) + step;
+                numInput.value = newScore;
+                logValueDelayed(name, step);
+                saveToLocalStorage();
+                updateRankBadges();
+                checkWinCondition(name, newScore);
+
+                if (smartPointActive) advanceSmartPointCycle();
+            });
+
+            numInput.addEventListener('change', () => {
+                const val = parseInt(numInput.value || 0);
+                saveToLocalStorage();
+                updateRankBadges();
+                checkWinCondition(name, val);
+            });
+
+            delBtn.addEventListener('click', () => {
+                showModal({
+                    title: `Xoá ${name}?`,
+                    desc: 'Người chơi này sẽ bị loại khỏi bàn đấu hiện tại.',
+                    confirmText: 'Xoá',
+                    confirmClass: 'bg-rose-600 text-white hover:bg-rose-500',
+                    onConfirm: () => {
+                        card.remove();
+                        saveToLocalStorage();
+                        checkEmptyState();
+                        updateRankBadges();
+                        if (smartPointActive) {
+                            currentSmartPoint = getMaxSmartPoint();
+                            const label = document.getElementById('smartPointLabel');
+                            if (label) label.innerText = `Smart (+${currentSmartPoint})`;
+                            updateAllPlusButtonLabels();
+                        }
+                        showToast(`Đã xoá ${name}`);
+                    }
+                });
+            });
+
+            container.appendChild(card);
+        }
+
+        /* =========================================================
+           9. LỊCH SỬ GHI ĐIỂM
+           ========================================================= */
+        let currentLog = null;
+        let logTimeout = null;
+
+        function logValueDelayed(name, step) {
+            const now = new Date();
+            if (!currentLog || currentLog.name !== name) {
+                if (currentLog) recordHistoryEntry(currentLog);
+                currentLog = { name, step, time: now };
+            } else {
+                currentLog.step += step;
+                currentLog.time = now;
+            }
+
+            clearTimeout(logTimeout);
+            logTimeout = setTimeout(() => {
+                if (currentLog) {
+                    recordHistoryEntry(currentLog);
+                    currentLog = null;
+                }
+            }, 900);
+        }
+
+        function recordHistoryEntry(log) {
+            const logs = JSON.parse(localStorage.getItem('history_records') || '[]');
+            const timeStr = `${String(log.time.getHours()).padStart(2, '0')}:${String(log.time.getMinutes()).padStart(2, '0')}:${String(log.time.getSeconds()).padStart(2, '0')}`;
+
+            logs.unshift({
+                name: log.name,
+                step: log.step,
+                time: timeStr,
+                timestamp: Date.now()
+            });
+
+            localStorage.setItem('history_records', JSON.stringify(logs));
+            renderRecentHistoryOnCounter();
+        }
+
+        function renderRecentHistoryOnCounter() {
+            const logs = JSON.parse(localStorage.getItem('history_records') || '[]');
+            const container = document.getElementById('RecentHistoryList');
+            const section = document.getElementById('recentHistorySection');
+
+            if (logs.length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            section.classList.remove('hidden');
+            const recentFive = logs.slice(0, 5);
+
+            container.innerHTML = recentFive.map(log => {
+                const isPos = log.step > 0;
+                const color = isPos ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+                const prefix = isPos ? `+${log.step}` : `${log.step}`;
+                return `
+          <div class="flex items-center justify-between py-1.5 px-2 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-xl transition">
+            <span class="font-bold text-neutral-700 dark:text-neutral-300">${log.name}</span>
+            <div class="flex items-center gap-3">
+              <span class="font-black ${color}">${prefix}</span>
+              <span class="text-neutral-400 text-[10px]">${log.time}</span>
+            </div>
+          </div>
+        `;
+            }).join('');
+        }
+
+        function renderFullHistoryTab() {
+            const logs = JSON.parse(localStorage.getItem('history_records') || '[]');
+            const container = document.getElementById('FullHistoryList');
+            const empty = document.getElementById('fullHistoryEmpty');
+
+            if (logs.length === 0) {
+                container.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            container.innerHTML = logs.map(log => {
+                const isPos = log.step > 0;
+                const color = isPos ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+                const prefix = isPos ? `+${log.step}` : `${log.step}`;
+                return `
+          <div class="flex items-center justify-between py-2 px-2 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-xl transition">
+            <span class="font-bold text-neutral-700 dark:text-neutral-300">${log.name}</span>
+            <div class="flex items-center gap-3">
+              <span class="font-black ${color}">${prefix}</span>
+              <span class="text-neutral-400 text-[10px]">${log.time}</span>
+            </div>
+          </div>
+        `;
+            }).join('');
+        }
+
+        function clearHistoryOnly() {
+            localStorage.removeItem('history_records');
+            renderRecentHistoryOnCounter();
+            renderFullHistoryTab();
+            showToast('Đã dọn sạch nhật ký');
+        }
+
+        /* =========================================================
+           10. LOCALSTORAGE SYNC & KHỞI TẠO
+           ========================================================= */
+        function saveToLocalStorage() {
+            const tallies = [];
+            document.querySelectorAll('.tally-card').forEach(card => {
+                const avtSlot = card.querySelector('.avatar-slot');
+                tallies.push({
+                    name: card.querySelector('.tally-name').innerText,
+                    quantity: parseInt(card.querySelector('.tally-input').value || 0),
+                    avatar: {
+                        type: avtSlot.dataset.avtType || 'letter',
+                        val: avtSlot.dataset.avtVal || card.querySelector('.tally-name').innerText.charAt(0)
+                    }
+                });
+            });
+            localStorage.setItem('tallies', JSON.stringify(tallies));
+        }
+
+        function loadFromLocalStorage() {
+            const tallies = JSON.parse(localStorage.getItem('tallies')) || [];
+            tallies.forEach(t => addTally(t.name, t.quantity, t.avatar));
+            renderRecentHistoryOnCounter();
+            updateRankBadges();
+        }
+
+        /* =========================================================
+           11. BỘ BẤM GIỜ NÂNG CAO VÀ ACTION MODAL
+           ========================================================= */
+        let timerInterval = null;
+        let startTime = null;
+        let pausedTime = null;
+        let isPaused = false;
+
+        function getFormattedElapsedTime() {
+            if (!startTime) return '00:00:00';
+            const elapsed = (isPaused ? pausedTime : Date.now()) - startTime;
+            const h = Math.floor(elapsed / 3600000);
+            const m = Math.floor((elapsed % 3600000) / 60000);
+            const s = Math.floor((elapsed % 60000) / 1000);
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        function updateTimerDisplay() {
+            const text = getFormattedElapsedTime();
+            const timerText = document.getElementById('timerText');
+            const modalText = document.getElementById('modalTimerDisplay');
+            if (timerText) timerText.innerText = text;
+            if (modalText) modalText.innerText = text;
+        }
+
+        function updateTimerUIStatus() {
+            const dot = document.getElementById('timerIndicatorDot');
+            const stateText = document.getElementById('modalTimerStateText');
+            const playPauseBtn = document.getElementById('modalTimerPlayPauseBtn');
+
+            if (timerInterval && !isPaused) {
+                if (dot) dot.className = 'h-2 w-2 rounded-full bg-emerald-500 animate-pulse';
+                if (stateText) stateText.innerText = 'Đang đếm thời gian';
+                if (playPauseBtn) playPauseBtn.innerHTML = '⏸️ Tạm dừng';
+            } else if (isPaused) {
+                if (dot) dot.className = 'h-2 w-2 rounded-full bg-amber-500';
+                if (stateText) stateText.innerText = 'Đang tạm dừng';
+                if (playPauseBtn) playPauseBtn.innerHTML = '▶️ Tiếp tục đếm';
+            } else {
+                if (dot) dot.className = 'h-2 w-2 rounded-full bg-neutral-400';
+                if (stateText) stateText.innerText = 'Chưa tính giờ';
+                if (playPauseBtn) playPauseBtn.innerHTML = '▶️ Bắt đầu';
+            }
+        }
+
+        function startTimer() {
+            if (isPaused) {
+                startTime += Date.now() - pausedTime;
+                isPaused = false;
+            } else if (!timerInterval) {
+                startTime = startTime || Date.now();
+            }
+            if (!timerInterval) timerInterval = setInterval(updateTimerDisplay, 1000);
+            localStorage.setItem('timerRunning', 'true');
+            localStorage.setItem('timerStartTime', startTime.toString());
+            updateTimerUIStatus();
+        }
+
+        function pauseTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                pausedTime = Date.now();
+                isPaused = true;
+                localStorage.setItem('timerRunning', 'false');
+                updateTimerUIStatus();
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            startTime = null;
+            pausedTime = null;
+            isPaused = false;
+            const timerText = document.getElementById('timerText');
+            const modalText = document.getElementById('modalTimerDisplay');
+            if (timerText) timerText.innerText = '00:00:00';
+            if (modalText) modalText.innerText = '00:00:00';
+            localStorage.removeItem('timerStartTime');
+            localStorage.setItem('timerRunning', 'false');
+            updateTimerUIStatus();
+        }
+
+        /* Modal Action Sheet cho Đồng Hồ */
+        function openTimerActionModal() {
+            updateTimerUIStatus();
+            updateTimerDisplay();
+            const modal = document.getElementById('timerModal');
+            const card = document.getElementById('timerModalCard');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-95');
+        }
+
+        function closeTimerActionModal() {
+            const modal = document.getElementById('timerModal');
+            const card = document.getElementById('timerModalCard');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            card.classList.add('scale-95');
+        }
+
+        function handleTimerPlayPause() {
+            if (timerInterval && !isPaused) {
+                pauseTimer();
+                showToast('Đã tạm dừng đồng hồ');
+            } else {
+                startTimer();
+                showToast('Tiếp tục đếm giờ');
+            }
+            updateTimerUIStatus();
+        }
+
+        function handleTimerRestart() {
+            resetTimer();
+            startTimer();
+            closeTimerActionModal();
+            showToast('Đã bắt đầu đếm lại từ 00:00:00');
+        }
+
+        function handleTimerResetZero() {
+            resetTimer();
+            closeTimerActionModal();
+            showToast('Đã đưa đồng hồ về 00:00:00');
+        }
+
+        function initTimerFromStorage() {
+            const sTime = localStorage.getItem('timerStartTime');
+            const isRun = localStorage.getItem('timerRunning');
+            if (isRun === 'true' && sTime) {
+                startTime = parseInt(sTime, 10);
+                startTimer();
+            } else {
+                updateTimerUIStatus();
+            }
+        }
+
+        /* =========================================================
+           12. KHỞI CHẠY DOM LISTENER
+           ========================================================= */
+        document.addEventListener('DOMContentLoaded', () => {
+            initSettings();
+            loadFromLocalStorage();
+            checkEmptyState();
+            initTimerFromStorage();
+
+            const itemName = document.getElementById('itemName');
+            if (itemName) {
+                itemName.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') addTally();
+                });
+            }
+
+            document.getElementById('resetButton').addEventListener('click', () => {
+                showModal({
+                    title: 'Bắt đầu ván mới?',
+                    desc: 'Toàn bộ điểm sẽ đưa về 0 nhưng giữ nguyên danh sách bạn chơi. Nhật ký sẽ được làm trống.',
+                    confirmText: 'Làm mới',
+                    confirmClass: 'bg-neutral-900 text-white dark:bg-white dark:text-black',
+                    onConfirm: () => {
+                        document.querySelectorAll('.tally-input').forEach(i => (i.value = 0));
+                        clearHistoryOnly();
+                        saveToLocalStorage();
+                        updateRankBadges();
+                        if (smartPointActive) {
+                            currentSmartPoint = getMaxSmartPoint();
+                            const label = document.getElementById('smartPointLabel');
+                            if (label) label.innerText = `Smart (+${currentSmartPoint})`;
+                            updateAllPlusButtonLabels();
+                        }
+                        showToast('Đã đưa điểm về 0');
+                    }
+                });
+            });
+
+            document.getElementById('deleteAllButton').addEventListener('click', () => {
+                showModal({
+                    title: 'Giải tán phòng đấu?',
+                    desc: 'Tất cả người chơi và dữ liệu lịch sử sẽ bị xoá vĩnh viễn.',
+                    confirmText: 'Xoá hết',
+                    confirmClass: 'bg-rose-600 text-white hover:bg-rose-500',
+                    onConfirm: () => {
+                        localStorage.removeItem('tallies');
+                        localStorage.removeItem('history_records');
+                        document.getElementById('Tally').innerHTML = '';
+                        clearHistoryOnly();
+                        resetTimer();
+                        checkEmptyState();
+                        updateRankBadges();
+                        if (smartPointActive) toggleSmartPoint();
+                        showToast('Đã giải tán phòng đấu');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>
