@@ -701,6 +701,8 @@ async function hidePageLoadingScreen() {
     setTimeout(() => {
         DOM.pageLoadingScreen.style.display = 'none';
     }, 450);
+
+
 }
 
 // ==========================================================================
@@ -2906,7 +2908,7 @@ DOM.btnPurgeAll.onclick = async function () {
         }
 
         showToast("Đã dọn dẹp sạch toàn bộ ứng dụng!");
-        
+
         // Chờ 0.5s rồi tải lại sạch từ máy chủ
         setTimeout(() => {
             window.location.replace(window.location.origin + window.location.pathname);
@@ -3263,6 +3265,9 @@ async function initApp() {
     if (state.autoUpdateApp) {
         setTimeout(() => checkAndApplyUpdate(false), 2000);
     }
+    setTimeout(() => {
+        hidePageLoadingScreen();
+    }, Math.max(state.pageLoadDelay + 300, 1500));
 }
 
 if ('serviceWorker' in navigator) {
