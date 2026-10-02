@@ -1955,10 +1955,48 @@ async function executeSelectiveTbzImport() {
     }
 }
 
+// 1. Xử lý mở file khi bấm vào dropzone
+const dropzoneLibrary = document.getElementById('dropzone-library');
+if (dropzoneLibrary) {
+    dropzoneLibrary.onclick = () => DOM.fileInput.click();
+
+    // Ngăn chặn hành vi mở file mặc định của trình duyệt
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropzoneLibrary.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    // Hiệu ứng khi kéo file qua vùng dropzone
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzoneLibrary.addEventListener(eventName, () => {
+            dropzoneLibrary.classList.add('border-[var(--accent-color)]', 'bg-neutral-500/10');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropzoneLibrary.addEventListener(eventName, () => {
+            dropzoneLibrary.classList.remove('border-[var(--accent-color)]', 'bg-neutral-500/10');
+        }, false);
+    });
+
+    // Xử lý khi thả file vào
+    dropzoneLibrary.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length > 0) {
+            handleImportFile(files[0]);
+        }
+    }, false);
+}
+
+// 2. Cập nhật hàm handleImportFile để kiểm tra file mượt mà hơn
 async function handleImportFile(file) {
     if (!file) return;
+    const fileName = file.name.toLowerCase();
 
-    if (file.name.toLowerCase().endsWith('.epub')) {
+    if (fileName.endsWith('.epub')) {
         showToast("Đang nạp file EPUB...");
         try {
             const parsed = await parseEpubFile(file);
@@ -1984,7 +2022,7 @@ async function handleImportFile(file) {
             console.error("Import EPUB error:", err);
             showToast("Lỗi nạp EPUB: " + err.message);
         }
-    } else if (file.name.endsWith('.tbz')) {
+    } else if (fileName.endsWith('.tbz')) {
         try {
             showToast("Đang đọc gói .TBZ...");
             const zip = await JSZip.loadAsync(file);
@@ -1993,7 +2031,7 @@ async function handleImportFile(file) {
             console.error("Lỗi đọc file TBZ:", err);
             showToast("File .TBZ không hợp lệ hoặc bị hỏng!");
         }
-    } else if (file.name.endsWith('.txt')) {
+    } else if (fileName.endsWith('.txt')) {
         const text = await file.text();
         const bookId = 'book-' + Date.now();
         const title = file.name.replace(/\.[^/.]+$/, "");
@@ -2053,8 +2091,20 @@ async function handleImportFile(file) {
         await renderLibraryList();
         saveProgressState();
         showToast("Đã nạp file văn bản thành công!");
+    } else {
+        // Dự phòng cho trường hợp file .tbz bị đổi tên hoặc tệp zip sao lưu khác
+        try {
+            const zip = await JSZip.loadAsync(file);
+            promptSelectiveTbzImport(zip, file.name);
+        } catch (e) {
+            showToast("Định dạng file không được hỗ trợ (cần .epub, .txt, .tbz)");
+        }
     }
+
+    // Reset giá trị input để có thể chọn lại cùng một file nếu cần
+    if (DOM.fileInput) DOM.fileInput.value = '';
 }
+
 
 // ==========================================================================
 // 15. BATCH DOWNLOAD & ARCHIVE EXPORT (.TBZ SAO LƯU TOÀN DIỆN CẢ MEDIA)
