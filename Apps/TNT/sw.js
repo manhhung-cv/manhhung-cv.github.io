@@ -1,5 +1,5 @@
 // === PHIÊN BẢN SERVICE WORKER ===
-const CACHE_NAME = '2.0.2';
+const CACHE_NAME = '2.0.3'; // Tăng version cache
 
 const STATIC_ASSETS = [
     './',
@@ -8,10 +8,13 @@ const STATIC_ASSETS = [
     './manifest.json',
     './changelog.json',
     './assets/logo.png',
-    'https://cdn.tailwindcss.com',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-    'https://unpkg.com/dexie@3.2.4/dist/dexie.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'
+    './assets/vendor/tailwind.js',
+    './assets/vendor/dexie.min.js',
+    './assets/vendor/jszip.min.js',
+    // Font Awesome CSS & Fonts
+    './assets/vendor/fontawesome/css/all.min.css',
+    './assets/vendor/fontawesome/webfonts/fa-solid-900.woff2',
+    './assets/vendor/fontawesome/webfonts/fa-regular-400.woff2'
 ];
 
 self.addEventListener('install', (e) => {
