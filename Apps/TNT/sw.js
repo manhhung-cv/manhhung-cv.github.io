@@ -1,5 +1,5 @@
 // === PHIÊN BẢN SERVICE WORKER ===
-const CACHE_NAME = '2.0.6';
+const CACHE_NAME = '2.0.7';
 
 const STATIC_ASSETS = [
     './',

@@ -692,17 +692,22 @@ function openDevLogModal() {
     }
 }
 
-async function hidePageLoadingScreen() {
-    if (!DOM.pageLoadingScreen) return;
-    if (state.pageLoadDelay > 0) {
+let isPageLoaded = false;
+
+async function hidePageLoadingScreen(forceImmediate = false) {
+    if (!DOM.pageLoadingScreen || isPageLoaded) return;
+    
+    if (!forceImmediate && state.pageLoadDelay > 0) {
         await sleep(state.pageLoadDelay);
     }
+    
+    isPageLoaded = true;
     DOM.pageLoadingScreen.classList.add('fade-out');
     setTimeout(() => {
-        DOM.pageLoadingScreen.style.display = 'none';
+        if (DOM.pageLoadingScreen) {
+            DOM.pageLoadingScreen.style.display = 'none';
+        }
     }, 450);
-
-
 }
 
 // ==========================================================================
@@ -3349,7 +3354,18 @@ if ('serviceWorker' in navigator) {
 }
 
 window.addEventListener('DOMContentLoaded', function () {
-    initApp();
+    // Tự động tắt loading screen sau 5 giây nếu initApp bị treo
+    const fallbackTimer = setTimeout(() => {
+        if (!isPageLoaded) {
+            console.warn('[Safety] Quá thời gian 5s, buộc tắt loading screen để debug.');
+            hidePageLoadingScreen(true);
+        }
+    }, 5000);
+
+    initApp().finally(() => {
+        clearTimeout(fallbackTimer);
+    });
+
     window.addEventListener('touchstart', function () { audioManager.unlockAudioSession(); }, { once: true });
     window.addEventListener('click', function () { audioManager.unlockAudioSession(); }, { once: true });
     window.addEventListener('beforeunload', function () {
