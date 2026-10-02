@@ -198,18 +198,22 @@ class WebAudioManager {
         });
     }
 
-    updateMetadata(title, chapterTitle) {
-        if (!('mediaSession' in navigator)) return;
+    updateMetadata(title, chapterTitle, coverUrl) {
+    if (!('mediaSession' in navigator)) return;
 
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title: chapterTitle || 'Truyện Voice',
-            artist: title || 'Giọng đọc AI',
-            album: 'Truyện Voice Reader',
-            artwork: [
-                { src: './assets/logo.png', sizes: '512x512', type: 'image/png' }
-            ]
-        });
-    }
+    // Ưu tiên dùng ảnh bìa của sách, nếu không có thì dùng logo nội bộ ./assets/logo.png
+    const artworkSrc = coverUrl || './assets/logo.png';
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title: chapterTitle || 'Truyện Voice',
+        artist: title || 'Giọng đọc AI',
+        album: 'Truyện Voice Reader',
+        artwork: [
+            { src: artworkSrc, sizes: '192x192', type: 'image/png' },
+            { src: artworkSrc, sizes: '512x512', type: 'image/png' }
+        ]
+    });
+}
 
     setPlaybackState(isPlaying) {
         if (!('mediaSession' in navigator)) return;
@@ -500,14 +504,14 @@ function askConfirmation(title, message) {
 
 function updateMuteUI() {
     if (state.isMuted) {
-        if (DOM.iconMuteState) DOM.iconMuteState.className = 'fa-solid fa-volume-xmark text-xs';
+        if (DOM.iconMuteState) DOM.iconMuteState.className = 'fa-glasses text-xs';
         if (DOM.labelMuteState) DOM.labelMuteState.textContent = 'Chỉ đọc';
         if (DOM.btnMuteToggle) {
             DOM.btnMuteToggle.classList.remove('text-emerald-600', 'dark:text-emerald-400');
             DOM.btnMuteToggle.classList.add('text-amber-600', 'dark:text-amber-400');
         }
     } else {
-        if (DOM.iconMuteState) DOM.iconMuteState.className = 'fa-solid fa-volume-high text-xs';
+        if (DOM.iconMuteState) DOM.iconMuteState.className = 'fa-solid fa-podcast text-xs';
         if (DOM.labelMuteState) DOM.labelMuteState.textContent = 'Phát tiếng';
         if (DOM.btnMuteToggle) {
             DOM.btnMuteToggle.classList.remove('text-amber-600', 'dark:text-amber-400');
@@ -517,10 +521,9 @@ function updateMuteUI() {
 
     const mobileIcon = document.getElementById('icon-mute-state-mobile');
     if (mobileIcon) {
-        mobileIcon.className = state.isMuted ? 'fa-solid fa-volume-xmark text-xs' : 'fa-solid fa-volume-high text-xs text-emerald-500';
+        mobileIcon.className = state.isMuted ? 'fa-glasses text-xs' : 'fa-solid fa-podcast text-xs text-emerald-500';
     }
 }
-
 function updateChapterNavButtons() {
     if (!state.currentBook) return;
     DOM.btnPrevChapter.disabled = state.currentChapterIndex <= 0;
