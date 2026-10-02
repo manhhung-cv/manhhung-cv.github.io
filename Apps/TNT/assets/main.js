@@ -1,5 +1,5 @@
 // ==========================================================================
-// TRUYỆN VOICE - MAIN.JS (Full Updated with DevLog & Color Presets)
+// TNT TRUYỆN VOICE - MAIN.JS (Full Centralized State & Config Center)
 // ==========================================================================
 
 let APP_VERSION = 'Đang đồng bộ...';
@@ -8,6 +8,11 @@ function sleep(ms) {
     return new Promise(function (resolve) {
         setTimeout(resolve, ms);
     });
+}
+
+function normalizeFontString(str) {
+    if (!str) return '';
+    return str.replace(/['"]/g, '').trim().toLowerCase();
 }
 
 // ==========================================================================
@@ -55,7 +60,6 @@ const DevLogger = {
             appendLog('error', args);
         };
 
-        // Bắt lỗi toàn cục của trang web
         window.addEventListener('error', function (event) {
             appendLog('error', [`[Runtime Error] ${event.message} (${event.filename}:${event.lineno})`]);
         });
@@ -122,7 +126,6 @@ const DevLogger = {
     }
 };
 
-// Khởi chạy bắt log ngay khi mã được tải
 DevLogger.init();
 
 // ==========================================================================
@@ -199,21 +202,20 @@ class WebAudioManager {
     }
 
     updateMetadata(title, chapterTitle, coverUrl) {
-    if (!('mediaSession' in navigator)) return;
+        if (!('mediaSession' in navigator)) return;
 
-    // Ưu tiên dùng ảnh bìa của sách, nếu không có thì dùng logo nội bộ ./assets/logo.png
-    const artworkSrc = coverUrl || './assets/logo.png';
+        const artworkSrc = coverUrl || './assets/logo.png';
 
-    navigator.mediaSession.metadata = new MediaMetadata({
-        title: chapterTitle || 'Truyện Voice',
-        artist: title || 'Giọng đọc AI',
-        album: 'Truyện Voice Reader',
-        artwork: [
-            { src: artworkSrc, sizes: '192x192', type: 'image/png' },
-            { src: artworkSrc, sizes: '512x512', type: 'image/png' }
-        ]
-    });
-}
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: chapterTitle || 'Truyện Voice',
+            artist: title || 'Giọng đọc AI',
+            album: 'Truyện Voice Reader',
+            artwork: [
+                { src: artworkSrc, sizes: '192x192', type: 'image/png' },
+                { src: artworkSrc, sizes: '512x512', type: 'image/png' }
+            ]
+        });
+    }
 
     setPlaybackState(isPlaying) {
         if (!('mediaSession' in navigator)) return;
@@ -225,7 +227,7 @@ class WebAudioManager {
 }
 
 // ==========================================================================
-// 3. DATABASE SETUP (DEXIE.JS)
+// 3. DATABASE SETUP (DEXIE.JS - CHỈ MỤC KÉP bookId+chapterIndex & BẢNG GALLERY)
 // ==========================================================================
 const db = new Dexie('TruyenVoiceDB_v3');
 db.version(1).stores({
@@ -243,12 +245,16 @@ db.version(2).stores({
     settings: 'id',
     app_backups: 'id, createdAt, version'
 });
-
-const SAMPLE_BOOK = {};
-const SAMPLE_CHAPTERS = [];
+db.version(3).stores({
+    chapters: 'id, bookId, chapterIndex, [bookId+chapterIndex], title',
+    sentence_audio: 'id, bookId, chapterIndex, sentenceIndex, [bookId+chapterIndex], voice'
+});
+db.version(4).stores({
+    bg_gallery: 'id, createdAt, type'
+});
 
 // ==========================================================================
-// 4. UTILITIES & TEXT SANITIZATION
+// 4. UTILITIES & PURE TEXT SANITIZATION
 // ==========================================================================
 function decodeHtmlEntities(str) {
     if (!str) return '';
@@ -267,13 +273,18 @@ function decodeHtmlEntities(str) {
 function cleanTextForTTS(text) {
     if (!text) return '';
     let str = decodeHtmlEntities(text);
+
     str = str.replace(/https?:\/\/\S+/gi, '');
-    str = str.replace(/[#*_~`^|\\/\[\]{}<>=+@$%]/g, ' ');
-    str = str.replace(/["“”«»„‟]/g, ' ');
+    str = str.replace(/&/g, ' và ');
+    str = str.replace(/[\[\](){}<>【】〖〗「」『』〔〕〈〉《》]/g, ' ');
+    str = str.replace(/["“”«»„‟`'’‘]/g, ' ');
+    str = str.replace(/[#*_~^|\\\/+@$%:=;~]/g, ' ');
     str = str.replace(/[-–—]{2,}/g, ' ');
+    str = str.replace(/[-–—]/g, ' ');
     str = str.replace(/[!?.…]{2,}/g, '.');
     str = str.replace(/^[^\p{L}\p{N}]+/u, '');
     str = str.replace(/[^\p{L}\p{N}.!?]+$/u, '');
+
     return str.replace(/\s+/g, ' ').trim();
 }
 
@@ -292,26 +303,25 @@ function splitSentences(text) {
 }
 
 // ==========================================================================
-// 5. APPLICATION STATE
+// 5. TRUNG TÂM CẤU HÌNH & TRẠNG THÁI (APPLICATION CONFIG STATE)
 // ==========================================================================
-// Audio Element tái sử dụng duy nhất nhằm duy trì User Gesture cho Safari 16+ / iOS
 const sharedAudioElement = new Audio();
 sharedAudioElement.preload = 'auto';
 
 const state = {
-    // Thông tin sách & tiến trình đọc
+    // [A] THÔNG TIN SÁCH & TIẾN TRÌNH ĐỌC
     currentBook: null,
     currentChapterIndex: 0,
     currentSentenceIndex: 0,
     savedScrollTop: 0,
     isRestoringScroll: false,
 
-    // Chế độ hiển thị & cuộn
-    readingMode: 'scroll-single', // 'scroll-single' | 'scroll-infinite'
+    // [B] CHẾ ĐỘ HIỂN THỊ TRANG SÁCH: 'scroll-single' | 'scroll-infinite'
+    readingMode: 'scroll-single',
     loadedInfiniteChapters: new Set(),
     isLoadingNextChapter: false,
 
-    // Trạng thái phát âm thanh & Media
+    // [C] ÂM THANH & GIỌNG ĐỌC AI
     isMuted: true,
     isPlaying: false,
     playbackRate: 1.0,
@@ -320,22 +330,34 @@ const state = {
     consecutiveErrors: 0,
     autoBufferCount: 5,
 
-    // Tải & đóng gói ngoại tuyến
+    // [D] TẢI NGOẠI TUYẾN
     audioFormat: 'standard',
     downloadConcurrency: 3,
     isBatchDownloading: false,
     abortBatchDownload: false,
 
-    // Kiểu chữ, kích thước & Giao diện sách
+    // [E] CỠ CHỮ, PHÔNG CHỮ & GIAO DIỆN
     fontSize: 18,
     fontFamily: "'Be Vietnam Pro', sans-serif",
-    currentTheme: 'theme-light', // 'theme-light' | 'theme-sepia' | 'theme-gray' | 'theme-dark'
+    currentTheme: 'theme-dark',
+    customFontFamily: null,
 
-    // Cấu hình Highlight & Hệ màu sắc
-    hlStyle: 'fill',             // 'fill' | 'underline' | 'outline'
+    // [F] CẤU HÌNH HIGHLIGHT KHI ĐỌC: 'fill' | 'underline' | 'wavy' | 'text'
+    hlStyle: 'text',
     hlTextColor: '#1d4ed8',
     hlBgColor: '#eff6ff',
     hlBorderColor: '#2563eb',
+
+    // [G] HÌNH NỀN SÁCH CỐ ĐỊNH & ĐỘ MỜ (Hỗ trợ Ảnh, GIF, Video MP4/WEBM)
+    bgImage: './assets/bg/bg1.png',
+    bgOpacity: 0.4,
+
+    // Tự động lấy bìa EPUB làm hình nền
+    autoUseEpubCover: false,
+
+    // [H] KHỞI ĐỘNG & HỆ THỐNG
+    pageLoadDelay: 500,
+    autoUpdateApp: false,
 
     // Tìm kiếm trong sách
     searchResults: [],
@@ -351,6 +373,8 @@ const DOM = {
     app: document.getElementById('app'),
     viewport: document.getElementById('reader-viewport'),
     container: document.getElementById('reader-container'),
+    readerBgOverlay: document.getElementById('reader-bg-overlay'),
+    readerBgVideo: document.getElementById('reader-bg-video'),
     infiniteSentinel: document.getElementById('infinite-sentinel'),
     infiniteSentinelText: document.getElementById('infinite-sentinel-text'),
     headerBookTitle: document.getElementById('header-book-title'),
@@ -440,7 +464,24 @@ const DOM = {
     pickerHlBg: document.getElementById('picker-hl-bg'),
     pickerHlBorder: document.getElementById('picker-hl-border'),
     appVersionBadge: document.getElementById('app-version-badge'),
-    cacheNameLabel: document.getElementById('cache-name-label')
+    configPageLoadingDelay: document.getElementById('config-page-loading-delay'),
+    switchAutoUpdate: document.getElementById('switch-auto-update'),
+    switchAutoEpubCover: document.getElementById('switch-auto-epub-cover'),
+    pageLoadingScreen: document.getElementById('page-loading-screen'),
+    sliderBgOpacity: document.getElementById('slider-bg-opacity'),
+    labelBgOpacity: document.getElementById('label-bg-opacity')
+};
+
+const DOM_GALLERY = {
+    grid: document.getElementById('bg-gallery-grid'),
+    countLabel: document.getElementById('label-gallery-count'),
+    inputFiles: document.getElementById('input-bg-file'),
+    btnTriggerFiles: document.getElementById('btn-trigger-bg-file'),
+    btnToggleBatchUrl: document.getElementById('btn-toggle-batch-url'),
+    trayBatchUrl: document.getElementById('tray-batch-url'),
+    textareaBatchUrls: document.getElementById('input-batch-bg-urls'),
+    btnApplyBatchUrls: document.getElementById('btn-apply-batch-urls'),
+    btnClearAll: document.getElementById('btn-clear-all-gallery')
 };
 
 // ==========================================================================
@@ -524,6 +565,7 @@ function updateMuteUI() {
         mobileIcon.className = state.isMuted ? 'fa-glasses text-xs' : 'fa-solid fa-podcast text-xs text-emerald-500';
     }
 }
+
 function updateChapterNavButtons() {
     if (!state.currentBook) return;
     DOM.btnPrevChapter.disabled = state.currentChapterIndex <= 0;
@@ -531,7 +573,7 @@ function updateChapterNavButtons() {
 }
 
 function applyHighlightCustomization() {
-    document.body.classList.remove('hl-mode-fill', 'hl-mode-underline', 'hl-mode-outline');
+    document.body.classList.remove('hl-mode-fill', 'hl-mode-underline', 'hl-mode-wavy', 'hl-mode-text');
     document.body.classList.add('hl-mode-' + state.hlStyle);
 
     document.documentElement.style.setProperty('--hl-bg', state.hlBgColor);
@@ -545,11 +587,102 @@ function applyHighlightCustomization() {
 
     document.querySelectorAll('.btn-hl-style').forEach(function (btn) {
         if (btn.getAttribute('data-style') === state.hlStyle) {
-            btn.className = 'btn-hl-style py-1.5 rounded-lg border border-[var(--accent-color)] text-[var(--accent-color)] bg-neutral-500/5 text-xs font-semibold';
+            btn.className = 'btn-hl-style touch-action py-1.5 rounded-xl border border-[var(--accent-color)] text-[var(--accent-color)] bg-neutral-500/10 text-xs font-semibold';
         } else {
-            btn.className = 'btn-hl-style py-1.5 rounded-lg border border-neutral-500/20 text-xs font-medium';
+            btn.className = 'btn-hl-style touch-action py-1.5 rounded-xl border border-neutral-500/20 text-xs font-medium opacity-75';
         }
     });
+}
+
+function updateFontChipsUI() {
+    const currentNorm = normalizeFontString(state.fontFamily);
+    document.querySelectorAll('.btn-font-chip').forEach(function (b) {
+        const btnFontNorm = normalizeFontString(b.getAttribute('data-font'));
+        if (btnFontNorm === currentNorm) {
+            b.className = 'btn-font-chip touch-action py-1.5 rounded-xl border border-[var(--accent-color)] text-xs font-semibold text-[var(--accent-color)] bg-neutral-500/10';
+        } else {
+            b.className = 'btn-font-chip touch-action py-1.5 rounded-xl border border-neutral-500/20 text-xs font-medium opacity-80';
+        }
+    });
+}
+
+// Kiểm tra xem chuỗi có phải là định dạng Video không
+function isVideoMedia(urlOrData) {
+    if (!urlOrData) return false;
+    const lower = urlOrData.toLowerCase();
+    return lower.startsWith('data:video/') || lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.mov') || lower.includes('blob:video');
+}
+
+// Áp dụng hình nền hoặc Video nền
+function applyReaderBackground(bgUrl, opacity = null) {
+    state.bgImage = bgUrl;
+    if (opacity !== null) {
+        state.bgOpacity = opacity;
+    }
+
+    const isVideo = isVideoMedia(bgUrl);
+
+    if (DOM.readerBgVideo) {
+        if (isVideo && bgUrl) {
+            DOM.readerBgVideo.src = bgUrl;
+            DOM.readerBgVideo.classList.remove('hidden');
+            DOM.readerBgVideo.style.opacity = state.bgOpacity;
+            DOM.readerBgVideo.play().catch(() => { });
+        } else {
+            DOM.readerBgVideo.pause();
+            DOM.readerBgVideo.src = '';
+            DOM.readerBgVideo.classList.add('hidden');
+        }
+    }
+
+    if (DOM.readerBgOverlay) {
+        if (!isVideo && bgUrl) {
+            DOM.readerBgOverlay.style.backgroundImage = `url("${bgUrl}")`;
+            DOM.readerBgOverlay.style.opacity = state.bgOpacity;
+        } else {
+            DOM.readerBgOverlay.style.backgroundImage = 'none';
+            DOM.readerBgOverlay.style.opacity = '0';
+        }
+    }
+
+    if (DOM.sliderBgOpacity) DOM.sliderBgOpacity.value = Math.round(state.bgOpacity * 100);
+    if (DOM.labelBgOpacity) DOM.labelBgOpacity.textContent = Math.round(state.bgOpacity * 100) + '%';
+}
+
+function loadGoogleFont(fontNameOrUrl) {
+    if (!fontNameOrUrl || !fontNameOrUrl.trim()) return;
+
+    let fontName = fontNameOrUrl.trim();
+    let fontUrl = '';
+
+    if (fontName.startsWith('http://') || fontName.startsWith('https://')) {
+        fontUrl = fontName;
+        const match = fontUrl.match(/family=([^:&]+)/);
+        if (match && match[1]) {
+            fontName = decodeURIComponent(match[1]).replace(/\+/g, ' ');
+        }
+    } else {
+        fontUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName).replace(/%20/g, '+')}:wght@400;600;700&display=swap`;
+    }
+
+    let existingLink = document.querySelector(`link[data-font="${fontName}"]`);
+    if (!existingLink) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = fontUrl;
+        link.setAttribute('data-font', fontName);
+        document.head.appendChild(link);
+    }
+
+    const fontFamilyRule = `'${fontName}', sans-serif`;
+    state.fontFamily = fontFamilyRule;
+    state.customFontFamily = fontFamilyRule;
+
+    document.documentElement.style.setProperty('--reader-font', fontFamilyRule);
+    if (DOM.container) DOM.container.style.fontFamily = fontFamilyRule;
+    updateFontChipsUI();
+    saveProgressState();
+    showToast(`Đã áp dụng phông: ${fontName}`);
 }
 
 function openDevLogModal() {
@@ -557,6 +690,17 @@ function openDevLogModal() {
         DOM.modalDevLog.classList.remove('hidden');
         DOM.modalDevLog.classList.add('flex');
     }
+}
+
+async function hidePageLoadingScreen() {
+    if (!DOM.pageLoadingScreen) return;
+    if (state.pageLoadDelay > 0) {
+        await sleep(state.pageLoadDelay);
+    }
+    DOM.pageLoadingScreen.classList.add('fade-out');
+    setTimeout(() => {
+        DOM.pageLoadingScreen.style.display = 'none';
+    }, 450);
 }
 
 // ==========================================================================
@@ -581,6 +725,7 @@ async function saveProgressState() {
             currentVoiceName: state.currentVoiceName,
             fontSize: state.fontSize,
             fontFamily: state.fontFamily,
+            customFontFamily: state.customFontFamily,
             currentTheme: state.currentTheme,
             autoBufferCount: state.autoBufferCount,
             downloadConcurrency: state.downloadConcurrency,
@@ -591,7 +736,12 @@ async function saveProgressState() {
             hlStyle: state.hlStyle,
             hlTextColor: state.hlTextColor,
             hlBgColor: state.hlBgColor,
-            hlBorderColor: state.hlBorderColor
+            hlBorderColor: state.hlBorderColor,
+            pageLoadDelay: state.pageLoadDelay,
+            autoUpdateApp: state.autoUpdateApp,
+            bgImage: state.bgImage,
+            bgOpacity: state.bgOpacity,
+            autoUseEpubCover: state.autoUseEpubCover
         });
     } catch (err) {
         console.warn("[Storage] Save progress error:", err);
@@ -601,34 +751,61 @@ async function saveProgressState() {
 async function loadSettings() {
     try {
         const saved = await db.settings.get('user_preferences');
-        if (!saved) return;
+        if (saved) {
+            state.readingMode = saved.readingMode || state.readingMode;
+            state.isMuted = saved.isMuted !== undefined ? saved.isMuted : state.isMuted;
+            state.playbackRate = saved.playbackRate || state.playbackRate;
+            state.currentVoiceName = saved.currentVoiceName || state.currentVoiceName;
+            state.fontSize = saved.fontSize || state.fontSize;
+            state.fontFamily = saved.fontFamily || state.fontFamily;
+            state.customFontFamily = saved.customFontFamily || state.customFontFamily;
+            state.currentTheme = saved.currentTheme || state.currentTheme;
+            state.autoBufferCount = saved.autoBufferCount || state.autoBufferCount;
+            state.downloadConcurrency = saved.downloadConcurrency || state.downloadConcurrency;
 
-        state.readingMode = saved.readingMode || state.readingMode;
-        state.isMuted = saved.isMuted !== undefined ? saved.isMuted : true;
-        state.playbackRate = saved.playbackRate || 1.0;
-        state.currentVoiceName = saved.currentVoiceName || 'Hoài My';
-        state.fontSize = saved.fontSize || 18;
-        state.fontFamily = saved.fontFamily || "'Be Vietnam Pro', sans-serif";
-        state.currentTheme = saved.currentTheme || 'theme-light';
-        state.autoBufferCount = saved.autoBufferCount || 5;
-        state.downloadConcurrency = saved.downloadConcurrency || 3;
+            state.hlStyle = saved.hlStyle || state.hlStyle;
+            state.hlTextColor = saved.hlTextColor || state.hlTextColor;
+            state.hlBgColor = saved.hlBgColor || state.hlBgColor;
+            state.hlBorderColor = saved.hlBorderColor || state.hlBorderColor;
 
-        state.hlStyle = saved.hlStyle || 'fill';
-        state.hlTextColor = saved.hlTextColor || '#1d4ed8';
-        state.hlBgColor = saved.hlBgColor || '#eff6ff';
-        state.hlBorderColor = saved.hlBorderColor || '#2563eb';
+            if (saved.bgOpacity !== undefined) state.bgOpacity = saved.bgOpacity;
+            if (saved.bgImage !== undefined) state.bgImage = saved.bgImage;
+            if (saved.autoUseEpubCover !== undefined) state.autoUseEpubCover = saved.autoUseEpubCover;
+            if (saved.pageLoadDelay !== undefined) state.pageLoadDelay = saved.pageLoadDelay;
+            if (saved.autoUpdateApp !== undefined) state.autoUpdateApp = saved.autoUpdateApp;
 
-        if (saved.lastChapterIndex !== undefined) state.currentChapterIndex = saved.lastChapterIndex;
-        if (saved.lastSentenceIndex !== undefined) state.currentSentenceIndex = saved.lastSentenceIndex;
-        if (saved.lastScrollTop !== undefined) state.savedScrollTop = saved.lastScrollTop;
+            if (saved.lastChapterIndex !== undefined) state.currentChapterIndex = saved.lastChapterIndex;
+            if (saved.lastSentenceIndex !== undefined) state.currentSentenceIndex = saved.lastSentenceIndex;
+            if (saved.lastScrollTop !== undefined) state.savedScrollTop = saved.lastScrollTop;
+        }
 
-        document.body.className = state.currentTheme + ' h-full overflow-hidden select-none';
-        DOM.container.style.fontSize = state.fontSize + 'px';
-        DOM.container.style.fontFamily = state.fontFamily;
+        document.documentElement.style.setProperty('--reader-size', state.fontSize + 'px');
+        document.documentElement.style.setProperty('--reader-font', state.fontFamily);
+
+        document.body.className = state.currentTheme + ' h-full overflow-hidden select-none hl-mode-' + state.hlStyle;
+        if (DOM.container) {
+            DOM.container.style.fontSize = state.fontSize + 'px';
+            DOM.container.style.fontFamily = state.fontFamily;
+        }
         if (DOM.sliderFontSize) DOM.sliderFontSize.value = state.fontSize;
         if (DOM.labelFontSize) DOM.labelFontSize.textContent = state.fontSize + 'px';
 
+        if (state.bgImage) {
+            applyReaderBackground(state.bgImage, state.bgOpacity);
+        }
+
+        if (DOM.configPageLoadingDelay) {
+            DOM.configPageLoadingDelay.value = state.pageLoadDelay;
+        }
+        if (DOM.switchAutoUpdate) {
+            DOM.switchAutoUpdate.checked = state.autoUpdateApp;
+        }
+        if (DOM.switchAutoEpubCover) {
+            DOM.switchAutoEpubCover.checked = state.autoUseEpubCover;
+        }
+
         applyHighlightCustomization();
+        updateFontChipsUI();
         updateMuteUI();
 
         if (DOM.labelReadingMode) {
@@ -643,13 +820,107 @@ async function loadSettings() {
 
         document.querySelectorAll('.btn-voice-opt').forEach(function (b) {
             if (b.getAttribute('data-voice') === state.currentVoiceName) {
-                b.className = 'btn-voice-opt py-1.5 rounded-lg border border-[var(--accent-color)] text-[var(--accent-color)] text-xs font-semibold';
+                b.className = 'btn-voice-opt touch-action py-2 rounded-xl border border-[var(--accent-color)] text-[var(--accent-color)] font-medium';
             } else {
-                b.className = 'btn-voice-opt py-1.5 rounded-lg border border-neutral-500/20 text-xs font-medium';
+                b.className = 'btn-voice-opt touch-action py-2 rounded-xl border border-neutral-500/20 font-medium';
             }
         });
     } catch (err) {
         console.warn("[Storage] Load settings error:", err);
+    }
+}
+
+// ==========================================================================
+// 8B. BACKGROUND GALLERY ENGINE (KHÔNG LƯU BÌA EPUB VÀO GALLERY)
+// ==========================================================================
+async function saveImageToGallery(dataUrlOrHttpUrl, type = 'url') {
+    if (!dataUrlOrHttpUrl) return;
+    try {
+        const existing = await db.bg_gallery.where('data').equals(dataUrlOrHttpUrl).first().catch(() => null);
+        if (!existing) {
+            await db.bg_gallery.put({
+                id: 'bg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+                data: dataUrlOrHttpUrl,
+                type: type,
+                createdAt: Date.now()
+            });
+        }
+    } catch (e) {
+        console.warn("Lỗi lưu ảnh vào gallery:", e);
+    }
+}
+
+async function renderBackgroundGallery() {
+    if (!DOM_GALLERY.grid) return;
+
+    try {
+        const items = await db.bg_gallery.orderBy('createdAt').reverse().toArray();
+        DOM_GALLERY.grid.innerHTML = '';
+
+        if (DOM_GALLERY.countLabel) {
+            DOM_GALLERY.countLabel.textContent = items.length;
+        }
+
+        if (items.length === 0) {
+            DOM_GALLERY.grid.innerHTML = `
+                <div class="col-span-4 text-center py-4 opacity-40 italic text-[11px]">
+                    Chưa có ảnh/video nào được lưu
+                </div>
+            `;
+            return;
+        }
+
+        items.forEach(item => {
+            const isCurrentActive = state.bgImage === item.data;
+            const isVideo = isVideoMedia(item.data);
+            const cell = document.createElement('div');
+            cell.className = `relative group h-12 rounded-xl border overflow-hidden cursor-pointer bg-cover bg-center transition-all ${isCurrentActive ? 'border-[var(--accent-color)] ring-2 ring-[var(--accent-color)]/30' : 'border-neutral-500/20 hover:border-neutral-500/40'
+                }`;
+
+            if (isVideo) {
+                cell.innerHTML = `
+                    <video src="${item.data}" muted loop playsinline class="w-full h-full object-cover"></video>
+                    <span class="absolute bottom-1 right-1 text-[9px] bg-black/60 text-white px-1 rounded"><i class="fa-solid fa-video"></i></span>
+                `;
+            } else {
+                cell.style.backgroundImage = `url("${item.data}")`;
+            }
+
+            const delBtn = document.createElement('button');
+            delBtn.className = "btn-del-single-bg absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-600";
+            delBtn.title = "Xóa mục này";
+            delBtn.innerHTML = '<i class="fa-solid fa-xmark text-[9px]"></i>';
+            cell.appendChild(delBtn);
+
+            if (isCurrentActive) {
+                const activeDot = document.createElement('div');
+                activeDot.className = 'absolute bottom-1 left-1 w-2 h-2 rounded-full bg-[var(--accent-color)]';
+                cell.appendChild(activeDot);
+            }
+
+            cell.onclick = function (e) {
+                if (e.target.closest('.btn-del-single-bg')) return;
+                applyReaderBackground(item.data);
+                saveProgressState();
+                renderBackgroundGallery();
+                showToast("Đã chọn nền!");
+            };
+
+            delBtn.onclick = async function (e) {
+                e.stopPropagation();
+                await db.bg_gallery.delete(item.id);
+                if (state.bgImage === item.data) {
+                    applyReaderBackground(null);
+                    saveProgressState();
+                }
+                renderBackgroundGallery();
+                showToast("Đã xoá khỏi bộ sưu tập!");
+            };
+
+            DOM_GALLERY.grid.appendChild(cell);
+        });
+    } catch (err) {
+        console.warn("Lỗi render background gallery:", err);
     }
 }
 
@@ -839,7 +1110,6 @@ async function playCurrentSentence() {
     stopCurrentAudio();
     bufferUpcomingSentences(sentences, state.currentSentenceIndex + 1);
 
-    // Kỹ thuật dành riêng cho Safari 16: "Mở khoá" trước audio element
     const audio = sharedAudioElement;
     state.activeAudioElement = audio;
 
@@ -866,7 +1136,6 @@ async function playCurrentSentence() {
                 handleSentenceAudioError('Lỗi phát âm thanh', e, sentenceRaw, sentenceClean);
             };
 
-            // Thực thi play
             await audio.play();
             state.consecutiveErrors = 0;
             audioManager.setPlaybackState(true);
@@ -923,10 +1192,9 @@ function togglePlayPause(forcedState = null) {
     audioManager.unlockAudioSession();
 
     if (state.isPlaying) {
-        // "Mồi" quyền phát trực tiếp ngay trong User Gesture cho Safari 16
         sharedAudioElement.play().then(() => {
             sharedAudioElement.pause();
-        }).catch(() => {});
+        }).catch(() => { });
 
         if (state.isMuted) {
             state.isMuted = false;
@@ -1003,7 +1271,7 @@ async function renderReaderContent(restoreScroll = false) {
         if (chapter) {
             DOM.headerChapterTitle.textContent = chapter.title;
             DOM.container.innerHTML = buildChapterHTML(chapter);
-            audioManager.updateMetadata(state.currentBook.title, chapter.title);
+            audioManager.updateMetadata(state.currentBook.title, chapter.title, state.currentBook.cover);
 
             const sentences = chapter.sentences || splitSentences(chapter.content);
             DOM.sentenceIdxLabel.textContent = (state.currentSentenceIndex + 1) + ' / ' + sentences.length;
@@ -1344,14 +1612,14 @@ async function renderCachedChaptersList() {
         const total = (ch.sentences || splitSentences(ch.content)).length;
 
         const row = document.createElement('div');
-        row.className = 'flex items-center justify-between p-2 rounded border border-neutral-500/10 text-[11px]';
+        row.className = 'ios-cell';
 
         const badgeClass = cachedCount > 0 ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold' : 'opacity-50';
-        const delBtn = cachedCount > 0 ? '<button data-del-ch="' + ch.chapterIndex + '" class="btn-del-ch-audio text-rose-500 p-1" title="Xóa audio"><i class="fa-solid fa-trash-can text-xs"></i></button>' : '';
+        const delBtn = cachedCount > 0 ? '<button data-del-ch="' + ch.chapterIndex + '" class="btn-del-ch-audio text-rose-500 p-1" title="Xóa audio"><i class="fa-solid fa-trash text-xs"></i></button>' : '';
 
-        row.innerHTML = '<span class="truncate max-w-[170px] font-medium">' + ch.title + '</span>' +
-            '<div class="flex items-center gap-1.5">' +
-            '<span class="px-1.5 py-0.5 rounded text-[10px] font-mono ' + badgeClass + '">' + cachedCount + ' / ' + total + '</span>' +
+        row.innerHTML = '<span class="truncate max-w-[200px] font-medium">' + ch.title + '</span>' +
+            '<div class="flex items-center gap-2">' +
+            '<span class="px-2 py-0.5 rounded text-[10px] font-mono ' + badgeClass + '">' + cachedCount + ' / ' + total + '</span>' +
             delBtn +
             '</div>';
 
@@ -1394,7 +1662,7 @@ async function refreshStorageStats() {
 }
 
 // ==========================================================================
-// 14. FILE PARSING & IMPORT (EPUB, TBZ, TXT)
+// 14. FILE PARSING & IMPORT (EPUB, TXT & PHỤC HỒI CHỌN LỌC .TBZ)
 // ==========================================================================
 function normalizeZipPath(path) {
     const parts = path.split('/');
@@ -1408,6 +1676,34 @@ function normalizeZipPath(path) {
         }
     }
     return stack.join('/');
+}
+
+async function extractEpubCover(zip, opfDoc, opfDir) {
+    try {
+        let coverHref = null;
+        const coverMeta = opfDoc.querySelector('meta[name="cover"]');
+        if (coverMeta) {
+            const coverId = coverMeta.getAttribute('content');
+            const item = opfDoc.querySelector(`manifest > item[id="${coverId}"]`);
+            if (item) coverHref = item.getAttribute('href');
+        }
+        if (!coverHref) {
+            const item = opfDoc.querySelector('manifest > item[properties*="cover-image"]');
+            if (item) coverHref = item.getAttribute('href');
+        }
+
+        if (coverHref) {
+            const resolvedPath = normalizeZipPath(opfDir + coverHref);
+            const coverFile = zip.file(resolvedPath) || zip.file(coverHref);
+            if (coverFile) {
+                const blob = await coverFile.async('blob');
+                return URL.createObjectURL(blob);
+            }
+        }
+    } catch (e) {
+        console.warn("Lỗi trích xuất cover EPUB:", e);
+    }
+    return null;
 }
 
 async function parseEpubFile(file) {
@@ -1438,6 +1734,8 @@ async function parseEpubFile(file) {
     const creatorEl = opfDoc.querySelector("creator");
     const bookTitle = titleEl ? titleEl.textContent.trim() : file.name.replace(/\.epub$/i, "");
     const bookAuthor = creatorEl ? creatorEl.textContent.trim() : "Tác giả EPUB";
+
+    const extractedCover = await extractEpubCover(zip, opfDoc, opfDir);
 
     const manifestItems = {};
     opfDoc.querySelectorAll("manifest > item").forEach(function (item) {
@@ -1514,7 +1812,7 @@ async function parseEpubFile(file) {
             id: bookId,
             title: bookTitle,
             author: bookAuthor,
-            cover: 'https://placehold.co/400x600/2563eb/ffffff?text=EPUB',
+            cover: extractedCover || 'https://placehold.co/400x600/2563eb/ffffff?text=EPUB',
             totalChapters: chapters.length,
             currentChapter: 0,
             currentSentence: 0,
@@ -1523,6 +1821,136 @@ async function parseEpubFile(file) {
         },
         chapters: chapters
     };
+}
+
+// Biến lưu tạm dữ liệu zip TBZ đang chờ người dùng chọn mục để nhập
+let pendingTbzZip = null;
+
+// Hộp thoại phục hồi chọn lọc file TBZ
+function promptSelectiveTbzImport(zip, fileName) {
+    pendingTbzZip = zip;
+    const modal = document.getElementById('modal-tbz-restore');
+    if (!modal) return;
+
+    let booksCount = 0;
+    let audioCount = 0;
+    let galleryCount = 0;
+
+    try {
+        const manifestFile = zip.file('manifest.json');
+        if (manifestFile) {
+            manifestFile.async('string').then(str => {
+                const meta = JSON.parse(str);
+                document.getElementById('tbz-count-books').textContent = meta.booksCount || 0;
+                document.getElementById('tbz-count-audio').textContent = meta.audioCount || 0;
+                document.getElementById('tbz-count-gallery').textContent = meta.galleryCount || 0;
+            });
+        }
+    } catch (e) { }
+
+    document.getElementById('tbz-info-filename').textContent = fileName;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+// Thực thi phục hồi các mục đã đánh dấu chọn
+async function executeSelectiveTbzImport() {
+    const zip = pendingTbzZip;
+    if (!zip) return;
+
+    const optBooks = document.getElementById('tbz-opt-books').checked;
+    const optSettings = document.getElementById('tbz-opt-settings').checked;
+    const optGallery = document.getElementById('tbz-opt-gallery').checked;
+    const optAudio = document.getElementById('tbz-opt-audio').checked;
+
+    const modal = document.getElementById('modal-tbz-restore');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+
+    showToast("Đang phục hồi dữ liệu đã chọn...");
+
+    try {
+        // 1. Phục hồi Sách & Chương
+        if (optBooks) {
+            if (zip.file('books.json')) {
+                const books = JSON.parse(await zip.file('books.json').async('string'));
+                for (const b of books) await db.books.put(b);
+            }
+            if (zip.file('chapters.json')) {
+                const chapters = JSON.parse(await zip.file('chapters.json').async('string'));
+                for (const c of chapters) await db.chapters.put(c);
+            }
+        }
+
+        // 2. Phục hồi Cài đặt & Tùy biến
+        if (optSettings) {
+            if (zip.file('settings.json')) {
+                const settings = JSON.parse(await zip.file('settings.json').async('string'));
+                for (const s of settings) await db.settings.put(s);
+            }
+        }
+
+        // 3. Phục hồi Bộ sưu tập hình ảnh, GIF & Video nền
+        if (optGallery) {
+            if (zip.file('gallery.json')) {
+                const galleryItems = JSON.parse(await zip.file('gallery.json').async('string'));
+                for (const g of galleryItems) {
+                    if (g.isAttachment && g.storagePath) {
+                        const mediaFile = zip.file(g.storagePath);
+                        if (mediaFile) {
+                            const blob = await mediaFile.async('blob');
+                            const reader = new FileReader();
+                            const dataUrl = await new Promise(res => {
+                                reader.onload = () => res(reader.result);
+                                reader.readAsDataURL(blob);
+                            });
+                            await db.bg_gallery.put({
+                                id: g.id,
+                                data: dataUrl,
+                                type: g.type,
+                                createdAt: g.createdAt || Date.now()
+                            });
+                        }
+                    } else {
+                        await db.bg_gallery.put({
+                            id: g.id,
+                            data: g.data,
+                            type: g.type,
+                            createdAt: g.createdAt || Date.now()
+                        });
+                    }
+                }
+            }
+        }
+
+        // 4. Phục hồi Âm thanh ngoại tuyến
+        if (optAudio) {
+            if (zip.file('audio_index.json')) {
+                const audioMeta = JSON.parse(await zip.file('audio_index.json').async('string'));
+                for (const meta of audioMeta) {
+                    const audioFile = zip.file('audio/' + meta.fileName);
+                    if (audioFile) {
+                        const blob = await audioFile.async('blob');
+                        await db.sentence_audio.put({
+                            id: meta.id,
+                            bookId: meta.bookId,
+                            chapterIndex: meta.chapterIndex,
+                            sentenceIndex: meta.sentenceIndex,
+                            voice: meta.voice,
+                            audioBlob: blob
+                        });
+                    }
+                }
+            }
+        }
+
+        showToast("Khôi phục bản sao lưu thành công!");
+        pendingTbzZip = null;
+        await initApp();
+    } catch (err) {
+        console.error("Lỗi phục hồi TBZ:", err);
+        showToast("Lỗi nhập file TBZ: " + err.message);
+    }
 }
 
 async function handleImportFile(file) {
@@ -1542,6 +1970,10 @@ async function handleImportFile(file) {
             state.currentSentenceIndex = 0;
             state.savedScrollTop = 0;
 
+            if (state.autoUseEpubCover && parsed.book.cover && !parsed.book.cover.includes('placehold.co')) {
+                applyReaderBackground(parsed.book.cover, state.bgOpacity);
+            }
+
             await renderReaderContent(false);
             await renderLibraryList();
             saveProgressState();
@@ -1551,52 +1983,13 @@ async function handleImportFile(file) {
             showToast("Lỗi nạp EPUB: " + err.message);
         }
     } else if (file.name.endsWith('.tbz')) {
-        showToast("Đang giải nén gói .TBZ...");
         try {
+            showToast("Đang đọc gói .TBZ...");
             const zip = await JSZip.loadAsync(file);
-
-            if (zip.file('books.json')) {
-                const booksJson = await zip.file('books.json').async('string');
-                const books = JSON.parse(booksJson);
-                for (const b of books) await db.books.put(b);
-            }
-
-            if (zip.file('chapters.json')) {
-                const chaptersJson = await zip.file('chapters.json').async('string');
-                const chapters = JSON.parse(chaptersJson);
-                for (const c of chapters) await db.chapters.put(c);
-            }
-
-            if (zip.file('settings.json')) {
-                const settingsJson = await zip.file('settings.json').async('string');
-                const settings = JSON.parse(settingsJson);
-                for (const s of settings) await db.settings.put(s);
-            }
-
-            if (zip.file('audio_index.json')) {
-                const audioMetaJson = await zip.file('audio_index.json').async('string');
-                const audioMeta = JSON.parse(audioMetaJson);
-                for (const meta of audioMeta) {
-                    const audioFile = zip.file('audio/' + meta.fileName);
-                    if (audioFile) {
-                        const blob = await audioFile.async('blob');
-                        await db.sentence_audio.put({
-                            id: meta.id,
-                            bookId: meta.bookId,
-                            chapterIndex: meta.chapterIndex,
-                            sentenceIndex: meta.sentenceIndex,
-                            voice: meta.voice,
-                            audioBlob: blob
-                        });
-                    }
-                }
-            }
-
-            showToast("Khôi phục gói .TBZ thành công!");
-            await initApp();
+            promptSelectiveTbzImport(zip, file.name);
         } catch (err) {
-            console.error("Import TBZ failed:", err);
-            showToast("Lỗi nhập file .TBZ!");
+            console.error("Lỗi đọc file TBZ:", err);
+            showToast("File .TBZ không hợp lệ hoặc bị hỏng!");
         }
     } else if (file.name.endsWith('.txt')) {
         const text = await file.text();
@@ -1662,7 +2055,7 @@ async function handleImportFile(file) {
 }
 
 // ==========================================================================
-// 15. BATCH DOWNLOAD & ARCHIVE EXPORT
+// 15. BATCH DOWNLOAD & ARCHIVE EXPORT (.TBZ SAO LƯU TOÀN DIỆN CẢ MEDIA)
 // ==========================================================================
 async function runBatchDownload() {
     if (!state.currentBook || state.isBatchDownloading) return;
@@ -1822,28 +2215,59 @@ async function exportSingleChapterAudio() {
     showToast('Đã xuất file ' + ext.toUpperCase() + '!');
 }
 
+// XUẤT SAO LƯU HOÀN CHỈNH: SÁCH, CHƯƠNG, SETTING, MEDIA NỀN VÀ AUDIO
 async function exportFullTbzArchive() {
-    showToast("Đang đóng gói file .TBZ...");
+    showToast("Đang đóng gói file sao lưu .TBZ đầy đủ...");
     const zip = new JSZip();
 
     const booksData = await db.books.toArray();
     const chaptersData = await db.chapters.toArray();
     const settingsData = await db.settings.toArray();
     const audioRecords = await db.sentence_audio.toArray();
+    const galleryRecords = await db.bg_gallery.toArray();
+
+    // Đóng gói tệp nền hình/GIF/video
+    const mediaFolder = zip.folder('media');
+    const packagedGallery = [];
+
+    for (let i = 0; i < galleryRecords.length; i++) {
+        const item = galleryRecords[i];
+        if (item.data && item.data.startsWith('data:')) {
+            const extMatch = item.data.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,/);
+            const mime = extMatch ? extMatch[1] : 'image/png';
+            const base64Content = item.data.replace(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,/, '');
+            const ext = mime.split('/')[1] || 'bin';
+            const fileName = `bg_${i}.${ext}`;
+            mediaFolder.file(fileName, base64Content, { base64: true });
+
+            packagedGallery.push({
+                id: item.id,
+                type: item.type,
+                isAttachment: true,
+                storagePath: `media/${fileName}`,
+                createdAt: item.createdAt
+            });
+        } else {
+            packagedGallery.push(item);
+        }
+    }
 
     const manifest = {
-        version: "3.0",
+        version: "4.0",
         exportDate: new Date().toISOString(),
         booksCount: booksData.length,
         chaptersCount: chaptersData.length,
-        audioCount: audioRecords.length
+        audioCount: audioRecords.length,
+        galleryCount: galleryRecords.length
     };
 
     zip.file('manifest.json', JSON.stringify(manifest, null, 2));
     zip.file('books.json', JSON.stringify(booksData));
     zip.file('chapters.json', JSON.stringify(chaptersData));
     zip.file('settings.json', JSON.stringify(settingsData));
+    zip.file('gallery.json', JSON.stringify(packagedGallery));
 
+    // Đóng gói âm thanh ngoại tuyến
     const audioFolder = zip.folder('audio');
     const audioMeta = [];
 
@@ -1874,31 +2298,36 @@ async function exportFullTbzArchive() {
     const url = URL.createObjectURL(zipBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'TruyenVoice_Backup_' + Date.now() + '.tbz';
-    document.body.appendChild(a);
+    // Hàm tạo chuỗi DDMMYY từ thời gian hiện tại
+    const getDDMMYY = () => {
+        const d = new Date(Date.now());
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0'); // Tháng trong JS bắt đầu từ 0
+        const year = String(d.getFullYear()).slice(-2); // Lấy 2 chữ số cuối của năm
+        return `${day}${month}${year}`;
+    };
+
+    // Cập nhật câu lệnh của bạn:
+    a.download = `TNT_Backup_${getDDMMYY()}.tbz`; document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    showToast("Đã xuất gói .TBZ hoàn chỉnh!");
+    showToast("Đã xuất bản sao lưu .TBZ đầy đủ!");
 }
 
 // ==========================================================================
 // 16. EVENT LISTENERS SETUP
 // ==========================================================================
-
-// Điều hướng chương
 DOM.btnPrevChapter.onclick = function () { changeChapter(state.currentChapterIndex - 1); };
 DOM.btnNextChapter.onclick = function () { changeChapter(state.currentChapterIndex + 1); };
 
-// Lên đầu trang (Ontop Desktop & Mobile)
 function scrollToTop() {
     DOM.viewport.scrollTo({ top: 0, behavior: 'smooth' });
 }
 if (DOM.btnOnTop) DOM.btnOnTop.onclick = scrollToTop;
 if (DOM.btnOnTopMobile) DOM.btnOnTopMobile.onclick = scrollToTop;
 
-// DevLog Open (Desktop & Mobile)
 if (DOM.btnDevLogDesktop) DOM.btnDevLogDesktop.onclick = openDevLogModal;
 if (DOM.btnDevLogMobile) DOM.btnDevLogMobile.onclick = openDevLogModal;
 
@@ -1918,7 +2347,6 @@ if (DOM.btnDevLogEval && DOM.inputDevLog) {
     };
 }
 
-// Ẩn/Hiện HUD
 DOM.btnToggleHud.onclick = function (e) {
     e.stopPropagation();
     DOM.app.classList.toggle('ui-hidden');
@@ -1926,7 +2354,6 @@ DOM.btnToggleHud.onclick = function (e) {
     showToast(isHidden ? "Đã ẩn thanh công cụ (F)" : "Đã hiện thanh công cụ");
 };
 
-// Tắt/bật tiếng
 DOM.btnMuteToggle.onclick = function () {
     state.isMuted = !state.isMuted;
     updateMuteUI();
@@ -1946,7 +2373,6 @@ if (btnMuteMobile) {
     };
 }
 
-// Chế độ đọc (1 chương / cuộn vô cực)
 DOM.btnReadingMode.onclick = function () {
     if (state.readingMode === 'scroll-single') {
         state.readingMode = 'scroll-infinite';
@@ -1961,12 +2387,10 @@ DOM.btnReadingMode.onclick = function () {
     renderReaderContent(false);
 };
 
-// Play/Pause & chuyển câu
 DOM.btnPlayPause.onclick = function () { togglePlayPause(); };
 DOM.btnPrevSentence.onclick = function () { skipSentence(-1); };
 DOM.btnNextSentence.onclick = function () { skipSentence(1); };
 
-// Tốc độ đọc
 const SPEEDS = [0.8, 1.0, 1.25, 1.5, 2.0];
 DOM.btnQuickSpeed.onclick = function () {
     let idx = SPEEDS.indexOf(state.playbackRate);
@@ -1978,7 +2402,6 @@ DOM.btnQuickSpeed.onclick = function () {
     saveProgressState();
 };
 
-// Mở các ngăn & hộp thoại
 DOM.btnLibrary.onclick = function () {
     renderLibraryList();
     DOM.drawerLibrary.classList.remove('hidden');
@@ -2001,6 +2424,7 @@ if (btnTocMobile) {
 DOM.btnAaOpen.onclick = function () {
     DOM.modalTypography.classList.remove('hidden');
     DOM.modalTypography.classList.add('flex');
+    renderBackgroundGallery();
 };
 
 DOM.btnStorageModal.onclick = async function () {
@@ -2010,17 +2434,16 @@ DOM.btnStorageModal.onclick = async function () {
     DOM.modalStorage.classList.add('flex');
 };
 
-// Đóng modal
 document.querySelectorAll('.btn-close-drawer').forEach(function (btn) {
     btn.onclick = function () {
-        document.querySelectorAll('#drawer-library, #drawer-toc, #modal-typography, #modal-storage, #modal-devlog').forEach(function (el) {
+        document.querySelectorAll('#drawer-library, #drawer-toc, #modal-typography, #modal-storage, #modal-devlog, #modal-changelog, #modal-tbz-restore').forEach(function (el) {
             el.classList.add('hidden');
             el.classList.remove('flex');
         });
     };
 });
 
-['drawer-library', 'drawer-toc', 'modal-typography', 'modal-storage', 'modal-devlog'].forEach(function (id) {
+['drawer-library', 'drawer-toc', 'modal-storage', 'modal-devlog', 'modal-changelog', 'modal-tbz-restore'].forEach(function (id) {
     const modalEl = document.getElementById(id);
     if (modalEl) {
         modalEl.addEventListener('click', function (e) {
@@ -2032,7 +2455,42 @@ document.querySelectorAll('.btn-close-drawer').forEach(function (btn) {
     }
 });
 
-// Giao diện màu nền sách
+const modalTypo = document.getElementById('modal-typography');
+if (modalTypo) {
+    modalTypo.addEventListener('click', function (e) {
+        if (e.target === modalTypo) {
+            modalTypo.classList.add('hidden');
+            modalTypo.classList.remove('flex');
+        }
+    });
+}
+
+// Điều hướng 4 Tab con trong Modal aA
+const typoSubtabs = [
+    { btn: document.getElementById('typo-tab-btn-text'), pane: document.getElementById('typo-tab-pane-text') },
+    { btn: document.getElementById('typo-tab-btn-hl'), pane: document.getElementById('typo-tab-pane-hl') },
+    { btn: document.getElementById('typo-tab-btn-bg'), pane: document.getElementById('typo-tab-pane-bg') },
+    { btn: document.getElementById('typo-tab-btn-voice'), pane: document.getElementById('typo-tab-pane-voice') }
+];
+
+typoSubtabs.forEach(function (tab) {
+    if (!tab.btn || !tab.pane) return;
+    tab.btn.onclick = function () {
+        typoSubtabs.forEach(function (t) {
+            if (t.btn && t.pane) {
+                t.btn.className = 'typo-subtab-btn py-1.5 rounded-lg opacity-60 hover:opacity-100';
+                t.pane.classList.add('hidden');
+            }
+        });
+        tab.btn.className = 'typo-subtab-btn py-1.5 rounded-lg bg-[var(--bar-bg)] text-[var(--accent-color)] shadow-sm font-semibold';
+        tab.pane.classList.remove('hidden');
+
+        if (tab.btn.id === 'typo-tab-btn-bg') {
+            renderBackgroundGallery();
+        }
+    };
+});
+
 document.querySelectorAll('.btn-theme-select').forEach(function (btn) {
     btn.onclick = function () {
         state.currentTheme = btn.getAttribute('data-theme');
@@ -2042,36 +2500,214 @@ document.querySelectorAll('.btn-theme-select').forEach(function (btn) {
     };
 });
 
-// Kiểu cỡ chữ & Phông chữ
 DOM.sliderFontSize.oninput = function (e) {
     state.fontSize = parseInt(e.target.value, 10);
     DOM.labelFontSize.textContent = state.fontSize + 'px';
-    DOM.container.style.fontSize = state.fontSize + 'px';
+    document.documentElement.style.setProperty('--reader-size', state.fontSize + 'px');
+    if (DOM.container) DOM.container.style.fontSize = state.fontSize + 'px';
     saveProgressState();
 };
 
 document.querySelectorAll('.btn-font-chip').forEach(function (btn) {
     btn.onclick = function () {
-        document.querySelectorAll('.btn-font-chip').forEach(function (b) {
-            b.className = 'btn-font-chip py-1.5 rounded-lg border border-neutral-500/20 text-xs font-medium';
-        });
-        btn.className = 'btn-font-chip py-1.5 rounded-lg border border-[var(--accent-color)] text-xs font-semibold text-[var(--accent-color)]';
         state.fontFamily = btn.getAttribute('data-font');
-        DOM.container.style.fontFamily = state.fontFamily;
+        state.customFontFamily = null;
+        document.documentElement.style.setProperty('--reader-font', state.fontFamily);
+        if (DOM.container) DOM.container.style.fontFamily = state.fontFamily;
+        updateFontChipsUI();
         saveProgressState();
     };
 });
 
-// Kiểu highlight (tô khối / gạch chân / viền)
+const inputGoogleFont = document.getElementById('input-custom-google-font');
+const btnApplyGoogleFont = document.getElementById('btn-apply-google-font');
+
+if (btnApplyGoogleFont && inputGoogleFont) {
+    btnApplyGoogleFont.onclick = function () {
+        const val = inputGoogleFont.value.trim();
+        if (val) loadGoogleFont(val);
+    };
+    inputGoogleFont.onkeydown = function (e) {
+        if (e.key === 'Enter') btnApplyGoogleFont.click();
+    };
+}
+
+// Xử lý Hình nền và Độ mờ
+const btnUseCoverArt = document.getElementById('btn-use-cover-art');
+const btnClearBgImage = document.getElementById('btn-clear-bg-image');
+
+if (DOM.sliderBgOpacity) {
+    DOM.sliderBgOpacity.oninput = function (e) {
+        const val = parseInt(e.target.value, 10);
+        state.bgOpacity = val / 100;
+        if (DOM.labelBgOpacity) DOM.labelBgOpacity.textContent = val + '%';
+        if (DOM.readerBgOverlay) DOM.readerBgOverlay.style.opacity = state.bgImage && !isVideoMedia(state.bgImage) ? state.bgOpacity : '0';
+        if (DOM.readerBgVideo) DOM.readerBgVideo.style.opacity = state.bgImage && isVideoMedia(state.bgImage) ? state.bgOpacity : '0';
+        saveProgressState();
+    };
+}
+
+// Tải ảnh/GIF/video từ máy và lưu vào Gallery
+if (DOM_GALLERY.btnTriggerFiles && DOM_GALLERY.inputFiles) {
+    DOM_GALLERY.btnTriggerFiles.onclick = () => DOM_GALLERY.inputFiles.click();
+
+    DOM_GALLERY.inputFiles.onchange = async function (e) {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        showToast(`Đang nạp ${files.length} tệp...`);
+        for (const file of files) {
+            await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = async function (evt) {
+                    const base64Data = evt.target.result;
+                    await saveImageToGallery(base64Data, file.type.startsWith('video') ? 'video' : 'file');
+                    applyReaderBackground(base64Data);
+                    resolve();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        saveProgressState();
+        await renderBackgroundGallery();
+        showToast(`Đã lưu ${files.length} tệp vào bộ sưu tập!`);
+        DOM_GALLERY.inputFiles.value = '';
+    };
+}
+
+if (DOM_GALLERY.btnToggleBatchUrl && DOM_GALLERY.trayBatchUrl) {
+    DOM_GALLERY.btnToggleBatchUrl.onclick = function () {
+        DOM_GALLERY.trayBatchUrl.classList.toggle('hidden');
+    };
+}
+
+if (DOM_GALLERY.btnApplyBatchUrls && DOM_GALLERY.textareaBatchUrls) {
+    DOM_GALLERY.btnApplyBatchUrls.onclick = async function () {
+        const rawText = DOM_GALLERY.textareaBatchUrls.value.trim();
+        if (!rawText) return;
+
+        const urls = rawText.split('\n').map(u => u.trim()).filter(u => u.length > 5);
+        if (urls.length === 0) return;
+
+        showToast(`Đang lưu ${urls.length} liên kết...`);
+        for (const url of urls) {
+            await saveImageToGallery(url, isVideoMedia(url) ? 'video' : 'url');
+        }
+
+        applyReaderBackground(urls[0]);
+        saveProgressState();
+        await renderBackgroundGallery();
+
+        DOM_GALLERY.textareaBatchUrls.value = '';
+        DOM_GALLERY.trayBatchUrl.classList.add('hidden');
+        showToast(`Đã thêm ${urls.length} tệp vào bộ sưu tập!`);
+    };
+}
+
+// Chọn ảnh bìa EPUB làm nền thủ công
+if (btnUseCoverArt) {
+    btnUseCoverArt.onclick = function () {
+        if (state.currentBook && state.currentBook.cover && !state.currentBook.cover.includes('placehold.co')) {
+            applyReaderBackground(state.currentBook.cover);
+            saveProgressState();
+            showToast("Đã đặt bìa EPUB làm hình nền!");
+        } else {
+            showToast("Cuốn sách này không có ảnh bìa hợp lệ.");
+        }
+    };
+}
+
+// Công tắc Bật/Tắt tự động lấy bìa EPUB
+if (DOM.switchAutoEpubCover) {
+    DOM.switchAutoEpubCover.onchange = function (e) {
+        state.autoUseEpubCover = e.target.checked;
+        saveProgressState();
+        showToast(state.autoUseEpubCover ? "Đã bật: Tự động dùng bìa EPUB làm nền" : "Đã tắt: Giữ nguyên ảnh nền tự chọn");
+    };
+}
+
+// Mẫu ảnh nền nội bộ có sẵn
+document.querySelectorAll('#internal-bg-presets-tray .btn-preset-bg-item').forEach(btn => {
+    btn.onclick = function () {
+        const bgPath = btn.getAttribute('data-bg');
+        applyReaderBackground(bgPath);
+        saveProgressState();
+        showToast("Đã áp dụng mẫu ảnh nền!");
+    };
+});
+
+if (btnClearBgImage) {
+    btnClearBgImage.onclick = function () {
+        applyReaderBackground(null);
+        saveProgressState();
+        renderBackgroundGallery();
+        showToast("Đã tắt hình nền");
+    };
+}
+
+if (DOM_GALLERY.btnClearAll) {
+    DOM_GALLERY.btnClearAll.onclick = async function () {
+        const count = await db.bg_gallery.count();
+        if (count === 0) return;
+
+        const ok = await askConfirmation("Xóa bộ sưu tập?", `Bạn có chắc muốn xoá toàn bộ ${count} hình nền/video đã lưu không?`);
+        if (ok) {
+            await db.bg_gallery.clear();
+            applyReaderBackground(null);
+            saveProgressState();
+            await renderBackgroundGallery();
+            showToast("Đã dọn dẹp sạch bộ sưu tập!");
+        }
+    };
+}
+
+// Tương tác với Modal phục hồi chọn lọc TBZ
+const btnCloseTbzModal = document.getElementById('btn-close-tbz-modal');
+const btnCancelTbzRestore = document.getElementById('btn-cancel-tbz-restore');
+const btnConfirmTbzRestore = document.getElementById('btn-confirm-tbz-restore');
+
+if (btnCloseTbzModal) {
+    btnCloseTbzModal.onclick = () => {
+        document.getElementById('modal-tbz-restore').classList.add('hidden');
+        pendingTbzZip = null;
+    };
+}
+if (btnCancelTbzRestore) {
+    btnCancelTbzRestore.onclick = () => {
+        document.getElementById('modal-tbz-restore').classList.add('hidden');
+        pendingTbzZip = null;
+    };
+}
+if (btnConfirmTbzRestore) {
+    btnConfirmTbzRestore.onclick = executeSelectiveTbzImport;
+}
+
 document.querySelectorAll('.btn-hl-style').forEach(function (btn) {
     btn.onclick = function () {
         state.hlStyle = btn.getAttribute('data-style');
         applyHighlightCustomization();
         saveProgressState();
+        showToast('Kiểu highlight: ' + btn.textContent.trim());
     };
 });
 
-// Hệ màu có sẵn (Color Presets Palette)
+if (DOM.configPageLoadingDelay) {
+    DOM.configPageLoadingDelay.onchange = function (e) {
+        state.pageLoadDelay = parseInt(e.target.value, 10);
+        saveProgressState();
+        showToast('Đã lưu thời gian chờ: ' + (state.pageLoadDelay / 1000) + 's');
+    };
+}
+
+if (DOM.switchAutoUpdate) {
+    DOM.switchAutoUpdate.onchange = function (e) {
+        state.autoUpdateApp = e.target.checked;
+        saveProgressState();
+        showToast(state.autoUpdateApp ? "Đã bật tự động cập nhật bản mới" : "Chế độ: Cập nhật thủ công");
+    };
+}
+
 document.querySelectorAll('.btn-hl-preset').forEach(function (btn) {
     btn.onclick = function () {
         state.hlTextColor = btn.getAttribute('data-text');
@@ -2084,7 +2720,6 @@ document.querySelectorAll('.btn-hl-preset').forEach(function (btn) {
     };
 });
 
-// Color Pickers thủ công
 if (DOM.pickerHlText) {
     DOM.pickerHlText.oninput = function (e) {
         state.hlTextColor = e.target.value;
@@ -2107,13 +2742,12 @@ if (DOM.pickerHlBorder) {
     };
 }
 
-// Chọn giọng đọc
 document.querySelectorAll('.btn-voice-opt').forEach(function (btn) {
     btn.onclick = function () {
         document.querySelectorAll('.btn-voice-opt').forEach(function (b) {
-            b.className = 'btn-voice-opt py-1.5 rounded-lg border border-neutral-500/20 text-xs font-medium';
+            b.className = 'btn-voice-opt touch-action py-2 rounded-xl border border-neutral-500/20 font-medium';
         });
-        btn.className = 'btn-voice-opt py-1.5 rounded-lg border border-[var(--accent-color)] text-xs font-semibold text-[var(--accent-color)]';
+        btn.className = 'btn-voice-opt touch-action py-2 rounded-xl border border-[var(--accent-color)] text-[var(--accent-color)] font-medium';
         state.currentVoiceName = btn.getAttribute('data-voice');
         if (DOM.labelVoice) DOM.labelVoice.textContent = state.currentVoiceName;
         showToast('Giọng đọc: ' + state.currentVoiceName);
@@ -2122,7 +2756,6 @@ document.querySelectorAll('.btn-voice-opt').forEach(function (btn) {
     };
 });
 
-// Tìm kiếm văn bản
 if (DOM.btnSearchOpen) DOM.btnSearchOpen.onclick = openSearchAction;
 const btnSearchMobile = document.getElementById('btn-search-open-mobile');
 if (btnSearchMobile) btnSearchMobile.onclick = openSearchAction;
@@ -2148,12 +2781,12 @@ DOM.btnSearchPrev.onclick = function () {
     focusSearchResult(prevIdx);
 };
 
-// Storage Tabs
+// iOS Segmented Control Tabs Navigation
 const storageTabs = [
+    { btn: document.getElementById('tab-btn-system'), pane: document.getElementById('tab-pane-system') },
     { btn: document.getElementById('tab-btn-download'), pane: document.getElementById('tab-pane-download') },
     { btn: document.getElementById('tab-btn-manage'), pane: document.getElementById('tab-pane-manage') },
-    { btn: document.getElementById('tab-btn-backup'), pane: document.getElementById('tab-pane-backup') },
-    { btn: document.getElementById('tab-btn-system'), pane: document.getElementById('tab-pane-system') }
+    { btn: document.getElementById('tab-btn-backup'), pane: document.getElementById('tab-pane-backup') }
 ];
 
 storageTabs.forEach(function (t) {
@@ -2161,11 +2794,11 @@ storageTabs.forEach(function (t) {
     t.btn.onclick = function () {
         storageTabs.forEach(function (item) {
             if (item.btn && item.pane) {
-                item.btn.className = 'storage-tab-btn py-1.5 rounded opacity-60 hover:opacity-100';
+                item.btn.classList.remove('active');
                 item.pane.classList.add('hidden');
             }
         });
-        t.btn.className = 'storage-tab-btn py-1.5 rounded bg-[var(--bar-bg)] text-[var(--accent-color)] shadow-sm font-bold';
+        t.btn.classList.add('active');
         t.pane.classList.remove('hidden');
     };
 });
@@ -2215,18 +2848,79 @@ DOM.btnDeleteCurrentBook.onclick = async function () {
 };
 
 DOM.btnPurgeAll.onclick = async function () {
-    const ok = await askConfirmation("Xoá toàn bộ dữ liệu?", "Thao tác này sẽ xoá sạch mọi cuốn sách và file âm thanh.");
-    if (ok) {
-        await db.sentence_audio.clear();
-        await db.chapters.clear();
-        await db.books.clear();
-        await db.settings.clear();
-        showToast("Đã dọn dẹp sạch toàn bộ dữ liệu!");
-        location.reload();
+    const ok = await askConfirmation(
+        "Xoá toàn bộ ứng dụng?",
+        "Thao tác này sẽ xoá sạch hoàn toàn dữ liệu (Sách, Audio, Hình nền, Cài đặt), bộ nhớ đệm Cache, Cookie và gỡ Service Worker về trạng thái ban đầu."
+    );
+
+    if (!ok) return;
+
+    showToast("Đang dọn dẹp sạch toàn bộ ứng dụng...");
+
+    try {
+        // 1. DỌN SẠCH TẤT CẢ CÁC BẢNG TRONG DEXIE INDEXEDDB
+        if (typeof db !== 'undefined' && db.isOpen()) {
+            await Promise.all([
+                db.sentence_audio.clear(),
+                db.chapters.clear(),
+                db.books.clear(),
+                db.settings.clear(),
+                db.bg_gallery.clear()
+            ]);
+            await db.delete(); // Xoá luôn schema cơ sở dữ liệu để reset index
+        }
+
+        // 2. XOÁ LOCALSTORAGE & SESSIONSTORAGE
+        try {
+            localStorage.clear();
+            sessionStorage.clear();
+        } catch (e) {
+            console.warn("Lỗi xoá Web Storage:", e);
+        }
+
+        // 3. XOÁ TOÀN BỘ COOKIE CỦA DOMAIN
+        try {
+            const cookies = document.cookie.split(";");
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i];
+                const eqPos = cookie.indexOf("=");
+                const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+                document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+            }
+        } catch (e) {
+            console.warn("Lỗi xoá Cookie:", e);
+        }
+
+        // 4. XOÁ TOÀN BỘ CACHE STORAGE
+        if ('caches' in window) {
+            const cacheKeys = await caches.keys();
+            await Promise.all(cacheKeys.map(k => caches.delete(k)));
+        }
+
+        // 5. GỠ BỎ TOÀN BỘ SERVICE WORKER ĐANG ĐĂNG KÝ
+        if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let reg of registrations) {
+                await reg.unregister();
+            }
+        }
+
+        showToast("Đã dọn dẹp sạch toàn bộ ứng dụng!");
+        
+        // Chờ 0.5s rồi tải lại sạch từ máy chủ
+        setTimeout(() => {
+            window.location.replace(window.location.origin + window.location.pathname);
+        }, 500);
+
+    } catch (err) {
+        console.error("Lỗi khi xoá toàn bộ dữ liệu:", err);
+        // Ngay cả khi gặp lỗi cục bộ, vẫn xóa Storage và reload lại trang
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.reload();
     }
 };
 
-// Phím tắt bàn phím
 window.addEventListener('keydown', function (e) {
     const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
     if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') {
@@ -2263,7 +2957,7 @@ window.addEventListener('keydown', function (e) {
     } else if (e.key === 'Home') {
         DOM.viewport.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (e.key === 'Escape') {
-        document.querySelectorAll('#drawer-library, #drawer-toc, #modal-typography, #modal-storage, #search-bar-drawer, #modal-devlog').forEach(function (el) {
+        document.querySelectorAll('#drawer-library, #drawer-toc, #modal-typography, #modal-storage, #search-bar-drawer, #modal-devlog, #modal-changelog, #modal-tbz-restore').forEach(function (el) {
             el.classList.add('hidden');
             el.classList.remove('flex');
         });
@@ -2287,13 +2981,13 @@ DOM.viewport.addEventListener('scroll', function () {
 const btnCheckUpdate = document.getElementById('btn-check-app-update');
 const btnCreateHunqWeb = document.getElementById('btn-create-hunqweb-backup');
 const btnDownloadHunqWeb = document.getElementById('btn-download-cached-hunqweb');
+const labelCachedHunqWeb = document.getElementById('label-cached-hunqweb');
 const btnTriggerUploadHunq = document.getElementById('btn-trigger-upload-hunqweb');
 const inputUploadHunq = document.getElementById('input-upload-hunqweb');
 
 function syncVersionLabels(version) {
     if (version) APP_VERSION = version;
-    if (DOM.appVersionBadge) DOM.appVersionBadge.textContent = APP_VERSION;
-    if (DOM.cacheNameLabel) DOM.cacheNameLabel.textContent = APP_VERSION;
+    if (DOM.appVersionBadge) DOM.appVersionBadge.textContent = 'v' + APP_VERSION;
 }
 
 function fetchVersionFromSW() {
@@ -2321,12 +3015,14 @@ async function updateBackupButtonState() {
         const lastBackup = await db.app_backups.orderBy('createdAt').reverse().first();
         if (lastBackup && btnDownloadHunqWeb) {
             btnDownloadHunqWeb.classList.remove('hidden');
-            btnDownloadHunqWeb.classList.add('block');
+            btnDownloadHunqWeb.classList.add('flex');
 
             const backupDate = new Date(lastBackup.createdAt).toLocaleDateString('vi-VN');
             const backupVer = lastBackup.version ? lastBackup.version : APP_VERSION;
 
-            btnDownloadHunqWeb.textContent = 'Tải bản sao lưu ' + backupDate + ' (' + backupVer + ')';
+            if (labelCachedHunqWeb) {
+                labelCachedHunqWeb.textContent = 'Bản lưu ' + backupDate + ' (' + backupVer + ')';
+            }
 
             btnDownloadHunqWeb.onclick = function () {
                 const url = URL.createObjectURL(lastBackup.blob);
@@ -2396,27 +3092,79 @@ if (btnCreateHunqWeb) {
     };
 }
 
-if (btnCheckUpdate) {
-    btnCheckUpdate.onclick = async function () {
-        showToast("Đang kiểm tra cập nhật...");
-        if ('caches' in window) {
-            try {
-                const keys = await caches.keys();
-                await Promise.all(keys.map(function (k) { return caches.delete(k); }));
-                if ('serviceWorker' in navigator) {
-                    const registrations = await navigator.serviceWorker.getRegistrations();
-                    for (let reg of registrations) {
-                        await reg.update();
-                    }
-                }
-                showToast("Đã làm mới bộ đệm! Đang tải lại...");
-                setTimeout(function () { location.reload(true); }, 800);
-            } catch (err) {
-                location.reload(true);
+async function checkAndApplyUpdate(isManualTrigger = false) {
+    if (isManualTrigger) {
+        showToast("Đang kiểm tra phiên bản mới từ máy chủ...");
+    }
+
+    let latestVersion = null;
+    try {
+        const swRes = await fetch('./sw.js?nocache=' + Date.now());
+        if (swRes.ok) {
+            const swContent = await swRes.text();
+            const match = swContent.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
+            if (match && match[1]) {
+                latestVersion = match[1];
             }
-        } else {
+        }
+    } catch (err) {
+        console.warn("Không thể kiểm tra sw.js:", err);
+    }
+
+    const currentVer = APP_VERSION;
+    const hasNewVersion = latestVersion && (latestVersion !== currentVer) && (currentVer !== 'Đang đồng bộ...');
+
+    if (hasNewVersion) {
+        if (!state.autoUpdateApp && !isManualTrigger) {
+            showToast(`Có bản cập nhật mới (v${latestVersion}). Vào Cài đặt để cập nhật.`);
+            return;
+        }
+
+        const confirmed = await askConfirmation(
+            "Phát hiện phiên bản mới!",
+            `Máy chủ có phiên bản mới (v${latestVersion}). Bạn có muốn nâng cấp và làm mới ứng dụng ngay không?`
+        );
+
+        if (!confirmed) {
+            showToast("Đã hoãn cập nhật phiên bản.");
+            return;
+        }
+    } else if (isManualTrigger) {
+        const force = await askConfirmation(
+            "Đang ở bản mới nhất",
+            `Phiên bản hiện tại (v${currentVer}) đã là mới nhất. Bạn có muốn làm mới bộ đệm (force refresh) không?`
+        );
+        if (!force) return;
+    } else {
+        return;
+    }
+
+    showToast("Đang cài đặt phiên bản mới...");
+    if ('caches' in window) {
+        try {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let reg of registrations) {
+                    if (reg.waiting) {
+                        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                    await reg.update();
+                }
+            }
+            setTimeout(() => { location.reload(true); }, 500);
+        } catch (err) {
             location.reload(true);
         }
+    } else {
+        location.reload(true);
+    }
+}
+
+if (btnCheckUpdate) {
+    btnCheckUpdate.onclick = function () {
+        checkAndApplyUpdate(true);
     };
 }
 
@@ -2464,7 +3212,9 @@ if (btnTriggerUploadHunq && inputUploadHunq) {
 // 18. INITIALIZATION
 // ==========================================================================
 async function initApp() {
+    await loadSettings();
     applyHighlightCustomization();
+    await renderBackgroundGallery();
 
     const bookCount = await db.books.count();
     if (bookCount === 0) {
@@ -2505,9 +3255,14 @@ async function initApp() {
         await renderReaderContent(true);
     }
 
-    await loadSettings();
     setupInfiniteScrollObserver();
     await updateBackupButtonState();
+
+    await hidePageLoadingScreen();
+
+    if (state.autoUpdateApp) {
+        setTimeout(() => checkAndApplyUpdate(false), 2000);
+    }
 }
 
 if ('serviceWorker' in navigator) {
@@ -2515,6 +3270,19 @@ if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').then(function (reg) {
             console.log('[SW] Đã đăng ký Service Worker:', reg.scope);
             fetchVersionFromSW();
+
+            reg.addEventListener('updatefound', () => {
+                const newWorker = reg.installing;
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        if (state.autoUpdateApp) {
+                            checkAndApplyUpdate(false);
+                        } else {
+                            showToast("Có bản cập nhật mới. Bạn có thể cập nhật trong Cài đặt.");
+                        }
+                    }
+                });
+            });
         }).catch(function (err) {
             console.warn('[SW] Đăng ký Service Worker thất bại:', err);
         });
@@ -2534,3 +3302,78 @@ window.addEventListener('DOMContentLoaded', function () {
         saveProgressState();
     });
 });
+
+// ==========================================================================
+// QUẢN LÝ LỊCH SỬ CẬP NHẬT (CHANGELOG VIEWER)
+// ==========================================================================
+const btnViewChangelog = document.getElementById('btn-view-changelog');
+const modalChangelog = document.getElementById('modal-changelog');
+const btnCloseChangelog = document.getElementById('btn-close-changelog');
+const changelogContainer = document.getElementById('changelog-list-container');
+
+async function renderChangelog() {
+    if (!changelogContainer) return;
+
+    try {
+        const res = await fetch('./changelog.json?nocache=' + Date.now());
+        if (!res.ok) throw new Error('Không thể tải changelog');
+        const logs = await res.json();
+
+        changelogContainer.innerHTML = '';
+        logs.forEach((log) => {
+            const card = document.createElement('div');
+            card.className = 'ios-group-card p-3.5 space-y-2';
+
+            const itemsHtml = log.changes.map(item => `
+                <li class="flex items-start gap-2 leading-relaxed opacity-85">
+                    <span class="text-[var(--accent-color)] mt-0.5">•</span>
+                    <span>${item}</span>
+                </li>
+            `).join('');
+
+            card.innerHTML = `
+                <div class="flex items-center justify-between border-b border-[var(--ios-sep)] pb-1.5">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 rounded-md bg-[var(--accent-color)] text-white font-mono font-bold text-[10px]">v${log.version}</span>
+                        <span class="font-semibold text-xs tracking-tight">${log.title}</span>
+                    </div>
+                    <span class="text-[10px] text-[var(--ios-subtext)] font-mono">${log.date}</span>
+                </div>
+                <ul class="space-y-1.5 pt-1 text-[11px] font-sans">
+                    ${itemsHtml}
+                </ul>
+            `;
+            changelogContainer.appendChild(card);
+        });
+    } catch (err) {
+        changelogContainer.innerHTML = `
+            <div class="text-center py-6 text-rose-500 font-medium">
+                <i class="fa-solid fa-triangle-exclamation mb-1 text-sm"></i>
+                <p>Không thể tải tệp changelog.json.</p>
+            </div>
+        `;
+    }
+}
+
+if (btnViewChangelog) {
+    btnViewChangelog.onclick = function () {
+        if (modalChangelog) {
+            modalChangelog.classList.remove('hidden');
+            modalChangelog.classList.add('flex');
+            renderChangelog();
+        }
+    };
+}
+
+if (btnCloseChangelog && modalChangelog) {
+    btnCloseChangelog.onclick = function () {
+        modalChangelog.classList.add('hidden');
+        modalChangelog.classList.remove('flex');
+    };
+    modalChangelog.onclick = function (e) {
+        if (e.target === modalChangelog) {
+            modalChangelog.classList.add('hidden');
+            modalChangelog.classList.remove('flex');
+        }
+    };
+}

@@ -1,11 +1,13 @@
-// === NƠI DUY NHẤT BẠN CẦN ĐỔI PHIÊN BẢN KHI CÓ BẢN MỚI ===
-const CACHE_NAME = '1.2.6';
+// === PHIÊN BẢN SERVICE WORKER ===
+const CACHE_NAME = '2.0.0';
 
 const STATIC_ASSETS = [
     './',
     './index.html',
     './assets/main.js',
     './manifest.json',
+    './changelog.json',
+    './assets/logo.png',
     'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
     'https://unpkg.com/dexie@3.2.4/dist/dexie.min.js',
@@ -27,7 +29,7 @@ self.addEventListener('install', (e) => {
             }
         })
     );
-    self.skipWaiting();
+    // KHÔNG TỰ ĐỘNG skipWaiting() để tuân thủ chế độ cập nhật thủ công
 });
 
 self.addEventListener('activate', (e) => {
@@ -43,23 +45,26 @@ self.addEventListener('fetch', (e) => {
     if (e.request.url.includes('/api/tts')) return;
 
     e.respondWith(
-        caches.match(e.request).then((res) => {
-            return (
-                res ||
-                fetch(e.request).then((fetchRes) => {
-                    return caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(e.request, fetchRes.clone());
-                        return fetchRes;
-                    });
-                }).catch(() => caches.match('./index.html'))
-            );
-        })
+        fetch(e.request)
+            .then((fetchRes) => {
+                const resClone = fetchRes.clone();
+                caches.open(CACHE_NAME).then((cache) => {
+                    cache.put(e.request, resClone);
+                });
+                return fetchRes;
+            })
+            .catch(() => {
+                return caches.match(e.request).then((res) => res || caches.match('./index.html'));
+            })
     );
 });
 
-// LẮNG NGHE YÊU CẦU LẤY PHIÊN BẢN TỪ MAIN.JS
+// LẮNG NGHE LỆNH SKIP WAITING THỦ CÔNG HOẶC LẤY VERSION
 self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'GET_VERSION') {
+    if (!event.data) return;
+    if (event.data.type === 'GET_VERSION') {
         event.ports[0].postMessage({ version: CACHE_NAME });
+    } else if (event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
     }
 });
